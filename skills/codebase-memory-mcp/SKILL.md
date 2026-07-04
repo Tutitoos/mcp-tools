@@ -37,6 +37,51 @@ Known indexed project example:
 home-tutitoos-Desktop-Kena-libraries-library-http
 ```
 
+## Fast architecture mode
+
+For requests like “analyze architecture”, “show architecture”, “explain the architecture”, “analiza la arquitectura”, or “dame la arquitectura”:
+
+1. Use only `get_architecture` first.
+2. Do not call `get_code_snippet` unless the user asks for implementation details.
+3. Do not call `get_graph_schema` unless debugging the graph model.
+4. Do not call `trace_path` unless the user asks for a specific flow from A to B.
+5. Do not fetch full source files for a high-level architecture answer.
+6. Keep the answer compact: summary, main packages, hotspots, boundaries, and risks.
+
+If using CLI fallback, prefer compact output and avoid reading huge artifacts.
+
+Example:
+
+```bash
+$HOME/.local/bin/codebase-memory-mcp-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
+```
+
+Bad for simple architecture requests:
+
+```bash
+$HOME/.local/bin/codebase-memory-mcp-docker cli get_code_snippet '{"project":"PROJECT","qualified_name":"BIG_CLASS"}'
+```
+
+Only use snippets when the user asks for code-level details.
+
+## Output limits
+
+For normal architecture answers:
+
+- Do not paste full source code.
+- Do not paste raw JSON.
+- Do not render large ASCII diagrams unless explicitly requested.
+- Prefer short tables and concise bullets.
+- Maximum default answer: around 600-900 words.
+- If more detail is useful, summarize first and offer deeper sections.
+- Do not duplicate the same explanation multiple times.
+- Do not include broken ASCII diagrams.
+- Do not read large artifacts unless strictly necessary.
+
+When using `get_code_snippet`, summarize the relevant lines instead of dumping the whole `source` field.
+
+If the user asks for a quick answer, keep it under 300 words.
+
 ## Runtime
 
 The MCP server name is:
@@ -247,24 +292,24 @@ For “where is X implemented?”:
 For “explain this architecture”:
 
 1. `get_architecture`
-2. `query_graph`
-3. `search_graph`
+2. `query_graph` only if deeper graph relationships are needed.
+3. `search_graph` only if specific symbols/packages need expansion.
 
 For “trace flow from A to B”:
 
-1. `search_graph` for both symbols
-2. `trace_path`
-3. `get_code_snippet` for relevant nodes
+1. `search_graph` for both symbols.
+2. `trace_path`.
+3. `get_code_snippet` for relevant nodes only if the user asks for implementation details.
 
 For “what changed?”:
 
-1. `detect_changes`
-2. `search_code` if needed
+1. `detect_changes`.
+2. `search_code` if needed.
 
 For “show me the relevant code”:
 
-1. `search_code`
-2. `get_code_snippet`
+1. `search_code`.
+2. `get_code_snippet`.
 
 ## Error handling
 
@@ -290,6 +335,12 @@ If indexing fails because the repo is too large:
 1. If current mode was `full`, retry with `moderate`.
 2. Do not degrade to `fast` without user approval.
 
+If an MCP tool is not exposed by the active client:
+
+1. Do not keep retrying invented internal tool names.
+2. Use CLI fallback once.
+3. Report clearly that CLI fallback was used.
+
 ## Do not do
 
 Do not call the host binary directly:
@@ -313,6 +364,12 @@ Do not delete indexed projects unless the user explicitly asks.
 Do not silently change `persistence: true` to `false`.
 
 Do not read this entire skill file every time for simple tasks once these rules are already loaded.
+
+Do not use `get_code_snippet` for general architecture summaries unless the user explicitly asks for source-level detail.
+
+Do not call `get_graph_schema` for normal analysis.
+
+Do not generate long ASCII architecture diagrams unless explicitly requested.
 
 ## Debug commands
 
@@ -358,11 +415,31 @@ Get architecture:
 $HOME/.local/bin/codebase-memory-mcp-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
 ```
 
+Search graph:
+
+```bash
+$HOME/.local/bin/codebase-memory-mcp-docker cli search_graph '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
+```
+
 Search code:
 
 ```bash
 $HOME/.local/bin/codebase-memory-mcp-docker cli search_code '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
 ```
+
+Get snippet:
+
+```bash
+$HOME/.local/bin/codebase-memory-mcp-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'
+```
+
+Compact snippet metadata with `jq`:
+
+```bash
+$HOME/.local/bin/codebase-memory-mcp-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'   | jq 'del(.source, .fp, .sp, .bt)'
+```
+
+Use the `jq` form when the full source is not needed.
 
 ## Example: index library-http
 
@@ -387,3 +464,21 @@ If persistence was enabled, also verify:
 ```bash
 ls -lh /home/tutitoos/Desktop/Kena/libraries/library-http/.codebase-memory/graph.db.zst
 ```
+
+## Example: fast architecture answer for library-http
+
+Use only:
+
+```bash
+$HOME/.local/bin/codebase-memory-mcp-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
+```
+
+Then produce a compact answer with:
+
+- overall pattern
+- main packages
+- hotspots
+- boundaries
+- risks or refactor candidates
+
+Do not fetch source snippets unless the user asks for code-level details.
