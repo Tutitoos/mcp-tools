@@ -42,10 +42,24 @@ For compression requests, pass the exact user-provided content to `headroom_comp
 
 In OMP, the Headroom MCP server exposes tools with namespaced callable names:
 
-- `mcp__headroom_headroom_compress`
-- `mcp__headroom_headroom_retrieve`
-- `mcp__headroom_headroom_stats`
+- `mcp__headroom_compress`
+- `mcp__headroom_retrieve`
+- `mcp__headroom_stats`
 
 Do not look for bare `headroom_compress` in the model tool inventory. `/mcp test headroom` shows bare server tool names, but OMP injects callable tools as `mcp__<server>_<tool>`.
 
-For Headroom compression requests, call `mcp__headroom_headroom_compress` with the exact user-provided content.
+For Headroom compression requests, call `mcp__headroom_compress` with the exact user-provided content.
+
+## OMP MCP tool discovery rule
+
+OMP may expose MCP tools behind `search_tool_bm25` instead of loading every MCP tool directly.
+
+When the user asks for a Headroom task and `mcp__headroom_compress`, `mcp__headroom_retrieve`, or `mcp__headroom_stats` is not directly visible, first use tool discovery with a query like:
+
+- `headroom compress text logs reduce tokens`
+- `headroom retrieve compressed content hash`
+- `headroom stats compression savings`
+
+After discovery activates the Headroom tools, call the matching Headroom MCP tool.
+
+Do not claim Headroom is unavailable just because the MCP tool is not initially visible. First try tool discovery.

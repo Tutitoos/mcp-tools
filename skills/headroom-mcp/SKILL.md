@@ -165,9 +165,9 @@ In OMP, MCP tools are exposed with namespaced callable names.
 
 For the `headroom` server, use these callable tool names:
 
-- `mcp__headroom_headroom_compress`
-- `mcp__headroom_headroom_retrieve`
-- `mcp__headroom_headroom_stats`
+- `mcp__headroom_compress`
+- `mcp__headroom_retrieve`
+- `mcp__headroom_stats`
 
 The bare names shown by `/mcp test headroom` are:
 
@@ -177,6 +177,18 @@ The bare names shown by `/mcp test headroom` are:
 
 But inside the model/tool inventory, prefer the namespaced OMP names above.
 
-When the user asks to compress with Headroom, call `mcp__headroom_headroom_compress` with content equal to the exact user-provided content.
+When the user asks to compress with Headroom, call `mcp__headroom_compress` with content equal to the exact user-provided content.
 
 Do not look only for the bare name `headroom_compress` in the model tool inventory.
+
+## OMP discovery mode
+
+In OMP, Headroom tools may start hidden behind `search_tool_bm25`.
+
+If the callable Headroom tools are not immediately visible, use tool discovery first with:
+
+`headroom compress text logs reduce tokens`
+
+Then call the activated Headroom compression tool.
+
+Do not fall back to bash, Docker, Python, or the host binary for normal compression tasks.
