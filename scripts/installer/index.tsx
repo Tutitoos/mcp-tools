@@ -67,7 +67,12 @@ const STEPS: Step[] = [
     label: "Verificar clon de mem0-mcp-selfhosted",
     phase: "Preparación",
     run: async () => {
-      const envText = fs.readFileSync(path.join(REPO_DIR, ".env"), "utf8");
+      const envPath = path.join(REPO_DIR, ".env");
+      if (!fs.existsSync(envPath)) {
+        if (IS_DRY) return;
+        throw new Error(`.env ausente en ${envPath} — el paso 'env' debería haberlo generado`);
+      }
+      const envText = fs.readFileSync(envPath, "utf8");
       const m = envText.match(/^MEM0_SRC_PATH=(.+)$/m);
       if (!m) throw new Error("MEM0_SRC_PATH ausente en .env");
       const p = m[1].replace(/^\$HOME/, HOME);
