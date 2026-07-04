@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import React, { useEffect, useState } from "react";
 import { render, Box, Text } from "ink";
-import { Spinner, StatusMessage } from "@inkjs/ui";
+import { Spinner } from "@inkjs/ui";
 import { execa } from "execa";
 import path from "node:path";
 import fs from "node:fs";
@@ -11,18 +11,19 @@ const REPO_DIR = path.resolve(new URL(".", import.meta.url).pathname, "../..");
 const HOME = os.homedir();
 
 type Status = "pending" | "running" | "ok" | "fail";
+type Phase = "Preparación" | "Build" | "Instalación" | "Arranque";
 
 interface Step {
   key: string;
   label: string;
+  phase: Phase;
   run: () => Promise<void>;
 }
 
 const sh = (cmd: string) =>
   execa("bash", ["-c", cmd], { cwd: REPO_DIR, stdio: "pipe" });
 
-/** Narrow an unknown thrown value to a readable error message. Handles execa's
- *  `.stderr` field without an unchecked cast. */
+/** Narrow an unknown thrown value to a readable error message. */
 function errorMessage(err: unknown): string {
   if (err instanceof Error) {
     if ("stderr" in err && typeof err.stderr === "string" && err.stderr.length > 0) {
@@ -33,10 +34,12 @@ function errorMessage(err: unknown): string {
   return String(err);
 }
 
+
 const STEPS: Step[] = [
   {
     key: "prereq",
     label: "Comprobar prerequisitos (docker + docker compose)",
+    phase: "Preparación",
     run: async () => {
       await sh("command -v docker");
       await sh("docker compose version");
@@ -45,6 +48,7 @@ const STEPS: Step[] = [
   {
     key: "env",
     label: "Generar .env desde el host",
+    phase: "Preparación",
     run: async () => {
       await sh("./scripts/init-env.sh");
     },
@@ -52,6 +56,7 @@ const STEPS: Step[] = [
   {
     key: "mem0-src",
     label: "Verificar clon de mem0-mcp-selfhosted",
+    phase: "Preparación",
     run: async () => {
       const envText = fs.readFileSync(path.join(REPO_DIR, ".env"), "utf8");
       const m = envText.match(/^MEM0_SRC_PATH=(.+)$/m);
@@ -68,13 +73,15 @@ const STEPS: Step[] = [
   {
     key: "build",
     label: "docker compose build (puede tardar)",
+    phase: "Build",
     run: async () => {
       await sh("./scripts/build.sh");
     },
   },
   {
     key: "wrappers",
-    label: "Instalar wrappers en ~/.local/bin/",
+    label: "Wrappers en ~/.local/bin/",
+    phase: "Instalación",
     run: async () => {
       await sh(`mkdir -p "${HOME}/.local/bin"`);
       for (const w of ["codebase-memory", "mem0", "headroom"]) {
@@ -86,21 +93,24 @@ const STEPS: Step[] = [
   },
   {
     key: "skills",
-    label: "Instalar skills globales",
+    label: "Skills globales",
+    phase: "Instalación",
     run: async () => {
       await sh("./scripts/install-skills.sh");
     },
   },
   {
     key: "rules",
-    label: "Instalar RULES.md globales",
+    label: "RULES.md globales",
+    phase: "Instalación",
     run: async () => {
       await sh("./scripts/install-rules.sh");
     },
   },
   {
     key: "mcp-config",
-    label: "Configurar MCP en Claude Code / OpenCode / OMP",
+    label: "Registrar MCPs en Claude Code / OpenCode / OMP",
+    phase: "Instalación",
     run: async () => {
       await sh("bun scripts/install-mcp.ts");
     },
@@ -108,13 +118,15 @@ const STEPS: Step[] = [
   {
     key: "up",
     label: "Arrancar contenedores (docker compose up -d)",
+    phase: "Arranque",
     run: async () => {
       await sh("./scripts/up.sh");
     },
   },
   {
     key: "smoke",
-    label: "Smoke test de los 3 MCPs",
+    label: "Smoke test MCP handshake",
+    phase: "Arranque",
     run: async () => {
       await sh(`"${HOME}/.local/bin/mcp-tools-codebase-memory-docker" --version`);
       await sh(
@@ -128,29 +140,55 @@ const STEPS: Step[] = [
   },
 ];
 
+const PHASES: Phase[] = ["Preparación", "Build", "Instalación", "Arranque"];
+
+const STATUS_GLYPH: Record<Status, string> = {
+  pending: "○",
+  running: "◐",
+  ok: "✔",
+  fail: "✘",
+};
+
+const STATUS_COLOR: Record<Status, string> = {
+  pending: "gray",
+  running: "cyan",
+  ok: "green",
+  fail: "red",
+};
+
 const App: React.FC = () => {
   const [states, setStates] = useState<Record<string, Status>>(
     Object.fromEntries(STEPS.map((s) => [s.key, "pending" as Status])),
   );
+  const [durations, setDurations] = useState<Record<string, number>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [totalMs, setTotalMs] = useState(0);
   const [done, setDone] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     (async () => {
+      const wallStart = Date.now();
       for (const step of STEPS) {
         setStates((s) => ({ ...s, [step.key]: "running" }));
+        const t0 = Date.now();
         try {
           await step.run();
+          const dt = Date.now() - t0;
+          setDurations((d) => ({ ...d, [step.key]: dt }));
           setStates((s) => ({ ...s, [step.key]: "ok" }));
         } catch (err: unknown) {
+          const dt = Date.now() - t0;
+          setDurations((d) => ({ ...d, [step.key]: dt }));
           setStates((s) => ({ ...s, [step.key]: "fail" }));
           setErrors((er) => ({ ...er, [step.key]: errorMessage(err) }));
           setFailed(true);
+          setTotalMs(Date.now() - wallStart);
           setDone(true);
           return;
         }
       }
+      setTotalMs(Date.now() - wallStart);
       setDone(true);
     })();
   }, []);
@@ -159,44 +197,81 @@ const App: React.FC = () => {
     if (done) setTimeout(() => process.exit(failed ? 1 : 0), 100);
   }, [done, failed]);
 
+  const totalSteps = STEPS.length;
+
   return (
     <Box flexDirection="column">
-      <Text bold>mcp-tools installer</Text>
-      <Box marginTop={1} flexDirection="column">
-        {STEPS.map((s) => {
-          const st = states[s.key];
-          if (st === "running") {
-            return (
-              <Box key={s.key}>
-                <Spinner label={s.label} />
-              </Box>
-            );
-          }
-          const variant =
-            st === "ok" ? "success" : st === "fail" ? "error" : "info";
-          return (
-            <StatusMessage key={s.key} variant={variant}>
-              {s.label}
-            </StatusMessage>
-          );
-        })}
+      <Box marginBottom={1}>
+        <Text bold color="magentaBright">
+          mcp-tools
+        </Text>
+        <Text dimColor> · installer TUI</Text>
       </Box>
+
+      {PHASES.map((phase) => {
+        const stepsInPhase = STEPS.filter((s) => s.phase === phase);
+        return (
+          <Box key={phase} flexDirection="column" marginBottom={1}>
+            <Text dimColor>{phase}</Text>
+            {stepsInPhase.map((s) => {
+              const st = states[s.key];
+              const idx = STEPS.findIndex((x) => x.key === s.key) + 1;
+              const dt = durations[s.key];
+              if (st === "running") {
+                return (
+                  <Box key={s.key} paddingLeft={2}>
+                    <Text dimColor>{String(idx).padStart(2, "0")}/{String(totalSteps).padStart(2, "0")} </Text>
+                    <Spinner label={s.label} />
+                  </Box>
+                );
+              }
+              return (
+                <Box key={s.key} paddingLeft={2}>
+                  <Text dimColor>{String(idx).padStart(2, "0")}/{String(totalSteps).padStart(2, "0")} </Text>
+                  <Text color={STATUS_COLOR[st]}>{STATUS_GLYPH[st]} </Text>
+                  <Text color={st === "fail" ? "red" : undefined}>{s.label.padEnd(52, " ")}</Text>
+                  {typeof dt === "number" && (
+                    <Text dimColor>{(dt / 1000).toFixed(1)}s</Text>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        );
+      })}
+
       {failed && (
         <Box marginTop={1} flexDirection="column">
-          <Text color="red">Falló:</Text>
+          <Text color="red" bold>
+            Falló tras {(totalMs / 1000).toFixed(1)}s
+          </Text>
           {Object.entries(errors).map(([k, v]) => (
-            <Box key={k} flexDirection="column">
+            <Box key={k} flexDirection="column" marginTop={1}>
               <Text color="red" bold>
                 [{k}]
               </Text>
               <Text>{v}</Text>
             </Box>
           ))}
+          <Box marginTop={1}>
+            <Text dimColor>
+              Corrige el error y relanza `./install.sh` — el installer es idempotente.
+            </Text>
+          </Box>
         </Box>
       )}
+
       {done && !failed && (
-        <Box marginTop={1}>
-          <Text color="green">Todo listo. Reinicia tu cliente MCP.</Text>
+        <Box flexDirection="column" marginTop={1}>
+          <Text color="green" bold>
+            ✔ Instalado en {(totalMs / 1000).toFixed(1)}s
+          </Text>
+          <Box marginTop={1} flexDirection="column">
+            <Text bold>Próximos pasos:</Text>
+            <Text>  · Reinicia tu cliente MCP (Claude Code, OpenCode, OMP).</Text>
+            <Text>  · Verifica en Claude Code: <Text bold>claude mcp list</Text> — los 3 servers como ✔ Connected.</Text>
+            <Text>  · Config avanzada: <Text bold>docs/ADVANCED.md</Text></Text>
+          </Box>
         </Box>
       )}
     </Box>
