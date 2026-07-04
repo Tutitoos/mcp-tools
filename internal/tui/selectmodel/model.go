@@ -114,7 +114,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err
 			m.phase = phaseError
-			return m, nil
+			return m, tea.Quit
 		}
 		switch m.phase {
 		case phasePulling:
@@ -126,13 +126,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := config.UpdateEnv(config.EnvMem0File(), updates); err != nil {
 				m.err = err
 				m.phase = phaseError
-				return m, nil
+			return m, tea.Quit
 			}
 			m.phase = phaseRestarting
 			return m, tea.Batch(m.spinner.Tick, m.runRecreate())
 		case phaseRestarting:
 			m.phase = phaseDone
-			return m, nil
+			return m, tea.Quit
 		}
 	}
 	return m, nil
