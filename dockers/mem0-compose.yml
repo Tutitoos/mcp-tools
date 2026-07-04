@@ -1,7 +1,7 @@
 services:
   mcp_tools_mem0:
     build:
-      context: ./mcps/mem0
+      context: ../mcps/mem0
       dockerfile: Dockerfile
       args:
         UID: "${HOST_UID}"
@@ -16,7 +16,7 @@ services:
     network_mode: "host"
 
     env_file:
-      - .env.mem0
+      - ../.env.mem0
 
     environment:
       HOME: /home/mcp

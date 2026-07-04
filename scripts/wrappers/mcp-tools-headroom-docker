@@ -22,7 +22,8 @@ mkdir -p \
 
 if ! docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
   docker compose \
-    --project-directory "$REPO_DIR" \
+    -f "$REPO_DIR/dockers/compose.yaml" \
+    --env-file "$REPO_DIR/.env" \
     up -d "$SERVICE_NAME" >&2
 elif [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME")" != "true" ]; then
   docker start "$CONTAINER_NAME" >&2

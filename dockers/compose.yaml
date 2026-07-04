@@ -1,10 +1,12 @@
+name: mcp-tools
+
 include:
   - mem0-compose.yml
 
 services:
   mcp_tools_codebase_memory:
     build:
-      context: ./mcps/codebase-memory
+      context: ../mcps/codebase-memory
       dockerfile: Dockerfile
       args:
         UID: "${HOST_UID}"
@@ -34,7 +36,7 @@ services:
 
   mcp_tools_headroom:
     build:
-      context: ./mcps/headroom
+      context: ../mcps/headroom
       dockerfile: Dockerfile
       args:
         UID: "${HOST_UID}"

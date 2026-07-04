@@ -5,4 +5,4 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$REPO_DIR"
 
-docker compose stop
+docker compose -f dockers/compose.yaml --env-file .env stop

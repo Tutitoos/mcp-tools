@@ -9,4 +9,4 @@ fi
 
 cd "$REPO_DIR"
 
-docker compose up -d
+docker compose -f dockers/compose.yaml --env-file .env up -d

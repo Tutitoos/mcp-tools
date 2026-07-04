@@ -17,7 +17,7 @@ Colección de servidores MCP (Model Context Protocol) empaquetados en Docker, or
 - Docker + `docker compose` v2.
 - Linux (probado en kernel 7.0.12-1-pve, Debian/Ubuntu compatible).
 - `~/.local/bin` en `$PATH` para los wrappers.
-- Para `mcp_tools_mem0`: qdrant lo levanta `mem0-compose.yml` y ollama lo levanta el `compose.yaml` raíz (servicio compartido `mcp_tools_ollama`). Ambos publican a `127.0.0.1` y mem0 los alcanza vía `network_mode: host`. Además el código fuente de mem0 clonado en `MEM0_SRC_PATH` (por defecto `$MCP_TOOLS_DATA/mem0/src`, i.e. `~/mcp-tools-data/mem0/src`) porque el wrapper hace `uvx --from /opt/mem0-src mem0-mcp-selfhosted`. Repo upstream: `https://github.com/elvismdev/mem0-mcp-selfhosted`.
+- Para `mcp_tools_mem0`: qdrant lo levanta `dockers/mem0-compose.yml` y ollama lo levanta `dockers/compose.yaml` raíz (servicio compartido `mcp_tools_ollama`). Ambos publican a `127.0.0.1` y mem0 los alcanza vía `network_mode: host`. Además el código fuente de mem0 clonado en `MEM0_SRC_PATH` (por defecto `$MCP_TOOLS_DATA/mem0/src`, i.e. `~/mcp-tools-data/mem0/src`) porque el wrapper hace `uvx --from /opt/mem0-src mem0-mcp-selfhosted`. Repo upstream: `https://github.com/elvismdev/mem0-mcp-selfhosted`.
 - Para `mcp_tools_codebase_memory`: nada extra (el binario se instala dentro de la imagen desde `raw.githubusercontent.com/DeusData/codebase-memory-mcp`).
 - Para `mcp_tools_headroom`: nada extra (`pip install headroom-ai[mcp,proxy]` dentro de la imagen).
 
@@ -168,7 +168,7 @@ MEM0_HISTORY_DB_PATH=/data/history/history.db
 - `MEM0_USER_ID` vive en `.env` (por defecto `$(whoami)`), no en `.env.mem0`.
 - `MEM0_SRC_PATH` (en `.env`) debe apuntar a un clon local de `mem0-mcp-selfhosted`; el contenedor lo monta read-only en `/opt/mem0-src`.
 - `network_mode: host` para poder llegar a Ollama/Qdrant en `127.0.0.1`.
-- qdrant se declara en `mem0-compose.yml` (top-level `include:` desde `compose.yaml`); ollama es el servicio compartido `mcp_tools_ollama` en el `compose.yaml` raíz. `depends_on` bloquea el arranque de mem0 hasta que qdrant esté `service_healthy`.
+- qdrant se declara en `dockers/mem0-compose.yml` (top-level `include:` desde `dockers/compose.yaml`); ollama es el servicio compartido `mcp_tools_ollama` en `dockers/compose.yaml`. `depends_on` bloquea el arranque de mem0 hasta que qdrant esté `service_healthy`.
 - Datos persistentes en `~/mcp-tools-data/mem0/{history,uv-cache,config}`.
 
 #### Modelos alternativos para mem0
@@ -225,7 +225,7 @@ Advertencias operativas:
 ### mcp_tools_mem0_qdrant
 
 - Imagen `qdrant/qdrant:v1.12.0` (pin explícito). Puerto expuesto en `127.0.0.1:6333`.
-- Datos en el volumen docker externo `mcp-qdrant-storage` (declarado `external: true` en `mem0-compose.yml`). Adoptado del stack previo `mcp-infra`; se conserva al hacer `docker compose down` sin `-v`.
+- Datos en el volumen docker externo `mcp-qdrant-storage` (declarado `external: true` en `dockers/mem0-compose.yml`). Adoptado del stack previo `mcp-infra`; se conserva al hacer `docker compose down` sin `-v`.
 - Healthcheck sobre TCP 6333 cada 10 s; usado por `depends_on` de `mcp_tools_mem0`.
 
 ### mcp_tools_ollama
@@ -247,19 +247,21 @@ Advertencias operativas:
 | --- | --- |
 | `scripts/init-env.sh` | Genera `.env` con `HOST_HOME/HOST_UID/HOST_GID/MCP_TOOLS_ROOT/MCP_TOOLS_DATA` y las variables de imagen; crea `~/mcp-tools-data/{codebase-memory,mem0,headroom,ollama}/*`. Idempotente: no sobreescribe un `.env` existente. |
 | `scripts/build.sh` | Ejecuta `docker compose build` (auto-invoca `init-env.sh` si falta `.env`). |
-| `scripts/up.sh` | `docker compose up -d` — arranca todos los servicios de `compose.yaml`. |
-| `scripts/stop.sh` | `docker compose stop` — para todos los servicios de `compose.yaml`. |
+| `scripts/up.sh` | `docker compose -f dockers/compose.yaml --env-file .env up -d` — arranca todos los servicios. |
+| `scripts/stop.sh` | `docker compose -f dockers/compose.yaml --env-file .env stop` — para todos los servicios. |
 | `scripts/install-skills.sh` | Symlinks `skills/*` en `~/.claude/skills/`, `~/.config/opencode/skills/`, `~/.omp/agent/skills/`. Idempotente. |
 | `install.sh` | Bootstrap del installer Ink (bun deps + exec TUI). |
 | `scripts/install-rules.sh` | Instala `RULES.md` en Claude Code / OpenCode / OMP. Idempotente. |
+| `scripts/install-mcp.ts` | Registra `mcp_tools_*` en `.claude.json` (vía `claude mcp add-json --scope user`), `~/.config/opencode/opencode.json` (`.mcp`) y `~/.omp/agent/mcp.json` (`.mcpServers`). Idempotente: quita entrada existente y la reescribe; hace backup timestamped antes de tocar cada JSON. |
 | `scripts/wrappers/*-docker` | Entrypoints `docker exec -i` para el cliente MCP. |
 
 ## Estructura del repo
 
 ```
 mcp-tools/
-├── compose.yaml
-├── mem0-compose.yml
+├── dockers/
+│   ├── compose.yaml
+│   └── mem0-compose.yml
 ├── .env.example
 ├── .gitignore
 ├── AGENTS.md
@@ -336,7 +338,7 @@ Además de las skills por-MCP, el repo trae un `RULES.md` global que codifica qu
 ## Añadir un nuevo servicio MCP
 
 1. Crear `mcps/<nombre>/Dockerfile` (patrón: `python:3.12-slim` o `debian:bookworm-slim`, `ARG UID/GID`, `useradd -u $UID`, `HOME=/home/mcp`, `ENTRYPOINT ["sleep"] CMD ["infinity"]`).
-2. Añadir servicio a `compose.yaml` como `mcp_tools_<nombre>` copiando el bloque de `mcp_tools_headroom` (bridge) o `mcp_tools_mem0` (host network). `container_name: mcp-tools-<nombre>`.
+2. Añadir servicio a `dockers/compose.yaml` como `mcp_tools_<nombre>` copiando el bloque de `mcp_tools_headroom` (bridge) o `mcp_tools_mem0` (host network). `container_name: mcp-tools-<nombre>`.
 3. Declarar `MCP_TOOLS_<NOMBRE>_IMAGE` en `.env.example` y `scripts/init-env.sh`.
 4. Añadir `mkdir -p "$DATA_DIR/<nombre>/*"` en `scripts/init-env.sh`.
 5. Crear wrapper en `scripts/wrappers/mcp-tools-<nombre>-docker` (copiar `mcp-tools-headroom-docker`, cambiar `SERVICE_NAME`, `CONTAINER_NAME`, y el comando final tras `docker exec -i`).
@@ -391,7 +393,7 @@ Las tools del cliente cambian de namespace (`mcp__headroom_compress` → `mcp__m
 
 ## Migración desde `mcp-infra` (qdrant + ollama)
 
-Si tenías qdrant/ollama corriendo bajo el proyecto compose `mcp-infra` (`/home/tutitoos/containers/mcp-infra/docker-compose.yml`), ahora son propiedad de este repo (qdrant en `mem0-compose.yml`, ollama como servicio compartido en `compose.yaml`):
+Si tenías qdrant/ollama corriendo bajo el proyecto compose `mcp-infra` (`/home/tutitoos/containers/mcp-infra/docker-compose.yml`), ahora son propiedad de este repo (qdrant en `dockers/mem0-compose.yml`, ollama como servicio compartido en `dockers/compose.yaml`):
 
 1. Parar el stack viejo sin borrar volúmenes:
    ```bash

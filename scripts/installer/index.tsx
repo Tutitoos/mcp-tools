@@ -99,6 +99,13 @@ const STEPS: Step[] = [
     },
   },
   {
+    key: "mcp-config",
+    label: "Configurar MCP en Claude Code / OpenCode / OMP",
+    run: async () => {
+      await sh("bun scripts/install-mcp.ts");
+    },
+  },
+  {
     key: "up",
     label: "Arrancar contenedores (docker compose up -d)",
     run: async () => {
