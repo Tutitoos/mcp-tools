@@ -115,7 +115,7 @@ Si vienes de la versión previa con prefijo `mcp-custom`, tras hacer merge de es
    - Cambiar `command` al nuevo wrapper (`mcp-tools-codebase-memory-docker`).
    - Repetir para `mem0` y `headroom` si los tenías declarados.
    - Reiniciar el cliente MCP para que recargue la config.
-8. **Verificar**: `docker compose config >/dev/null` (sin errores), `mcp-tools-codebase-memory-docker --help`, y en el cliente MCP comprueba que las herramientas ahora aparecen bajo el prefijo `mcp__mcp_tools_<servicio>_*`.
+8. **Verificar**: `docker compose -f dockers/compose.yaml --env-file .env config >/dev/null` (sin errores), `mcp-tools-codebase-memory-docker --help`, y en el cliente MCP comprueba que las herramientas ahora aparecen bajo el prefijo `mcp__mcp_tools_<servicio>_*`.
 
 Las tools del cliente cambian de namespace (`mcp__headroom_compress` → `mcp__mcp_tools_headroom_compress`, etc.). Si tienes cualquier documento o skill externa que las referencie por nombre, actualízalo.
 
