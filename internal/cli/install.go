@@ -48,13 +48,14 @@ func buildSteps() []installer.Step {
 	return []installer.Step{
 		{Key: "prereq", Label: "Comprobar prerequisitos (docker + docker compose)", Phase: "Preparación", Run: stepPrereq},
 		{Key: "env", Label: "Generar .env desde el host", Phase: "Preparación", Run: stepEnv},
-		{Key: "mem0-src", Label: "Verificar clon de mem0-mcp-selfhosted", Phase: "Preparación", Run: stepMem0Src},
+		{Key: "mem0-src", Label: "Preparar mem0-mcp-selfhosted (clona si falta)", Phase: "Preparación", Run: stepMem0Src},
 		{Key: "build", Label: "docker compose build (puede tardar)", Phase: "Build", Run: stepBuild},
 		{Key: "wrappers", Label: "Wrappers en ~/.local/bin/", Phase: "Instalación", Run: stepWrappers},
 		{Key: "skills", Label: "Skills globales", Phase: "Instalación", Run: stepSkills},
 		{Key: "rules", Label: "RULES.md globales", Phase: "Instalación", Run: stepRules},
 		{Key: "mcp-config", Label: "Registrar MCPs en Claude Code / OpenCode / OMP", Phase: "Instalación", Run: stepMcpConfig},
 		{Key: "up", Label: "Arrancar contenedores (docker compose up -d)", Phase: "Arranque", Run: stepUp},
+		{Key: "pull", Label: "Descargar modelos ollama (LLM + embed)", Phase: "Arranque", Run: stepPull},
 		{Key: "smoke", Label: "Smoke test MCP handshake", Phase: "Arranque", Run: stepSmoke},
 	}
 }
@@ -225,3 +226,61 @@ func stepSmoke(dry bool, log func(string)) error {
 
 // time import kept because bubbletea may need it later; suppress unused warnings.
 var _ = time.Time{}
+
+func stepPull(dry bool, log func(string)) error {
+	envMem0 := filepath.Join(config.RepoRoot(), ".env.mem0")
+	// dry: si aún no hay .env.mem0 (se genera en step 02), placeholder legible.
+	if dry {
+		if _, err := os.Stat(envMem0); err != nil {
+			log("$ docker exec mcp-tools-ollama ollama pull <MEM0_LLM_MODEL>")
+			log("$ docker exec mcp-tools-ollama ollama pull <MEM0_EMBED_MODEL>")
+			return nil
+		}
+	}
+	env, err := config.LoadEnv(envMem0)
+	if err != nil {
+		return fmt.Errorf(".env.mem0: %w", err)
+	}
+	models := []string{}
+	if m := env["MEM0_LLM_MODEL"]; m != "" {
+		models = append(models, m)
+	}
+	if m := env["MEM0_EMBED_MODEL"]; m != "" {
+		models = append(models, m)
+	}
+	if len(models) == 0 {
+		return fmt.Errorf("ni MEM0_LLM_MODEL ni MEM0_EMBED_MODEL en .env.mem0")
+	}
+	if dry {
+		for _, m := range models {
+			log(fmt.Sprintf("$ docker exec mcp-tools-ollama ollama pull %s", m))
+		}
+		return nil
+	}
+	// Esperar a que el daemon de ollama responda dentro del contenedor (hasta 20s).
+	var listOut []byte
+	for range 10 {
+		listOut, err = exec.Command("docker", "exec", "mcp-tools-ollama", "ollama", "list").Output()
+		if err == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	if err != nil {
+		return fmt.Errorf("ollama no responde tras 20s: %w", err)
+	}
+	for _, m := range models {
+		// Match tag exact al principio de línea (ollama list muestra "NAME    ID   SIZE   MODIFIED").
+		if strings.Contains(string(listOut), m+" ") || strings.Contains(string(listOut), m+"\t") {
+			continue
+		}
+		cmd := exec.Command("docker", "exec", "mcp-tools-ollama", "ollama", "pull", m)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("ollama pull %s: %w\n%s", m, err, strings.TrimSpace(out.String()))
+		}
+	}
+	return nil
+}

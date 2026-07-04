@@ -13,7 +13,7 @@ cd ~/mcp-tools
 mcp-tools install
 ```
 
-El primer comando descarga el binario `mcp-tools` a `~/.local/bin/` (detecta OS/arch, resuelve la latest release). El tercero lanza el TUI 10-pasos: prereq → `.env` → verificación de fuente mem0 → build → wrappers → skills → RULES → registro MCP en Claude/OpenCode/OMP → arranque de contenedores → smoke test.
+El primer comando descarga el binario `mcp-tools` a `~/.local/bin/` (detecta OS/arch, resuelve la latest release). El tercero lanza el TUI 11-pasos: prereq → `.env` (+ `.env.mem0`) → clon de mem0-mcp-selfhosted → build → wrappers → skills → RULES → registro MCP en Claude/OpenCode/OMP → arranque de contenedores → descarga de modelos ollama (LLM + embed) → smoke test.
 
 Idempotente. Añade `--dry` a `mcp-tools install` para preview sin ejecutar nada. Alternativas para el binario:
 
@@ -25,7 +25,7 @@ Idempotente. Añade `--dry` a `mcp-tools install` para preview sin ejecutar nada
 
 - Docker + `docker compose` v2.
 - `~/.local/bin` en `$PATH` (donde vive el binario y los wrappers).
-- Para `mcp_tools_mem0`: clon de `elvismdev/mem0-mcp-selfhosted` en `~/mcp-tools-data/mem0/src`. El paso `mem0-src` del installer falla con el `git clone` exacto si falta.
+- Para `mcp_tools_mem0`: el installer clona `elvismdev/mem0-mcp-selfhosted` en `~/mcp-tools-data/mem0/src` automáticamente en el paso `mem0-src`. Necesitas `git` en PATH.
 
 ## Servicios
 
@@ -66,7 +66,7 @@ El installer registra los servers automáticamente en Claude Code, OpenCode y OM
 ## Configuración
 
 - `.env` (root del repo, generado por `mcp-tools env`): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MEM0_SRC_PATH`, `MEM0_USER_ID`, tags de imagen.
-- `.env.mem0` (root del repo, NO se autogenera): configuración de mem0. Copiar del bloque de abajo.
+- `.env.mem0` (root del repo, autogenerado por `mcp-tools env` con defaults; se conserva si ya existe para respetar cambios de `mcp-tools select-model`).
 - Datos persistentes: todo bajo `~/mcp-tools-data/{codebase-memory,mem0,headroom,ollama}/` — por convención rígida.
 
 ### `.env.mem0`
@@ -180,7 +180,7 @@ mcp-tools/
 ## Troubleshooting
 
 - **`missing .env`** en un wrapper → `mcp-tools env`.
-- **`MEM0_SRC_PATH does not exist`** → `git clone https://github.com/elvismdev/mem0-mcp-selfhosted ~/mcp-tools-data/mem0/src`.
+- **`MEM0_SRC_PATH does not exist`** → el paso `mem0-src` clona automáticamente; si falla, comprueba que `git` está en PATH y la red permite acceso a github.com.
 - **`Failed to connect to url`** en el cliente MCP tras `/mcp list` → revisa configs residuales en `~/.claude/plugins/marketplaces/`, `~/.codex/config.toml`, o entradas viejas sin prefijo `mcp_tools_` en el cliente.
 - **`mcp_tools_mem0` no conecta con Ollama/Qdrant** → `mcp-tools ps` para ver estado; qdrant debe estar `Up (healthy)`.
 - **Rebuild tras cambiar Dockerfile** → `mcp-tools build && mcp-tools restart <servicio>`.

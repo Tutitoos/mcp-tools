@@ -2,9 +2,11 @@
 package installer
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -306,7 +308,7 @@ func padRight(s string, width int) string {
 	return s + strings.Repeat(" ", width-len(s))
 }
 
-// Helper for mem0-src step: reads .env and validates MEM0_SRC_PATH.
+// CheckMem0Src validates MEM0_SRC_PATH and clones the mem0-mcp-selfhosted repo if missing.
 func CheckMem0Src(dry bool, log func(string)) error {
 	envPath := config.EnvFile()
 	if _, err := os.Stat(envPath); err != nil {
@@ -325,8 +327,26 @@ func CheckMem0Src(dry bool, log func(string)) error {
 		return fmt.Errorf("MEM0_SRC_PATH ausente en .env")
 	}
 	pyproject := filepath.Join(srcPath, "pyproject.toml")
-	if _, err := os.Stat(pyproject); err != nil {
-		return fmt.Errorf("MEM0_SRC_PATH no existe o no es un repo válido: %s\nClona: git clone https://github.com/elvismdev/mem0-mcp-selfhosted %s", srcPath, srcPath)
+	if _, err := os.Stat(pyproject); err == nil {
+		return nil // already cloned + valid
+	}
+	if dry {
+		log(fmt.Sprintf("$ git clone https://github.com/elvismdev/mem0-mcp-selfhosted %s", srcPath))
+		return nil
+	}
+	// If the path exists but is not a valid clone, refuse to touch it.
+	if _, err := os.Stat(srcPath); err == nil {
+		return fmt.Errorf("%s existe pero no es un clon válido (falta pyproject.toml); bórralo o clónalo manualmente", srcPath)
+	}
+	if err := os.MkdirAll(filepath.Dir(srcPath), 0o755); err != nil {
+		return fmt.Errorf("crear parent de MEM0_SRC_PATH: %w", err)
+	}
+	cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/elvismdev/mem0-mcp-selfhosted", srcPath)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git clone mem0-mcp-selfhosted: %w\n%s", err, strings.TrimSpace(out.String()))
 	}
 	return nil
 }

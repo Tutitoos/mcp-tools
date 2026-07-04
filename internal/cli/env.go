@@ -86,7 +86,7 @@ func RunEnv(dry, force bool, out io.Writer) error {
 		}
 	} else {
 		mem0EnvBody := fmt.Sprintf(`MEM0_PROVIDER=ollama
-MEM0_LLM_MODEL=qwen3:8b
+MEM0_LLM_MODEL=qwen2.5:7b
 
 MEM0_EMBED_PROVIDER=ollama
 MEM0_EMBED_MODEL=bge-m3
