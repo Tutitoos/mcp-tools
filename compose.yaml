@@ -65,3 +65,32 @@ services:
 
     entrypoint: ["sleep"]
     command: ["infinity"]
+
+  headroom:
+    build:
+      context: ./mcps/headroom
+      dockerfile: Dockerfile
+      args:
+        UID: "${HOST_UID}"
+        GID: "${HOST_GID}"
+
+    image: "${HEADROOM_IMAGE}"
+
+    container_name: mcp-custom-headroom-mcp
+
+    restart: unless-stopped
+
+    environment:
+      HOME: /home/mcp
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      - "${MCP_CUSTOM_DATA}/headroom/cache:/home/mcp/.cache"
+      - "${MCP_CUSTOM_DATA}/headroom/config:/home/mcp/.config/headroom"
+      - "${MCP_CUSTOM_DATA}/headroom/share:/home/mcp/.local/share/headroom"
+      - "${HOST_HOME}:${HOST_HOME}"
+
+    working_dir: "${HOST_HOME}"
+
+    entrypoint: ["sleep"]
+    command: ["infinity"]
