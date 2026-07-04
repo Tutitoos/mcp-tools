@@ -62,8 +62,6 @@ O directamente:
 MSG
   exit 1
 }
-curl -fsSL "$url" -o "$tmp/pkg.tar.gz" \
-  || err "no pude descargar $url — comprueba que la release existe"
 
 log "extrayendo binario"
 tar -xzf "$tmp/pkg.tar.gz" -C "$tmp" mcp-tools \
