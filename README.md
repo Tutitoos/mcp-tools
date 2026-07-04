@@ -15,7 +15,7 @@ Colección de servidores MCP (Model Context Protocol) empaquetados en Docker, or
 - Docker + `docker compose` v2.
 - Linux (probado en kernel 7.0.12-1-pve, Debian/Ubuntu compatible).
 - `~/.local/bin` en `$PATH` para los wrappers.
-- Para `mcp_tools_mem0`: instancia local de **Ollama** en `http://127.0.0.1:11434` y **Qdrant** en `http://127.0.0.1:6333` (por eso `network_mode: host`). Además el código fuente de mem0 clonado en `MEM0_SRC_PATH` (por defecto `$HOME/containers/mem0/mem0-src`) porque el wrapper hace `uvx --from /opt/mem0-src mem0-mcp-selfhosted`.
+- Para `mcp_tools_mem0`: instancia local de **Ollama** en `http://127.0.0.1:11434` y **Qdrant** en `http://127.0.0.1:6333` (por eso `network_mode: host`). Además el código fuente de mem0 clonado en `MEM0_SRC_PATH` (por defecto `$MCP_TOOLS_DATA/mem0/src`, i.e. `~/mcp-tools-data/mem0/src`) porque el wrapper hace `uvx --from /opt/mem0-src mem0-mcp-selfhosted`. Repo upstream: `https://github.com/elvismdev/mem0-mcp-selfhosted`.
 - Para `mcp_tools_codebase_memory`: nada extra (el binario se instala dentro de la imagen desde `raw.githubusercontent.com/DeusData/codebase-memory-mcp`).
 - Para `mcp_tools_headroom`: nada extra (`pip install headroom-ai[mcp,proxy]` dentro de la imagen).
 
@@ -275,7 +275,7 @@ Las tools del cliente cambian de namespace (`mcp__headroom_compress` → `mcp__m
 ## Troubleshooting
 
 - **Wrapper dice `missing .env`**: ejecuta `./scripts/init-env.sh`.
-- **`mcp-tools-mem0-docker` dice `MEM0_SRC_PATH does not exist`**: clona `mem0-mcp-selfhosted` en la ruta que apunta `MEM0_SRC_PATH` (por defecto `$HOME/containers/mem0/mem0-src`).
+- **`mcp-tools-mem0-docker` dice `MEM0_SRC_PATH does not exist`**: clona `elvismdev/mem0-mcp-selfhosted` en `~/mcp-tools-data/mem0/src` (o donde apunte `MEM0_SRC_PATH`).
 - **`mcp_tools_mem0` no conecta con Ollama/Qdrant**: comprueba que Ollama escucha en `127.0.0.1:11434` y Qdrant en `127.0.0.1:6333` desde el host (el contenedor comparte la red del host).
 - **Permisos en `~/mcp-tools-data`**: `init-env.sh` fija `HOST_UID`/`HOST_GID` para que el usuario `mcp` del contenedor coincida con el del host; si copias datos desde otro user, ajusta con `chown`.
 - **Rebuild tras cambiar Dockerfile**: `./scripts/build.sh` (no necesita parar los contenedores; el próximo `docker exec` usará la imagen nueva solo tras recrear el contenedor, hazlo con `docker compose up -d --force-recreate <servicio>`).

@@ -16,7 +16,7 @@ MCP_TOOLS_CODEBASE_MEMORY_IMAGE=mcp-tools/codebase-memory:latest
 
 MCP_TOOLS_MEM0_IMAGE=mcp-tools/mem0:latest
 MCP_TOOLS_HEADROOM_IMAGE=mcp-tools/headroom:latest
-MEM0_SRC_PATH=$HOME/containers/mem0/mem0-src
+MEM0_SRC_PATH=$DATA_DIR/mem0/src
 MEM0_USER_ID=$(whoami)
 EOF_ENV
 
