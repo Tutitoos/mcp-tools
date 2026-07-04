@@ -43,6 +43,10 @@ version_no_v="${VERSION#v}"
 tarball="mcp-tools_${version_no_v}_${os}_${arch}.tar.gz"
 url="https://github.com/${REPO}/releases/download/${VERSION}/${tarball}"
 
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+log "descargando ${tarball} (${VERSION})"
 curl -fsSL "$url" -o "$tmp/pkg.tar.gz" || {
   cat >&2 <<MSG
 error: no pude descargar
