@@ -37,3 +37,7 @@ release:
     name: mcp-tools
   draft: false
   prerelease: auto
+  # Allow re-running goreleaser against a tag whose release already exists (e.g. auto-created
+  # by GitHub as source-only). goreleaser will update the release and upload/replace artifacts.
+  mode: replace
+  replace_existing_artifacts: true
