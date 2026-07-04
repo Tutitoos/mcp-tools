@@ -116,7 +116,21 @@ const App: React.FC = () => {
       updateEnvMem0(updates);
 
       setPhase("restarting");
-      await execa("docker", ["restart", "mcp-tools-mem0"], { stdio: "pipe" });
+      await execa(
+        "docker",
+        [
+          "compose",
+          "-f",
+          "dockers/compose.yaml",
+          "--env-file",
+          ".env",
+          "up",
+          "-d",
+          "--force-recreate",
+          "mcp_tools_mem0",
+        ],
+        { cwd: REPO_DIR, stdio: "pipe" },
+      );
 
       setPhase("done");
       setTimeout(() => process.exit(0), 100);
@@ -192,7 +206,7 @@ const App: React.FC = () => {
               {"   · escribir "}{envVar}={selected} en .env.mem0
               {needsThinkFlag ? "  + MEM0_OLLAMA_THINK=false" : ""}
             </Text>
-            <Text dimColor>   $ docker restart mcp-tools-mem0</Text>
+            <Text dimColor>   $ docker compose -f dockers/compose.yaml --env-file .env up -d --force-recreate mcp_tools_mem0</Text>
           </Box>
           <Box marginTop={1}>
             <Text>Confirmar (y/N): </Text>
@@ -217,7 +231,7 @@ const App: React.FC = () => {
 
       {phase === "restarting" && (
         <Box paddingLeft={1}>
-          <Spinner label="Reiniciando mcp-tools-mem0..." />
+          <Spinner label="Recreando mcp-tools-mem0 con el env nuevo..." />
         </Box>
       )}
 
