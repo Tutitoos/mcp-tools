@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# One-liner installer for the mcp-tools binary.
+#   curl -fsSL https://raw.githubusercontent.com/Tutitoos/mcp-tools/main/install.sh | bash
+#
+# Detects OS/arch, downloads the matching release tarball from GitHub, and installs
+# ~/.local/bin/mcp-tools (or $MCP_TOOLS_BIN if set). Idempotent: safe to re-run.
+set -euo pipefail
+
+REPO="Tutitoos/mcp-tools"
+BIN_DIR="${MCP_TOOLS_BIN:-$HOME/.local/bin}"
+VERSION="${MCP_TOOLS_VERSION:-latest}"
+
+log()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
+warn() { printf '\033[33mwarn:\033[0m %s\n' "$*" >&2; }
+err()  { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+
+command -v curl >/dev/null || err "curl no está instalado"
+command -v tar  >/dev/null || err "tar no está instalado"
+
+os="$(uname -s)"
+arch="$(uname -m)"
+
+case "$arch" in
+  x86_64|amd64) arch="x86_64" ;;
+  aarch64|arm64) arch="arm64" ;;
+  *) err "arquitectura no soportada: $arch (soportadas: x86_64, arm64)" ;;
+esac
+case "$os" in
+  Linux|Darwin) ;;
+  *) err "OS no soportado: $os (soportados: Linux, Darwin)" ;;
+esac
+
+if [ "$VERSION" = "latest" ]; then
+  log "resolviendo última release en GitHub..."
+  # Follow redirect and read the tag from the location header without needing jq.
+  latest="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest")"
+  VERSION="${latest##*/}"
+  [ -n "$VERSION" ] && [ "$VERSION" != "releases" ] || err "no pude resolver 'latest' release; ¿existe una?"
+fi
+# Strip leading 'v' from the tag when composing the tarball filename (goreleaser default).
+version_no_v="${VERSION#v}"
+
+tarball="mcp-tools_${version_no_v}_${os}_${arch}.tar.gz"
+url="https://github.com/${REPO}/releases/download/${VERSION}/${tarball}"
+
+log "descargando ${tarball} (${VERSION})"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+curl -fsSL "$url" -o "$tmp/pkg.tar.gz" \
+  || err "no pude descargar $url — comprueba que la release existe"
+
+log "extrayendo binario"
+tar -xzf "$tmp/pkg.tar.gz" -C "$tmp" mcp-tools \
+  || err "no encontré 'mcp-tools' dentro del tarball"
+
+mkdir -p "$BIN_DIR"
+install -m 0755 "$tmp/mcp-tools" "$BIN_DIR/mcp-tools"
+log "instalado $BIN_DIR/mcp-tools"
+
+# PATH sanity check
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *)
+    warn "$BIN_DIR no está en tu \$PATH."
+    warn "Añade a tu shell rc (~/.bashrc o ~/.zshrc):"
+    printf '\n    export PATH="%s:$PATH"\n\n' "$BIN_DIR" >&2
+    ;;
+esac
+
+"$BIN_DIR/mcp-tools" --version
+cat <<'MSG'
+
+Siguiente paso:
+  git clone https://github.com/Tutitoos/mcp-tools ~/mcp-tools
+  cd ~/mcp-tools
+  mcp-tools install
+MSG
