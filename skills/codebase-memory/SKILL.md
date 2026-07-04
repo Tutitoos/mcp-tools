@@ -1,3 +1,15 @@
+---
+name: codebase-memory
+description: >
+  Persistent code knowledge graph and code search over indexed local repositories
+  via the `mcp_tools_codebase_memory` MCP server. Use for codebase navigation,
+  architecture analysis, symbol tracing, code search, dependency graphs, refactor
+  risk assessment, or "explain this repo / find where X is implemented / trace flow
+  from A to B". Always call MCP tools through the Docker wrapper, never the host
+  binary. Pass absolute paths (never `~`). Default indexing mode is `moderate`;
+  use `full` only for architecture analysis or persistent team bootstrap.
+---
+
 # codebase-memory-mcp
 
 ## Purpose

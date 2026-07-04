@@ -1,3 +1,15 @@
+---
+name: headroom
+description: >
+  Text compression via the `mcp_tools_headroom` MCP server to reduce token usage
+  on large logs, JSON blobs, command output, file listings, and repetitive text.
+  Use when the user mentions Headroom/headroom, asks to compress / reduce tokens /
+  save context / compress logs or JSON, or retrieve previously compressed content
+  by hash. Call the MCP tools directly with the exact user-provided content; never
+  inspect the host CLI, Docker container, or Python package internals for normal
+  usage. Do NOT synthesize larger inputs unless explicitly requested.
+---
+
 # Headroom MCP
 
 Use this skill when the user mentions Headroom, headroom, compress text, reduce context, save tokens, compress logs, compress JSON, compress output, retrieve compressed content, or Headroom stats.

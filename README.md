@@ -170,6 +170,7 @@ MEM0_HISTORY_DB_PATH=/data/history/history.db
 | `scripts/build.sh` | Ejecuta `docker compose build` (auto-invoca `init-env.sh` si falta `.env`). |
 | `scripts/up.sh` | `docker compose up -d` — arranca todos los servicios de `compose.yaml`. |
 | `scripts/stop.sh` | `docker compose stop` — para todos los servicios de `compose.yaml`. |
+| `scripts/install-skills.sh` | Symlinks `skills/*` en `~/.claude/skills/`, `~/.config/opencode/skills/`, `~/.omp/agent/skills/`. Idempotente. |
 | `scripts/wrappers/*-docker` | Entrypoints `docker exec -i` para el cliente MCP. |
 
 ## Estructura del repo
@@ -190,6 +191,7 @@ mcp-tools/
 │   ├── build.sh
 │   ├── up.sh
 │   ├── stop.sh
+│   ├── install-skills.sh
 │   └── wrappers/
 │       ├── mcp-tools-codebase-memory-docker
 │       ├── mcp-tools-mem0-docker
@@ -214,7 +216,25 @@ Toda la data vive fuera del repo, en `~/mcp-tools-data` (variable `MCP_TOOLS_DAT
 
 ## Skills
 
-`skills/codebase-memory/SKILL.md` y `skills/headroom/SKILL.md` son cargados por el agente (Claude Code / OMP) según `AGENTS.md`. Documentan las reglas de uso de cada MCP (siempre usar el wrapper Docker, no llamar al binario del host, no bypasear el MCP con shell). Léelos si vas a añadir un servicio nuevo — sirven de plantilla.
+`skills/codebase-memory/SKILL.md` y `skills/headroom/SKILL.md` documentan cómo usar cada MCP (siempre vía wrapper Docker, no llamar al binario del host, no bypasear el MCP con shell). Ambos tienen frontmatter YAML con `name` y `description` compatibles con la [Agent Skills spec](https://agentskills.io/specification), así los cargan Claude Code, OpenCode y OMP sin adaptación.
+
+### Instalar globalmente
+
+```bash
+./scripts/install-skills.sh
+```
+
+El script crea symlinks del repo a los 3 paths que cada cliente escanea:
+
+| Cliente | Path |
+| --- | --- |
+| Claude Code | `~/.claude/skills/<name>/SKILL.md` |
+| OpenCode | `~/.config/opencode/skills/<name>/SKILL.md` (\*) |
+| OMP | `~/.omp/agent/skills/<name>/SKILL.md` |
+
+(\*) OpenCode además auto-lee `~/.claude/skills/` como fuente externa; el symlink duplicado no hace daño y garantiza aislamiento por cliente.
+
+Tras ejecutar el script recarga o reinicia el cliente MCP correspondiente. El script es idempotente: borra symlinks viejos (naming `-mcp` previo al rename) y recrea los actuales. Si añades un skill nuevo, solo tienes que meterlo en `skills/<nuevo>/SKILL.md` (con frontmatter) y añadirlo al array `SKILLS=(…)` del script.
 
 ## Añadir un nuevo servicio MCP
 
