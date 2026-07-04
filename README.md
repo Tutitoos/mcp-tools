@@ -35,11 +35,10 @@ cd ~/mcp-tools
 ./scripts/build.sh
 
 # 4. Arranca los contenedores persistentes
-./scripts/up.sh                                            # solo mcp_tools_codebase_memory
-docker compose up -d mcp_tools_mem0 mcp_tools_headroom     # el resto, si los quieres
+./scripts/up.sh                                            # levanta los 3 MCPs
 ```
 
-`up.sh` solo levanta `mcp_tools_codebase_memory`; para los otros usa `docker compose up -d <servicio>` o deja que el wrapper los levante on-demand (los tres wrappers hacen `docker compose up -d` si el contenedor no existe).
+`up.sh` levanta los 3 MCPs; los wrappers también arrancan on-demand el contenedor que necesiten si está parado.
 
 ## Instalar los wrappers
 
@@ -169,8 +168,8 @@ MEM0_HISTORY_DB_PATH=/data/history/history.db
 | --- | --- |
 | `scripts/init-env.sh` | Genera `.env` con `HOST_HOME/HOST_UID/HOST_GID/MCP_TOOLS_ROOT/MCP_TOOLS_DATA` y las variables de imagen; crea `~/mcp-tools-data/{codebase-memory,mem0,headroom}/*`. |
 | `scripts/build.sh` | Ejecuta `docker compose build` (auto-invoca `init-env.sh` si falta `.env`). |
-| `scripts/up.sh` | `docker compose up -d mcp_tools_codebase_memory` únicamente. |
-| `scripts/stop.sh` | `docker compose stop mcp_tools_codebase_memory` únicamente. |
+| `scripts/up.sh` | `docker compose up -d` — arranca todos los servicios de `compose.yaml`. |
+| `scripts/stop.sh` | `docker compose stop` — para todos los servicios de `compose.yaml`. |
 | `scripts/wrappers/*-docker` | Entrypoints `docker exec -i` para el cliente MCP. |
 
 ## Estructura del repo

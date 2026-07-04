@@ -9,4 +9,4 @@ fi
 
 cd "$REPO_DIR"
 
-docker compose up -d mcp_tools_codebase_memory
+docker compose up -d
