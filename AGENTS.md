@@ -15,3 +15,25 @@ Important rules:
 - The active wrapper is `$HOME/.local/bin/codebase-memory-mcp-docker`.
 - The MCP runtime uses Docker exec into the persistent container `mcp-custom-codebase-memory-mcp`.
 - Persistent data lives under `$HOME/mcp-custom-data/codebase-memory-mcp`.
+
+## Headroom MCP hard rule
+
+When the user asks to use Headroom, compress text, compress logs, reduce context, save tokens, retrieve compressed content, or inspect Headroom stats, use the MCP tools directly:
+
+- `headroom_compress`
+- `headroom_retrieve`
+- `headroom_stats`
+
+Do not use shell commands, Docker commands, the host `headroom` binary, Python imports, package internals, or synthetic expanded test cases for normal Headroom tasks.
+
+Forbidden unless explicitly debugging MCP setup:
+- `which headroom`
+- `headroom --help`
+- `docker exec ... headroom`
+- `docker exec ... python`
+- `python -c "from headroom import ..."`
+- reading Headroom source files
+
+If the MCP tools are missing, ask the user to run `/mcp list` and `/mcp test headroom`. Do not invent a CLI fallback.
+
+For compression requests, pass the exact user-provided content to `headroom_compress`. Do not expand, replicate, or modify the input unless the user asks.

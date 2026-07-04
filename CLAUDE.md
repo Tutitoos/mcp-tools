@@ -15,3 +15,13 @@ Important rules:
 - The active wrapper is `$HOME/.local/bin/codebase-memory-mcp-docker`.
 - The MCP runtime uses Docker exec into the persistent container `mcp-custom-codebase-memory-mcp`.
 - Persistent data lives under `$HOME/mcp-custom-data/codebase-memory-mcp`.
+
+## Headroom MCP usage
+
+For Headroom tasks, always use MCP tools first:
+
+- `headroom_compress`
+- `headroom_retrieve`
+- `headroom_stats`
+
+Do not inspect the CLI, Docker container, or Python package for normal usage. Do not create larger synthetic examples unless explicitly requested. Use the exact content provided by the user.
