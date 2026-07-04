@@ -22,11 +22,12 @@ interface Step {
 
 const IS_DRY = process.argv.slice(2).some((a) => a === "--dry" || a === "--dry-run");
 
-const dryCommands: string[] = [];
+let currentStepKey = "";
+const dryCommands: Array<{ stepKey: string; cmd: string }> = [];
 
 const sh = (cmd: string) => {
   if (IS_DRY) {
-    dryCommands.push(cmd);
+    dryCommands.push({ stepKey: currentStepKey, cmd });
     return Promise.resolve({ exitCode: 0, stdout: "", stderr: "" });
   }
   return execa("bash", ["-c", cmd], { cwd: REPO_DIR, stdio: "pipe" });
@@ -184,6 +185,7 @@ const App: React.FC = () => {
     (async () => {
       const wallStart = Date.now();
       for (const step of STEPS) {
+        currentStepKey = step.key;
         setStates((s) => ({ ...s, [step.key]: "running" }));
         const t0 = Date.now();
         try {
@@ -223,7 +225,7 @@ const App: React.FC = () => {
       </Box>
 
       {IS_DRY && (
-        <Box marginBottom={1}>
+        <Box marginBottom={1} borderStyle="round" borderColor="yellow" paddingX={1}>
           <Text color="yellow" bold>DRY RUN</Text>
           <Text dimColor> · no se ejecuta nada; solo se muestra qué haría</Text>
         </Box>
@@ -284,14 +286,30 @@ const App: React.FC = () => {
 
       {done && !failed && IS_DRY && (
         <Box flexDirection="column" marginTop={1}>
-          <Text color="yellow" bold>
-            ✔ Dry run OK en {(totalMs / 1000).toFixed(1)}s — {dryCommands.length} comandos capturados
-          </Text>
+          <Box borderStyle="round" borderColor="yellow" paddingX={1}>
+            <Text color="yellow" bold>
+              ✔ Dry run OK en {(totalMs / 1000).toFixed(1)}s — {dryCommands.length} comandos en {STEPS.filter((s) => dryCommands.some((c) => c.stepKey === s.key)).length} pasos
+            </Text>
+          </Box>
           <Box marginTop={1} flexDirection="column">
-            <Text bold>Comandos que ejecutaría (sh -c):</Text>
-            {dryCommands.map((c, i) => (
-              <Text key={i} dimColor>  {String(i + 1).padStart(2, "0")}. {c}</Text>
-            ))}
+            <Text bold>Comandos que ejecutaría (sh -c, agrupados por paso):</Text>
+            {STEPS.map((s) => {
+              const stepCmds = dryCommands.filter((c) => c.stepKey === s.key);
+              if (stepCmds.length === 0) return null;
+              const idx = STEPS.findIndex((x) => x.key === s.key) + 1;
+              return (
+                <Box key={s.key} flexDirection="column" marginTop={1}>
+                  <Text>
+                    <Text color="cyan">{String(idx).padStart(2, "0")}</Text>
+                    <Text dimColor> · </Text>
+                    <Text>{s.label}</Text>
+                  </Text>
+                  {stepCmds.map((c, i) => (
+                    <Text key={i} dimColor>     · {c.cmd.split(HOME).join("~")}</Text>
+                  ))}
+                </Box>
+              );
+            })}
           </Box>
           <Box marginTop={1}>
             <Text dimColor>Relanza sin `--dry` para aplicar.</Text>
