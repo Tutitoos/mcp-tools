@@ -91,7 +91,12 @@ func stepBuild(dry bool, log func(string)) error {
 	cmd := exec.Command("docker", "compose", "-f", "dockers/compose.yaml", "--env-file", ".env", "build")
 	cmd.Dir = config.RepoRoot()
 	cmd.Env = os.Environ()
-	return cmd.Run()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("docker compose build: %w\n%s", err, strings.TrimSpace(stderr.String()))
+	}
+	return nil
 }
 
 func stepWrappers(dry bool, log func(string)) error {
@@ -154,7 +159,12 @@ func stepUp(dry bool, log func(string)) error {
 	cmd := exec.Command("docker", "compose", "-f", "dockers/compose.yaml", "--env-file", ".env", "up", "-d")
 	cmd.Dir = config.RepoRoot()
 	cmd.Env = os.Environ()
-	return cmd.Run()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("docker compose up: %w\n%s", err, strings.TrimSpace(stderr.String()))
+	}
+	return nil
 }
 
 func stepSmoke(dry bool, log func(string)) error {

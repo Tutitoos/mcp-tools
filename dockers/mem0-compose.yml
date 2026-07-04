@@ -59,5 +59,4 @@ services:
 
 volumes:
   mem0-qdrant-storage:
-    external: true
     name: mcp-qdrant-storage

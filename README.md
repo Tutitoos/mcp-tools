@@ -6,19 +6,20 @@ Incluye memoria persistente (mem0), grafo de código (codebase-memory) y compres
 ## Instalación
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/Tutitoos/mcp-tools/main/install.sh | bash
+
 git clone https://github.com/Tutitoos/mcp-tools ~/mcp-tools
 cd ~/mcp-tools
-
-# Descarga el binario mcp-tools (Linux x86_64; ajusta para tu arch):
-curl -fsSL https://github.com/Tutitoos/mcp-tools/releases/latest/download/mcp-tools_Linux_x86_64.tar.gz \
-  | tar xz -C ~/.local/bin mcp-tools
-
 mcp-tools install
 ```
 
-`mcp-tools install` lanza un TUI bubbletea que ejecuta 10 pasos secuenciales: prereq → `.env` → verificación de fuente mem0 → build → wrappers en `~/.local/bin/` → skills → RULES → registro MCP en Claude/OpenCode/OMP → arranque de contenedores → smoke test. Idempotente. Añade `--dry` para preview sin ejecutar nada.
+El primer comando descarga el binario `mcp-tools` a `~/.local/bin/` (detecta OS/arch, resuelve la latest release). El tercero lanza el TUI 10-pasos: prereq → `.env` → verificación de fuente mem0 → build → wrappers → skills → RULES → registro MCP en Claude/OpenCode/OMP → arranque de contenedores → smoke test.
 
-Alternativa desde source: `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@latest` (requiere Go 1.22+).
+Idempotente. Añade `--dry` a `mcp-tools install` para preview sin ejecutar nada. Alternativas para el binario:
+
+- `MCP_TOOLS_VERSION=v0.1.0 curl -fsSL https://raw.githubusercontent.com/Tutitoos/mcp-tools/main/install.sh | bash` fija una versión concreta.
+- `MCP_TOOLS_BIN=/usr/local/bin` instala en otro dir (requiere permisos).
+- `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@latest` desde source (requiere Go 1.22+).
 
 ### Requisitos
 
