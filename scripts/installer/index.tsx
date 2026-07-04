@@ -20,8 +20,17 @@ interface Step {
   run: () => Promise<void>;
 }
 
-const sh = (cmd: string) =>
-  execa("bash", ["-c", cmd], { cwd: REPO_DIR, stdio: "pipe" });
+const IS_DRY = process.argv.slice(2).some((a) => a === "--dry" || a === "--dry-run");
+
+const dryCommands: string[] = [];
+
+const sh = (cmd: string) => {
+  if (IS_DRY) {
+    dryCommands.push(cmd);
+    return Promise.resolve({ exitCode: 0, stdout: "", stderr: "" });
+  }
+  return execa("bash", ["-c", cmd], { cwd: REPO_DIR, stdio: "pipe" });
+};
 
 /** Narrow an unknown thrown value to a readable error message. */
 function errorMessage(err: unknown): string {
@@ -208,6 +217,13 @@ const App: React.FC = () => {
         <Text dimColor> · installer TUI</Text>
       </Box>
 
+      {IS_DRY && (
+        <Box marginBottom={1}>
+          <Text color="yellow" bold>DRY RUN</Text>
+          <Text dimColor> · no se ejecuta nada; solo se muestra qué haría</Text>
+        </Box>
+      )}
+
       {PHASES.map((phase) => {
         const stepsInPhase = STEPS.filter((s) => s.phase === phase);
         return (
@@ -261,7 +277,24 @@ const App: React.FC = () => {
         </Box>
       )}
 
-      {done && !failed && (
+      {done && !failed && IS_DRY && (
+        <Box flexDirection="column" marginTop={1}>
+          <Text color="yellow" bold>
+            ✔ Dry run OK en {(totalMs / 1000).toFixed(1)}s — {dryCommands.length} comandos capturados
+          </Text>
+          <Box marginTop={1} flexDirection="column">
+            <Text bold>Comandos que ejecutaría (sh -c):</Text>
+            {dryCommands.map((c, i) => (
+              <Text key={i} dimColor>  {String(i + 1).padStart(2, "0")}. {c}</Text>
+            ))}
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>Relanza sin `--dry` para aplicar.</Text>
+          </Box>
+        </Box>
+      )}
+
+      {done && !failed && !IS_DRY && (
         <Box flexDirection="column" marginTop={1}>
           <Text color="green" bold>
             ✔ Instalado en {(totalMs / 1000).toFixed(1)}s
