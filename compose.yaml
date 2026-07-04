@@ -1,3 +1,6 @@
+include:
+  - mem0-compose.yml
+
 services:
   mcp_tools_codebase_memory:
     build:
@@ -29,43 +32,6 @@ services:
 
     working_dir: "${HOST_HOME}"
 
-  mcp_tools_mem0:
-    build:
-      context: ./mcps/mem0
-      dockerfile: Dockerfile
-      args:
-        UID: "${HOST_UID}"
-        GID: "${HOST_GID}"
-
-    image: "${MCP_TOOLS_MEM0_IMAGE}"
-
-    container_name: mcp-tools-mem0
-
-    restart: unless-stopped
-
-    network_mode: "host"
-
-    env_file:
-      - .env.mem0
-
-    environment:
-      HOME: /home/mcp
-      UV_CACHE_DIR: /home/mcp/.cache/uv
-      PYTHONUNBUFFERED: "1"
-      MEM0_USER_ID: "${MEM0_USER_ID}"
-
-    volumes:
-      - "${MEM0_SRC_PATH}:/opt/mem0-src:ro"
-      - "${MCP_TOOLS_DATA}/mem0/history:/data/history"
-      - "${MCP_TOOLS_DATA}/mem0/uv-cache:/home/mcp/.cache/uv"
-      - "${MCP_TOOLS_DATA}/mem0/config:/home/mcp/.config/mem0"
-      - "${HOST_HOME}:${HOST_HOME}"
-
-    working_dir: /opt/mem0-src
-
-    entrypoint: ["sleep"]
-    command: ["infinity"]
-
   mcp_tools_headroom:
     build:
       context: ./mcps/headroom
@@ -94,3 +60,12 @@ services:
 
     entrypoint: ["sleep"]
     command: ["infinity"]
+
+  mcp_tools_ollama:
+    image: ollama/ollama:latest
+    container_name: mcp-tools-ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - "${MCP_TOOLS_DATA}/ollama:/root/.ollama"

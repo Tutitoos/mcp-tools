@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="${MCP_TOOLS_ROOT:-$HOME/mcp-custom}"
+REPO_DIR="${MCP_TOOLS_ROOT:-$HOME/mcp-tools}"
 ENV_FILE="$REPO_DIR/.env"
 SERVICE_NAME="mcp_tools_codebase_memory"
 CONTAINER_NAME="mcp-tools-codebase-memory"
