@@ -17,17 +17,18 @@ err()  { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 command -v curl >/dev/null || err "curl no está instalado"
 command -v tar  >/dev/null || err "tar no está instalado"
 
-os="$(uname -s)"
+os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 arch="$(uname -m)"
 
+# Match goreleaser's default archive naming: {os}_{arch} where arch is amd64/arm64.
 case "$arch" in
-  x86_64|amd64) arch="x86_64" ;;
+  x86_64|amd64) arch="amd64" ;;
   aarch64|arm64) arch="arm64" ;;
-  *) err "arquitectura no soportada: $arch (soportadas: x86_64, arm64)" ;;
+  *) err "arquitectura no soportada: $arch (soportadas: x86_64/amd64, aarch64/arm64)" ;;
 esac
 case "$os" in
-  Linux|Darwin) ;;
-  *) err "OS no soportado: $os (soportados: Linux, Darwin)" ;;
+  linux|darwin) ;;
+  *) err "OS no soportado: $os (soportados: linux, darwin)" ;;
 esac
 
 if [ "$VERSION" = "latest" ]; then
