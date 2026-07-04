@@ -63,3 +63,24 @@ When the user asks for a Headroom task and `mcp__headroom_compress`, `mcp__headr
 After discovery activates the Headroom tools, call the matching Headroom MCP tool.
 
 Do not claim Headroom is unavailable just because the MCP tool is not initially visible. First try tool discovery.
+
+## OMP MCP discovery workflow
+
+OMP v16.3.5 may expose MCP servers as discoverable tools instead of loading every MCP tool directly into the initial tool inventory.
+
+When a user asks for a task handled by an MCP server and the corresponding `mcp__...` tool is not initially visible, do not say the tool is unavailable.
+
+First use `search_tool_bm25` with a query describing the needed capability.
+
+Examples:
+- Headroom compression: `headroom compress text logs reduce tokens`
+- Headroom retrieve: `headroom retrieve compressed content hash`
+- Headroom stats: `headroom stats compression savings`
+- codebase-memory architecture: `codebase memory architecture repository graph`
+- codebase-memory search: `codebase memory search code symbols`
+- mem0 memory search: `mem0 search memories persistent context`
+- mem0 add memory: `mem0 add memory remember preference`
+
+After discovery activates the matching MCP tool, call the activated tool.
+
+Do not fall back to bash, Docker, Python, or host binaries for normal MCP tasks unless explicitly debugging MCP setup.

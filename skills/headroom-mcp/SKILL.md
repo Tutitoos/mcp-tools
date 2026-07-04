@@ -192,3 +192,16 @@ If the callable Headroom tools are not immediately visible, use tool discovery f
 Then call the activated Headroom compression tool.
 
 Do not fall back to bash, Docker, Python, or the host binary for normal compression tasks.
+
+## OMP discovery workflow
+
+In OMP v16.3.5, Headroom tools may be discoverable instead of directly visible at session start.
+
+If `mcp__headroom_compress`, `mcp__headroom_retrieve`, or `mcp__headroom_stats` is not immediately visible, first use tool discovery with:
+
+`headroom compress text logs reduce tokens`
+
+Then call the activated Headroom MCP tool.
+
+Do not claim Headroom is unavailable before trying discovery.
+Do not fall back to bash, Docker, Python, or the host Headroom binary for normal compression tasks.
