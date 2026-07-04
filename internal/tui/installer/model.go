@@ -61,6 +61,7 @@ type Model struct {
 	startTime   time.Time
 	done        bool
 	failed      bool
+	width       int
 }
 
 // stepDoneMsg is emitted after Step.Run returns.
@@ -110,6 +111,9 @@ func (m Model) runNext() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		return m, nil
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" || msg.String() == "q" {
 			return m, tea.Quit
@@ -198,11 +202,19 @@ func (m Model) View() string {
 	// Footer
 	if m.failed {
 		b.WriteString(theme.ChipRed.Render(" ERROR ") + theme.Dim.Render(fmt.Sprintf("  tras %.1fs", m.totalMs.Seconds())) + "\n\n")
+		boxWidth := m.width - 2 // leave 1 col margin each side
+		if boxWidth < 40 {
+			boxWidth = 40 // sane minimum
+		}
+		if boxWidth > 120 {
+			boxWidth = 120 // cap so lines wrap on ultra-wide terminals too
+		}
 		errBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("9")).
 			Padding(0, 1).
-			MarginBottom(1)
+			MarginBottom(1).
+			Width(boxWidth)
 		for k, v := range m.errors {
 			title := theme.Red.Bold(true).Render("● " + k)
 			b.WriteString(errBox.Render(title+"\n"+strings.TrimSpace(v)) + "\n")
