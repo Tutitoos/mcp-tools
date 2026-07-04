@@ -43,9 +43,25 @@ version_no_v="${VERSION#v}"
 tarball="mcp-tools_${version_no_v}_${os}_${arch}.tar.gz"
 url="https://github.com/${REPO}/releases/download/${VERSION}/${tarball}"
 
-log "descargando ${tarball} (${VERSION})"
-tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+curl -fsSL "$url" -o "$tmp/pkg.tar.gz" || {
+  cat >&2 <<MSG
+error: no pude descargar
+  $url
+
+La release "${VERSION}" no existe (aún) en GitHub. Causas típicas:
+  - GitHub Actions está deshabilitado en el repo (Settings → Actions → General → 'Allow all actions').
+  - El workflow .github/workflows/release.yml falló; revisa https://github.com/${REPO}/actions.
+
+Alternativa mientras tanto (construye desde source; requiere Go 1.22+):
+  git clone https://github.com/${REPO} ~/mcp-tools
+  cd ~/mcp-tools
+  make install    # instala en ~/.local/bin/mcp-tools
+
+O directamente:
+  go install github.com/${REPO}/cmd/mcp-tools@latest
+MSG
+  exit 1
+}
 curl -fsSL "$url" -o "$tmp/pkg.tar.gz" \
   || err "no pude descargar $url — comprueba que la release existe"
 
