@@ -1,0 +1,39 @@
+version: 2
+project_name: mcp-tools
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: mcp-tools
+    main: ./cmd/mcp-tools
+    binary: mcp-tools
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/Tutitoos/mcp-tools/internal/version.Version={{.Version}}
+      - -X github.com/Tutitoos/mcp-tools/internal/version.Commit={{.Commit}}
+      - -X github.com/Tutitoos/mcp-tools/internal/version.Date={{.Date}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}"
+    files:
+      - README.md
+      - LICENSE*
+      - docs/**/*
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: Tutitoos
+    name: mcp-tools
+  draft: false
+  prerelease: auto

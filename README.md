@@ -8,17 +8,23 @@ Incluye memoria persistente (mem0), grafo de código (codebase-memory) y compres
 ```bash
 git clone https://github.com/Tutitoos/mcp-tools ~/mcp-tools
 cd ~/mcp-tools
-./install.sh
+
+# Descarga el binario mcp-tools (Linux x86_64; ajusta para tu arch):
+curl -fsSL https://github.com/Tutitoos/mcp-tools/releases/latest/download/mcp-tools_Linux_x86_64.tar.gz \
+  | tar xz -C ~/.local/bin mcp-tools
+
+mcp-tools install
 ```
 
-`install.sh` lanza un TUI Ink que ejecuta 10 pasos secuenciales: prereq → `.env` → verificación de fuente mem0 → build → wrappers en `~/.local/bin/` → skills → RULES → registro MCP en Claude/OpenCode/OMP → arranque de contenedores → smoke test. Idempotente: relánzalo cuando quieras. Requiere `bun` en `$PATH` y `docker compose v2`.
+`mcp-tools install` lanza un TUI bubbletea que ejecuta 10 pasos secuenciales: prereq → `.env` → verificación de fuente mem0 → build → wrappers en `~/.local/bin/` → skills → RULES → registro MCP en Claude/OpenCode/OMP → arranque de contenedores → smoke test. Idempotente. Añade `--dry` para preview sin ejecutar nada.
+
+Alternativa desde source: `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@latest` (requiere Go 1.22+).
 
 ### Requisitos
 
 - Docker + `docker compose` v2.
-- `bun` en `$PATH` (para el installer TUI).
-- `~/.local/bin` en `$PATH` (donde viven los wrappers).
-- Para `mcp_tools_mem0`: clon de `elvismdev/mem0-mcp-selfhosted` en `~/mcp-tools-data/mem0/src`. El installer verifica y falla con el `git clone` exacto si falta.
+- `~/.local/bin` en `$PATH` (donde vive el binario y los wrappers).
+- Para `mcp_tools_mem0`: clon de `elvismdev/mem0-mcp-selfhosted` en `~/mcp-tools-data/mem0/src`. El paso `mem0-src` del installer falla con el `git clone` exacto si falta.
 
 ## Servicios
 
@@ -58,7 +64,7 @@ El installer registra los servers automáticamente en Claude Code, OpenCode y OM
 
 ## Configuración
 
-- `.env` (root del repo, generado por `./scripts/init-env.sh`): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MEM0_SRC_PATH`, `MEM0_USER_ID`, tags de imagen.
+- `.env` (root del repo, generado por `mcp-tools env`): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MEM0_SRC_PATH`, `MEM0_USER_ID`, tags de imagen.
 - `.env.mem0` (root del repo, NO se autogenera): configuración de mem0. Copiar del bloque de abajo.
 - Datos persistentes: todo bajo `~/mcp-tools-data/{codebase-memory,mem0,headroom,ollama}/` — por convención rígida.
 
@@ -108,17 +114,17 @@ Embeddings (`MEM0_EMBED_MODEL`), tag `embedding` en el catálogo. La dimensión 
 Cambio interactivo con selector (recomendado):
 
 ```bash
-./scripts/select-model.sh
+mcp-tools select-model
 ```
 
-Elige LLM o Embed → selecciona modelo → confirma. El script hace `ollama pull`, edita `.env.mem0` (incluye `MEM0_OLLAMA_THINK=false` automáticamente si eliges qwen3/deepseek-r1), y reinicia `mcp-tools-mem0`.
+Elige LLM o Embed → selecciona modelo → confirma. Hace `ollama pull`, edita `.env.mem0` (incluye `MEM0_OLLAMA_THINK=false` automáticamente si eliges qwen3/deepseek-r1), y recrea `mcp-tools-mem0`.
 
 Cambio manual:
 
-1. `docker exec mcp-tools-ollama ollama pull <tag>`
+1. `mcp-tools pull <tag>`.
 2. Editar `.env.mem0`: `MEM0_LLM_MODEL=<tag>` (o `MEM0_EMBED_MODEL=<tag>`).
 3. Si cambia dimensión de embeddings: cambiar `MEM0_COLLECTION` a nombre nuevo, o `curl -X DELETE http://127.0.0.1:6333/collections/<nombre>`.
-4. `docker restart mcp-tools-mem0`.
+4. `mcp-tools restart mcp_tools_mem0`.
 
 Modelos qwen3/deepseek-r1 requieren `MEM0_OLLAMA_THINK=false` (default) para evitar colisión `<think>` + `format:"json"`.
 
@@ -126,15 +132,19 @@ Modelos qwen3/deepseek-r1 requieren `MEM0_OLLAMA_THINK=false` (default) para evi
 
 | Comando | Qué hace |
 | --- | --- |
-| `./install.sh` | Instalador TUI end-to-end. Idempotente. |
-| `./scripts/up.sh` | Levanta los 5 contenedores. |
-| `./scripts/stop.sh` | Para los 5 contenedores (mantiene volúmenes). |
-| `./scripts/build.sh` | Reconstruye las imágenes locales tras editar Dockerfiles. |
-| `./scripts/init-env.sh` | (Re)genera `.env` si no existe. Idempotente. |
-| `bun scripts/install-mcp.ts` | Re-registra los servers en Claude/OpenCode/OMP. |
-| `docker exec mcp-tools-ollama ollama pull <tag>` | Descarga un modelo. |
-| `./scripts/select-model.sh` | Selector TUI para cambiar `MEM0_LLM_MODEL` / `MEM0_EMBED_MODEL`, hacer `ollama pull` y reiniciar mem0. |
-| `docker compose -f dockers/compose.yaml --env-file .env logs <servicio>` | Ver logs. |
+| `mcp-tools install [--dry]` | Instalador TUI end-to-end. Idempotente. |
+| `mcp-tools up` | Levanta los 5 contenedores. |
+| `mcp-tools stop` | Para los 5 contenedores (mantiene volúmenes). |
+| `mcp-tools build` | Reconstruye las imágenes locales tras editar Dockerfiles. |
+| `mcp-tools env` | (Re)genera `.env` si no existe. Idempotente. |
+| `mcp-tools select-model` | Selector TUI para cambiar `MEM0_LLM_MODEL` / `MEM0_EMBED_MODEL`, hacer `ollama pull` y recrear mem0. |
+| `mcp-tools mcp-config` | Re-registra los servers en Claude/OpenCode/OMP. |
+| `mcp-tools skills` | Symlinks de skills a los 3 clientes. |
+| `mcp-tools rules` | Instala `RULES.md` en los 3 clientes. |
+| `mcp-tools ps` | Estado de los 5 contenedores. |
+| `mcp-tools logs <svc> [--follow]` | Muestra logs de un servicio. |
+| `mcp-tools restart <svc>` | Recrea un servicio releyendo `.env` / `.env.mem0`. |
+| `mcp-tools pull <tag>` | Descarga un modelo Ollama. |
 
 Para configuración avanzada por servicio, migraciones desde el layout previo o cómo añadir un servicio nuevo, ver [docs/ADVANCED.md](docs/ADVANCED.md).
 
@@ -142,6 +152,14 @@ Para configuración avanzada por servicio, migraciones desde el layout previo o 
 
 ```
 mcp-tools/
+├── cmd/mcp-tools/         # entry point del binario Go
+├── internal/
+│   ├── cli/               # subcomandos cobra
+│   ├── config/            # .env / paths
+│   ├── docker/            # wrapper de docker compose
+│   ├── mcp/               # registro en Claude/OpenCode/OMP
+│   ├── tui/               # bubbletea TUIs (installer + select-model)
+│   └── version/
 ├── dockers/
 │   ├── compose.yaml
 │   └── mem0-compose.yml
@@ -149,24 +167,19 @@ mcp-tools/
 │   ├── codebase-memory/Dockerfile
 │   ├── mem0/Dockerfile
 │   └── headroom/Dockerfile
-├── scripts/
-│   ├── init-env.sh
-│   ├── build.sh · up.sh · stop.sh
-│   ├── install-skills.sh · install-rules.sh
-│   ├── install-mcp.ts
-│   ├── installer/         # TUI Ink de install.sh
-│   └── wrappers/          # mcp-tools-*-docker
+├── scripts/wrappers/      # mcp-tools-*-docker (los invoca el cliente MCP)
 ├── skills/                # SKILL.md para clientes MCP
 ├── RULES.md               # Reglas globales para clientes MCP
-├── install.sh
+├── docs/ADVANCED.md
+├── go.mod · Makefile · .goreleaser.yaml
 ├── .env.example
 └── README.md
 ```
 
 ## Troubleshooting
 
-- **`missing .env`** en un wrapper → `./scripts/init-env.sh`.
+- **`missing .env`** en un wrapper → `mcp-tools env`.
 - **`MEM0_SRC_PATH does not exist`** → `git clone https://github.com/elvismdev/mem0-mcp-selfhosted ~/mcp-tools-data/mem0/src`.
 - **`Failed to connect to url`** en el cliente MCP tras `/mcp list` → revisa configs residuales en `~/.claude/plugins/marketplaces/`, `~/.codex/config.toml`, o entradas viejas sin prefijo `mcp_tools_` en el cliente.
-- **`mcp_tools_mem0` no conecta con Ollama/Qdrant** → `docker compose -f dockers/compose.yaml --env-file .env ps` para ver estado; qdrant debe estar `Up (healthy)`.
-- **Rebuild tras cambiar Dockerfile** → `./scripts/build.sh && docker compose -f dockers/compose.yaml --env-file .env up -d --force-recreate <servicio>`.
+- **`mcp_tools_mem0` no conecta con Ollama/Qdrant** → `mcp-tools ps` para ver estado; qdrant debe estar `Up (healthy)`.
+- **Rebuild tras cambiar Dockerfile** → `mcp-tools build && mcp-tools restart <servicio>`.

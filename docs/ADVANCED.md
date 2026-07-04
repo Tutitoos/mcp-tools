@@ -1,6 +1,6 @@
 # Advanced
 
-Documentación densa para configurar más allá del `./install.sh` por defecto. El README raíz cubre el flujo estándar; este fichero es la referencia para: personalizar servicios, migrar desde el layout previo y añadir un servicio nuevo.
+Documentación densa para configurar más allá del `mcp-tools install` por defecto. El README raíz cubre el flujo estándar; este fichero es la referencia para: personalizar servicios, migrar desde el layout previo y añadir un servicio nuevo.
 
 ## Configuración por servicio
 
@@ -67,12 +67,12 @@ MEM0_HISTORY_DB_PATH=/data/history/history.db
 
 1. Crear `mcps/<nombre>/Dockerfile` (patrón: `python:3.12-slim` o `debian:bookworm-slim`, `ARG UID/GID`, `useradd -u $UID`, `HOME=/home/mcp`, `ENTRYPOINT ["sleep"] CMD ["infinity"]`).
 2. Añadir servicio a `dockers/compose.yaml` como `mcp_tools_<nombre>` copiando el bloque de `mcp_tools_headroom` (bridge) o `mcp_tools_mem0` (host network). `container_name: mcp-tools-<nombre>`.
-3. Declarar `MCP_TOOLS_<NOMBRE>_IMAGE` en `.env.example` y `scripts/init-env.sh`.
-4. Añadir `mkdir -p "$DATA_DIR/<nombre>/*"` en `scripts/init-env.sh`.
+3. Declarar `MCP_TOOLS_<NOMBRE>_IMAGE` en `.env.example` y como constante en `internal/cli/env.go` (mapa `contents` de `RunEnv`).
+4. Añadir `mkdir -p` para `$DATA_DIR/<nombre>/*` en el mismo `RunEnv`.
 5. Crear wrapper en `scripts/wrappers/mcp-tools-<nombre>-docker` (copiar `mcp-tools-headroom-docker`, cambiar `SERVICE_NAME`, `CONTAINER_NAME`, y el comando final tras `docker exec -i`).
 6. `chmod +x scripts/wrappers/mcp-tools-<nombre>-docker`.
-7. Symlink en `~/.local/bin/`.
-8. Añadir bloque de config en el JSON del cliente MCP con clave `mcp_tools_<nombre>`.
+7. Añadir el nuevo servidor a `internal/mcp/servers.go` (constante `Servers()`), con args si aplica.
+8. `mcp-tools install` symlinka el wrapper automáticamente y registra el servidor en Claude/OpenCode/OMP.
 
 ## Migración desde `mcp-custom`
 
@@ -95,11 +95,11 @@ Si vienes de la versión previa con prefijo `mcp-custom`, tras hacer merge de es
 4. **Regenerar `.env`** (usa los nuevos nombres de variables e imágenes):
    ```bash
    cd ~/mcp-tools   # o ~/mcp-custom si no renombraste
-   ./scripts/init-env.sh
+   mcp-tools env
    ```
 5. **Reconstruir imágenes** con los tags nuevos:
    ```bash
-   ./scripts/build.sh
+   mcp-tools build
    # (opcional) borra las imágenes viejas
    docker image rm mcp-custom/codebase-memory-mcp:latest mcp-custom/mem0-mcp:latest mcp-custom/headroom-mcp:latest 2>/dev/null || true
    ```
@@ -128,5 +128,5 @@ Si tenías qdrant/ollama corriendo bajo el proyecto compose `mcp-infra` (`/home/
    docker compose -p mcp-infra -f /home/tutitoos/containers/mcp-infra/docker-compose.yml down
    ```
 2. Verificar que el volumen `mcp-qdrant-storage` sigue existiendo (`docker volume ls | grep mcp-qdrant-storage`). Copiar los modelos de Ollama al path convencional: `docker run --rm -v /home/tutitoos/containers/ollama-data:/src:ro -v ~/mcp-tools-data/ollama:/dst alpine sh -c 'cp -a /src/. /dst/'` (usa `alpine` como helper root porque el bind viejo suele ser root-owned).
-3. `./scripts/up.sh` — el nuevo stack adopta el volumen (declarado `external: true`) y la carpeta de modelos sin re-descargar nada.
+3. `mcp-tools up` — el nuevo stack adopta el volumen (declarado `external: true`) y la carpeta de modelos sin re-descargar nada.
 4. Los nombres de contenedor cambian: `mem0-qdrant` → `mcp-tools-mem0-qdrant`, `mcp-ollama` → `mcp-tools-ollama`. Cualquier script externo que use `docker exec mem0-qdrant …` o `docker exec mcp-ollama …` hay que actualizarlo.

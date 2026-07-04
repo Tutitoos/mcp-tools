@@ -13,8 +13,8 @@ tmp/
 
 # accidental binaries
 mcps/**/bin/
-scripts/installer/node_modules/
-scripts/installer/bun.lock
+bin/
+dist/
 
 # databases / persistent artifacts
 *.db
