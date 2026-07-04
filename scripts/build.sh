@@ -9,4 +9,4 @@ fi
 
 cd "$REPO_DIR"
 
-docker compose build codebase_memory_mcp
+docker compose build

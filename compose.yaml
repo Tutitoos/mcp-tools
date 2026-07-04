@@ -28,3 +28,40 @@ services:
       - "${HOST_HOME}:${HOST_HOME}"
 
     working_dir: "${HOST_HOME}"
+
+  mem0:
+    build:
+      context: ./mcps/mem0
+      dockerfile: Dockerfile
+      args:
+        UID: "${HOST_UID}"
+        GID: "${HOST_GID}"
+
+    image: "${MEM0_MCP_IMAGE}"
+
+    container_name: mcp-custom-mem0-mcp
+
+    restart: unless-stopped
+
+    network_mode: "host"
+
+    env_file:
+      - .env.mem0
+
+    environment:
+      HOME: /home/mcp
+      UV_CACHE_DIR: /home/mcp/.cache/uv
+      PYTHONUNBUFFERED: "1"
+      MEM0_USER_ID: "${MEM0_USER_ID}"
+
+    volumes:
+      - "${MEM0_SRC_PATH}:/opt/mem0-src:ro"
+      - "${MCP_CUSTOM_DATA}/mem0/history:/data/history"
+      - "${MCP_CUSTOM_DATA}/mem0/uv-cache:/home/mcp/.cache/uv"
+      - "${MCP_CUSTOM_DATA}/mem0/config:/home/mcp/.config/mem0"
+      - "${HOST_HOME}:${HOST_HOME}"
+
+    working_dir: /opt/mem0-src
+
+    entrypoint: ["sleep"]
+    command: ["infinity"]
