@@ -37,3 +37,15 @@ Forbidden unless explicitly debugging MCP setup:
 If the MCP tools are missing, ask the user to run `/mcp list` and `/mcp test headroom`. Do not invent a CLI fallback.
 
 For compression requests, pass the exact user-provided content to `headroom_compress`. Do not expand, replicate, or modify the input unless the user asks.
+
+## Headroom OMP tool names
+
+In OMP, the Headroom MCP server exposes tools with namespaced callable names:
+
+- `mcp__headroom_headroom_compress`
+- `mcp__headroom_headroom_retrieve`
+- `mcp__headroom_headroom_stats`
+
+Do not look for bare `headroom_compress` in the model tool inventory. `/mcp test headroom` shows bare server tool names, but OMP injects callable tools as `mcp__<server>_<tool>`.
+
+For Headroom compression requests, call `mcp__headroom_headroom_compress` with the exact user-provided content.

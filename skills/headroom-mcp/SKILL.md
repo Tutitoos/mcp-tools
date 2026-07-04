@@ -158,3 +158,25 @@ Then respond with:
 - savings/tokens if returned
 - retrieval hash if returned
 - a short explanation if no compression happened
+
+## OMP tool names
+
+In OMP, MCP tools are exposed with namespaced callable names.
+
+For the `headroom` server, use these callable tool names:
+
+- `mcp__headroom_headroom_compress`
+- `mcp__headroom_headroom_retrieve`
+- `mcp__headroom_headroom_stats`
+
+The bare names shown by `/mcp test headroom` are:
+
+- `headroom_compress`
+- `headroom_retrieve`
+- `headroom_stats`
+
+But inside the model/tool inventory, prefer the namespaced OMP names above.
+
+When the user asks to compress with Headroom, call `mcp__headroom_headroom_compress` with content equal to the exact user-provided content.
+
+Do not look only for the bare name `headroom_compress` in the model tool inventory.
