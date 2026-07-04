@@ -15,6 +15,7 @@ tmp/
 mcps/**/bin/
 bin/
 dist/
+scripts/installer/
 
 # databases / persistent artifacts
 *.db
