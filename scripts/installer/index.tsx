@@ -217,41 +217,52 @@ const App: React.FC = () => {
 
   return (
     <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text bold color="magentaBright">
-          mcp-tools
-        </Text>
-        <Text dimColor> · installer TUI</Text>
+      <Box flexDirection="column" marginBottom={1}>
+        <Box>
+          <Text bold color="magentaBright">mcp-tools</Text>
+          <Text dimColor>  installer</Text>
+        </Box>
+        <Text dimColor>self-hosted MCP servers para Claude Code, OpenCode y OMP</Text>
       </Box>
 
       {IS_DRY && (
-        <Box marginBottom={1} borderStyle="round" borderColor="yellow" paddingX={1}>
-          <Text color="yellow" bold>DRY RUN</Text>
-          <Text dimColor> · no se ejecuta nada; solo se muestra qué haría</Text>
+        <Box marginBottom={1}>
+          <Text backgroundColor="yellow" color="black" bold> DRY RUN </Text>
+          <Text dimColor>  no se ejecuta nada; solo se muestra qué haría</Text>
         </Box>
       )}
 
       {PHASES.map((phase) => {
         const stepsInPhase = STEPS.filter((s) => s.phase === phase);
         return (
-          <Box key={phase} flexDirection="column" marginBottom={1}>
-            <Text dimColor>{phase}</Text>
+          <Box
+            key={phase}
+            flexDirection="column"
+            marginBottom={1}
+            borderStyle="single"
+            borderColor="cyan"
+            borderTop={false}
+            borderRight={false}
+            borderBottom={false}
+            paddingLeft={1}
+          >
+            <Text color="cyan" bold>{phase}</Text>
             {stepsInPhase.map((s) => {
               const st = states[s.key];
               const idx = STEPS.findIndex((x) => x.key === s.key) + 1;
               const dt = durations[s.key];
               if (st === "running") {
                 return (
-                  <Box key={s.key} paddingLeft={2}>
-                    <Text dimColor>{String(idx).padStart(2, "0")}/{String(totalSteps).padStart(2, "0")} </Text>
+                  <Box key={s.key}>
+                    <Text dimColor>{String(idx).padStart(2, "0")}  </Text>
                     <Spinner label={s.label} />
                   </Box>
                 );
               }
               return (
-                <Box key={s.key} paddingLeft={2}>
-                  <Text dimColor>{String(idx).padStart(2, "0")}/{String(totalSteps).padStart(2, "0")} </Text>
-                  <Text color={STATUS_COLOR[st]}>{STATUS_GLYPH[st]} </Text>
+                <Box key={s.key}>
+                  <Text dimColor>{String(idx).padStart(2, "0")}  </Text>
+                  <Text color={STATUS_COLOR[st]}>{STATUS_GLYPH[st]}  </Text>
                   <Text color={st === "fail" ? "red" : undefined}>{s.label.padEnd(52, " ")}</Text>
                   {typeof dt === "number" && (
                     <Text dimColor>{(dt / 1000).toFixed(1)}s</Text>
@@ -286,47 +297,59 @@ const App: React.FC = () => {
 
       {done && !failed && IS_DRY && (
         <Box flexDirection="column" marginTop={1}>
-          <Box borderStyle="round" borderColor="yellow" paddingX={1}>
-            <Text color="yellow" bold>
-              ✔ Dry run OK en {(totalMs / 1000).toFixed(1)}s — {dryCommands.length} comandos en {STEPS.filter((s) => dryCommands.some((c) => c.stepKey === s.key)).length} pasos
-            </Text>
+          <Box>
+            <Text backgroundColor="green" color="black" bold> DRY RUN OK </Text>
+            <Text dimColor>  {(totalMs / 1000).toFixed(1)}s · {dryCommands.length} comandos en {STEPS.filter((s) => dryCommands.some((c) => c.stepKey === s.key)).length} pasos</Text>
           </Box>
           <Box marginTop={1} flexDirection="column">
-            <Text bold>Comandos que ejecutaría (sh -c, agrupados por paso):</Text>
+            <Text dimColor>Comandos que ejecutaría (sh -c):</Text>
             {STEPS.map((s) => {
               const stepCmds = dryCommands.filter((c) => c.stepKey === s.key);
               if (stepCmds.length === 0) return null;
               const idx = STEPS.findIndex((x) => x.key === s.key) + 1;
               return (
-                <Box key={s.key} flexDirection="column" marginTop={1}>
+                <Box
+                  key={s.key}
+                  flexDirection="column"
+                  marginTop={1}
+                  borderStyle="single"
+                  borderColor="gray"
+                  borderTop={false}
+                  borderRight={false}
+                  borderBottom={false}
+                  paddingLeft={1}
+                >
                   <Text>
-                    <Text color="cyan">{String(idx).padStart(2, "0")}</Text>
-                    <Text dimColor> · </Text>
+                    <Text color="cyan" bold>{String(idx).padStart(2, "0")}</Text>
+                    <Text dimColor>  </Text>
                     <Text>{s.label}</Text>
                   </Text>
                   {stepCmds.map((c, i) => (
-                    <Text key={i} dimColor>     · {c.cmd.split(HOME).join("~")}</Text>
+                    <Text key={i} dimColor>   $ {c.cmd.split(HOME).join("~")}</Text>
                   ))}
                 </Box>
               );
             })}
           </Box>
           <Box marginTop={1}>
-            <Text dimColor>Relanza sin `--dry` para aplicar.</Text>
+            <Text dimColor>Relanza sin </Text>
+            <Text color="yellow" bold>--dry</Text>
+            <Text dimColor> para aplicar.</Text>
           </Box>
         </Box>
       )}
 
       {done && !failed && !IS_DRY && (
         <Box flexDirection="column" marginTop={1}>
-          <Text color="green" bold>
-            ✔ Instalado en {(totalMs / 1000).toFixed(1)}s
-          </Text>
+          <Box>
+            <Text backgroundColor="green" color="black" bold> INSTALADO </Text>
+            <Text dimColor>  {(totalMs / 1000).toFixed(1)}s</Text>
+          </Box>
           <Box marginTop={1} flexDirection="column">
-            <Text bold>Próximos pasos:</Text>
-            <Text>  · Reinicia tu cliente MCP (Claude Code, OpenCode, OMP).</Text>
-            <Text>  · Verifica en Claude Code: <Text bold>claude mcp list</Text> — los 3 servers como ✔ Connected.</Text>
-            <Text>  · Config avanzada: <Text bold>docs/ADVANCED.md</Text></Text>
+            <Text dimColor>Próximos pasos:</Text>
+            <Text>  → Reinicia tu cliente MCP (Claude Code, OpenCode, OMP).</Text>
+            <Text>  → Verifica: <Text color="cyan" bold>claude mcp list</Text> · los 3 servers como ✔ Connected.</Text>
+            <Text>  → Config avanzada: <Text color="cyan" bold>docs/ADVANCED.md</Text></Text>
           </Box>
         </Box>
       )}
