@@ -76,6 +76,39 @@ func RunEnv(dry, force bool, out io.Writer) error {
 		}
 	}
 
+	// .env.mem0 write (idempotent; user may have edited it via `mcp-tools select-model`)
+	mem0EnvPath := filepath.Join(repoDir, ".env.mem0")
+	if _, err := os.Stat(mem0EnvPath); err == nil && !force {
+		if dry {
+			fmt.Fprintf(out, "OK: %s ya existe, se conserva (dry)\n", mem0EnvPath)
+		} else {
+			fmt.Fprintf(out, "OK: %s ya existe, se conserva\n", mem0EnvPath)
+		}
+	} else {
+		mem0EnvBody := fmt.Sprintf(`MEM0_PROVIDER=ollama
+MEM0_LLM_MODEL=qwen3:8b
+
+MEM0_EMBED_PROVIDER=ollama
+MEM0_EMBED_MODEL=bge-m3
+MEM0_OLLAMA_URL=http://127.0.0.1:11434/
+
+MEM0_QDRANT_URL=http://127.0.0.1:6333/
+MEM0_COLLECTION=mem0_%s
+MEM0_ENABLE_GRAPH=false
+
+MEM0_HISTORY_DB_PATH=/data/history/history.db
+MEM0_OLLAMA_THINK=false
+`, u.Username)
+		if dry {
+			fmt.Fprintf(out, "OK: escribiría %s con defaults (dry)\n", mem0EnvPath)
+		} else {
+			if err := os.WriteFile(mem0EnvPath, []byte(mem0EnvBody), 0o644); err != nil {
+				return fmt.Errorf("escribir .env.mem0: %w", err)
+			}
+			fmt.Fprintf(out, "OK: generado %s\n", mem0EnvPath)
+		}
+	}
+
 	// mkdirs (always; -p is idempotent)
 	dirs := []string{
 		filepath.Join(dataDir, "codebase-memory/cache"),
