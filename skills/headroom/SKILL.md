@@ -80,7 +80,7 @@ Ask the user to run:
 
 ```text
 /mcp list
-/mcp test headroom
+/mcp test mcp_tools_headroom
 /mcp reload
 /mcp reconnect headroom
 ```
@@ -102,13 +102,13 @@ Do not fall back to Docker or Python unless the user explicitly asks for low-lev
 Configured command:
 
 ```text
-/home/tutitoos/.local/bin/headroom-mcp-docker
+/home/tutitoos/.local/bin/mcp-tools-headroom-docker
 ```
 
 Container:
 
 ```text
-mcp-custom-headroom-mcp
+mcp-tools-headroom
 ```
 
 This runtime is already managed by Docker. Normal user tasks must use MCP tools, not direct container commands.
@@ -163,13 +163,13 @@ Then respond with:
 
 In OMP, MCP tools are exposed with namespaced callable names.
 
-For the `headroom` server, use these callable tool names:
+For the `mcp_tools_headroom` server, use these callable tool names:
 
-- `mcp__headroom_compress`
-- `mcp__headroom_retrieve`
-- `mcp__headroom_stats`
+- `mcp__mcp_tools_headroom_compress`
+- `mcp__mcp_tools_headroom_retrieve`
+- `mcp__mcp_tools_headroom_stats`
 
-The bare names shown by `/mcp test headroom` are:
+The bare names shown by `/mcp test mcp_tools_headroom` are:
 
 - `headroom_compress`
 - `headroom_retrieve`
@@ -177,7 +177,7 @@ The bare names shown by `/mcp test headroom` are:
 
 But inside the model/tool inventory, prefer the namespaced OMP names above.
 
-When the user asks to compress with Headroom, call `mcp__headroom_compress` with content equal to the exact user-provided content.
+When the user asks to compress with Headroom, call `mcp__mcp_tools_headroom_compress` with content equal to the exact user-provided content.
 
 Do not look only for the bare name `headroom_compress` in the model tool inventory.
 
@@ -197,7 +197,7 @@ Do not fall back to bash, Docker, Python, or the host binary for normal compress
 
 In OMP v16.3.5, Headroom tools may be discoverable instead of directly visible at session start.
 
-If `mcp__headroom_compress`, `mcp__headroom_retrieve`, or `mcp__headroom_stats` is not immediately visible, first use tool discovery with:
+If `mcp__mcp_tools_headroom_compress`, `mcp__mcp_tools_headroom_retrieve`, or `mcp__mcp_tools_headroom_stats` is not immediately visible, first use tool discovery with:
 
 `headroom compress text logs reduce tokens`
 

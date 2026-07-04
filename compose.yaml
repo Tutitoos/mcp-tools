@@ -1,15 +1,15 @@
 services:
-  codebase_memory_mcp:
+  mcp_tools_codebase_memory:
     build:
-      context: ./mcps/codebase-memory-mcp
+      context: ./mcps/codebase-memory
       dockerfile: Dockerfile
       args:
         UID: "${HOST_UID}"
         GID: "${HOST_GID}"
 
-    image: "${CODEBASE_MEMORY_MCP_IMAGE}"
+    image: "${MCP_TOOLS_CODEBASE_MEMORY_IMAGE}"
 
-    container_name: mcp-custom-codebase-memory-mcp
+    container_name: mcp-tools-codebase-memory
 
     restart: unless-stopped
 
@@ -23,13 +23,13 @@ services:
       RUST_LOG: warn
 
     volumes:
-      - "${MCP_CUSTOM_DATA}/codebase-memory-mcp/cache:/home/mcp/.cache/codebase-memory-mcp"
-      - "${MCP_CUSTOM_DATA}/codebase-memory-mcp/config:/home/mcp/.config/codebase-memory-mcp"
+      - "${MCP_TOOLS_DATA}/codebase-memory/cache:/home/mcp/.cache/codebase-memory-mcp"
+      - "${MCP_TOOLS_DATA}/codebase-memory/config:/home/mcp/.config/codebase-memory-mcp"
       - "${HOST_HOME}:${HOST_HOME}"
 
     working_dir: "${HOST_HOME}"
 
-  mem0:
+  mcp_tools_mem0:
     build:
       context: ./mcps/mem0
       dockerfile: Dockerfile
@@ -37,9 +37,9 @@ services:
         UID: "${HOST_UID}"
         GID: "${HOST_GID}"
 
-    image: "${MEM0_MCP_IMAGE}"
+    image: "${MCP_TOOLS_MEM0_IMAGE}"
 
-    container_name: mcp-custom-mem0-mcp
+    container_name: mcp-tools-mem0
 
     restart: unless-stopped
 
@@ -56,9 +56,9 @@ services:
 
     volumes:
       - "${MEM0_SRC_PATH}:/opt/mem0-src:ro"
-      - "${MCP_CUSTOM_DATA}/mem0/history:/data/history"
-      - "${MCP_CUSTOM_DATA}/mem0/uv-cache:/home/mcp/.cache/uv"
-      - "${MCP_CUSTOM_DATA}/mem0/config:/home/mcp/.config/mem0"
+      - "${MCP_TOOLS_DATA}/mem0/history:/data/history"
+      - "${MCP_TOOLS_DATA}/mem0/uv-cache:/home/mcp/.cache/uv"
+      - "${MCP_TOOLS_DATA}/mem0/config:/home/mcp/.config/mem0"
       - "${HOST_HOME}:${HOST_HOME}"
 
     working_dir: /opt/mem0-src
@@ -66,7 +66,7 @@ services:
     entrypoint: ["sleep"]
     command: ["infinity"]
 
-  headroom:
+  mcp_tools_headroom:
     build:
       context: ./mcps/headroom
       dockerfile: Dockerfile
@@ -74,9 +74,9 @@ services:
         UID: "${HOST_UID}"
         GID: "${HOST_GID}"
 
-    image: "${HEADROOM_IMAGE}"
+    image: "${MCP_TOOLS_HEADROOM_IMAGE}"
 
-    container_name: mcp-custom-headroom-mcp
+    container_name: mcp-tools-headroom
 
     restart: unless-stopped
 
@@ -85,9 +85,9 @@ services:
       PYTHONUNBUFFERED: "1"
 
     volumes:
-      - "${MCP_CUSTOM_DATA}/headroom/cache:/home/mcp/.cache"
-      - "${MCP_CUSTOM_DATA}/headroom/config:/home/mcp/.config/headroom"
-      - "${MCP_CUSTOM_DATA}/headroom/share:/home/mcp/.local/share/headroom"
+      - "${MCP_TOOLS_DATA}/headroom/cache:/home/mcp/.cache"
+      - "${MCP_TOOLS_DATA}/headroom/config:/home/mcp/.config/headroom"
+      - "${MCP_TOOLS_DATA}/headroom/share:/home/mcp/.local/share/headroom"
       - "${HOST_HOME}:${HOST_HOME}"
 
     working_dir: "${HOST_HOME}"

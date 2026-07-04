@@ -6,7 +6,7 @@
 .DS_Store
 
 # local/runtime data
-mcp-custom-data/
+mcp-tools-data/
 data/
 .cache/
 tmp/

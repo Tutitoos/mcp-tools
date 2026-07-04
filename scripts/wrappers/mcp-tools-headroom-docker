@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="${MCP_CUSTOM_ROOT:-$HOME/mcp-custom}"
+REPO_DIR="${MCP_TOOLS_ROOT:-$HOME/mcp-custom}"
 ENV_FILE="$REPO_DIR/.env"
-SERVICE_NAME="headroom"
-CONTAINER_NAME="mcp-custom-headroom-mcp"
+SERVICE_NAME="mcp_tools_headroom"
+CONTAINER_NAME="mcp-tools-headroom"
 
 if [ ! -f "$ENV_FILE" ]; then
   "$REPO_DIR/scripts/init-env.sh" >&2
@@ -16,9 +16,9 @@ set -a
 set +a
 
 mkdir -p \
-  "$MCP_CUSTOM_DATA/headroom/cache" \
-  "$MCP_CUSTOM_DATA/headroom/config" \
-  "$MCP_CUSTOM_DATA/headroom/share"
+  "$MCP_TOOLS_DATA/headroom/cache" \
+  "$MCP_TOOLS_DATA/headroom/config" \
+  "$MCP_TOOLS_DATA/headroom/share"
 
 if ! docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
   docker compose \
