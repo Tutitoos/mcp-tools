@@ -105,7 +105,15 @@ Embeddings (`MEM0_EMBED_MODEL`), tag `embedding` en el catálogo. La dimensión 
 | `nomic-embed-text` | Contexto largo. Verificar dim antes de fijar `MEM0_EMBED_DIMS`. |
 | `all-minilm` | Mínimo (22m/33m params). Solo pruebas. |
 
-Procedimiento:
+Cambio interactivo con selector (recomendado):
+
+```bash
+./scripts/select-model.sh
+```
+
+Elige LLM o Embed → selecciona modelo → confirma. El script hace `ollama pull`, edita `.env.mem0` (incluye `MEM0_OLLAMA_THINK=false` automáticamente si eliges qwen3/deepseek-r1), y reinicia `mcp-tools-mem0`.
+
+Cambio manual:
 
 1. `docker exec mcp-tools-ollama ollama pull <tag>`
 2. Editar `.env.mem0`: `MEM0_LLM_MODEL=<tag>` (o `MEM0_EMBED_MODEL=<tag>`).
@@ -125,6 +133,7 @@ Modelos qwen3/deepseek-r1 requieren `MEM0_OLLAMA_THINK=false` (default) para evi
 | `./scripts/init-env.sh` | (Re)genera `.env` si no existe. Idempotente. |
 | `bun scripts/install-mcp.ts` | Re-registra los servers en Claude/OpenCode/OMP. |
 | `docker exec mcp-tools-ollama ollama pull <tag>` | Descarga un modelo. |
+| `./scripts/select-model.sh` | Selector TUI para cambiar `MEM0_LLM_MODEL` / `MEM0_EMBED_MODEL`, hacer `ollama pull` y reiniciar mem0. |
 | `docker compose -f dockers/compose.yaml --env-file .env logs <servicio>` | Ver logs. |
 
 Para configuración avanzada por servicio, migraciones desde el layout previo o cómo añadir un servicio nuevo, ver [docs/ADVANCED.md](docs/ADVANCED.md).
