@@ -5,4 +5,4 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$REPO_DIR"
 
-docker compose stop codebase_memory_mcp
+docker compose stop mcp_tools_codebase_memory

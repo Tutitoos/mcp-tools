@@ -1,20 +1,20 @@
-# mcp-custom agent instructions
+# mcp-tools agent instructions
 
 This repository contains custom Dockerized MCP servers and operational skills.
 
 Before working with local code repositories, read:
 
-- `skills/codebase-memory-mcp/SKILL.md`
+- `skills/codebase-memory/SKILL.md`
 
-Use `codebase_memory_mcp` for codebase navigation, indexing, architecture analysis, code search, symbol tracing, and repository understanding.
+Use `mcp_tools_codebase_memory` for codebase navigation, indexing, architecture analysis, code search, symbol tracing, and repository understanding.
 
 Important rules:
 
 - Always use the Docker wrapper.
 - Do not call the host `codebase-memory-mcp` binary directly.
-- The active wrapper is `$HOME/.local/bin/codebase-memory-mcp-docker`.
-- The MCP runtime uses Docker exec into the persistent container `mcp-custom-codebase-memory-mcp`.
-- Persistent data lives under `$HOME/mcp-custom-data/codebase-memory-mcp`.
+- The active wrapper is `$HOME/.local/bin/mcp-tools-codebase-memory-docker`.
+- The MCP runtime uses Docker exec into the persistent container `mcp-tools-codebase-memory`.
+- Persistent data lives under `$HOME/mcp-tools-data/codebase-memory`.
 
 ## Headroom MCP hard rule
 
@@ -34,7 +34,7 @@ Forbidden unless explicitly debugging MCP setup:
 - `python -c "from headroom import ..."`
 - reading Headroom source files
 
-If the MCP tools are missing, ask the user to run `/mcp list` and `/mcp test headroom`. Do not invent a CLI fallback.
+If the MCP tools are missing, ask the user to run `/mcp list` and `/mcp test mcp_tools_headroom`. Do not invent a CLI fallback.
 
 For compression requests, pass the exact user-provided content to `headroom_compress`. Do not expand, replicate, or modify the input unless the user asks.
 
@@ -42,19 +42,19 @@ For compression requests, pass the exact user-provided content to `headroom_comp
 
 In OMP, the Headroom MCP server exposes tools with namespaced callable names:
 
-- `mcp__headroom_compress`
-- `mcp__headroom_retrieve`
-- `mcp__headroom_stats`
+- `mcp__mcp_tools_headroom_compress`
+- `mcp__mcp_tools_headroom_retrieve`
+- `mcp__mcp_tools_headroom_stats`
 
-Do not look for bare `headroom_compress` in the model tool inventory. `/mcp test headroom` shows bare server tool names, but OMP injects callable tools as `mcp__<server>_<tool>`.
+Do not look for bare `headroom_compress` in the model tool inventory. `/mcp test mcp_tools_headroom` shows bare server tool names, but OMP injects callable tools as `mcp__<server>_<tool>`.
 
-For Headroom compression requests, call `mcp__headroom_compress` with the exact user-provided content.
+For Headroom compression requests, call `mcp__mcp_tools_headroom_compress` with the exact user-provided content.
 
 ## OMP MCP tool discovery rule
 
 OMP may expose MCP tools behind `search_tool_bm25` instead of loading every MCP tool directly.
 
-When the user asks for a Headroom task and `mcp__headroom_compress`, `mcp__headroom_retrieve`, or `mcp__headroom_stats` is not directly visible, first use tool discovery with a query like:
+When the user asks for a Headroom task and the callable Headroom tools are not directly visible, first use tool discovery with a query like:
 
 - `headroom compress text logs reduce tokens`
 - `headroom retrieve compressed content hash`

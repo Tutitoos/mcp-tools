@@ -1,8 +1,8 @@
 {
   "mcp": {
-    "codebase_memory_mcp": {
+    "mcp_tools_codebase_memory": {
       "type": "local",
-      "command": ["/home/YOUR_USER/.local/bin/codebase-memory-mcp-docker", "--ui=false"],
+      "command": ["/home/YOUR_USER/.local/bin/mcp-tools-codebase-memory-docker", "--ui=false"],
       "enabled": true
     }
   }

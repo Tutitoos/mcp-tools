@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json",
   "mcpServers": {
-    "codebase_memory_mcp": {
-      "command": "/home/YOUR_USER/.local/bin/codebase-memory-mcp-docker",
+    "mcp_tools_codebase_memory": {
+      "command": "/home/YOUR_USER/.local/bin/mcp-tools-codebase-memory-docker",
       "args": ["--ui=false"],
       "env": {
         "HOME": "/home/YOUR_USER"

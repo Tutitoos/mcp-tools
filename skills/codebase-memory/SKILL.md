@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use `codebase_memory_mcp` whenever the user asks about a local codebase, architecture, code navigation, dependencies, flows, symbols, refactors, implementation details, repository structure, or code search.
+Use `mcp_tools_codebase_memory` whenever the user asks about a local codebase, architecture, code navigation, dependencies, flows, symbols, refactors, implementation details, repository structure, or code search.
 
 This MCP provides a persistent code knowledge graph and code search over indexed repositories.
 
@@ -12,7 +12,7 @@ The MCP must be used through Docker. Do not call the host binary directly.
 
 For simple codebase-memory tasks, do not read this full skill file again unless the user explicitly asks.
 
-Use `codebase_memory_mcp` directly.
+Use `mcp_tools_codebase_memory` directly.
 
 Fast workflows:
 
@@ -53,13 +53,13 @@ If using CLI fallback, prefer compact output and avoid reading huge artifacts.
 Example:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
 ```
 
 Bad for simple architecture requests:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli get_code_snippet '{"project":"PROJECT","qualified_name":"BIG_CLASS"}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_code_snippet '{"project":"PROJECT","qualified_name":"BIG_CLASS"}'
 ```
 
 Only use snippets when the user asks for code-level details.
@@ -87,13 +87,13 @@ If the user asks for a quick answer, keep it under 300 words.
 The MCP server name is:
 
 ```txt
-codebase_memory_mcp
+mcp_tools_codebase_memory
 ```
 
 The runtime wrapper is:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker
+$HOME/.local/bin/mcp-tools-codebase-memory-docker
 ```
 
 The Docker project lives at:
@@ -105,13 +105,13 @@ $HOME/mcp-custom
 Persistent data lives at:
 
 ```bash
-$HOME/mcp-custom-data/codebase-memory-mcp
+$HOME/mcp-tools-data/codebase-memory
 ```
 
 The wrapper uses a persistent Docker container and executes the MCP through:
 
 ```bash
-docker exec -i mcp-custom-codebase-memory-mcp codebase-memory-mcp
+docker exec -i mcp-tools-codebase-memory codebase-memory-mcp
 ```
 
 Do not bypass this wrapper unless debugging the Docker setup.
@@ -120,7 +120,7 @@ Do not bypass this wrapper unless debugging the Docker setup.
 
 The MCP is configured as `stdio`.
 
-Clients should call the configured MCP server named `codebase_memory_mcp`.
+Clients should call the configured MCP server named `mcp_tools_codebase_memory`.
 
 Do not replace MCP tool calls with raw shell commands during normal code analysis unless the client fails to expose the requested MCP tool.
 
@@ -129,7 +129,7 @@ Do not replace MCP tool calls with raw shell commands during normal code analysi
 Do not invent internal tool names like:
 
 ```txt
-mcp__codebase_memory_mcp_get_architecture
+mcp__mcp_tools_codebase_memory_get_architecture
 ```
 
 Use the MCP tools as exposed by the active client.
@@ -137,14 +137,14 @@ Use the MCP tools as exposed by the active client.
 If direct MCP tool calling fails because the client does not expose a specific tool, fall back to the Docker CLI:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli get_architecture '{"project":"PROJECT_NAME"}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"PROJECT_NAME"}'
 ```
 
 Prefer direct MCP tools when available. Use CLI fallback only when the MCP client wrapper does not expose the tool.
 
 ## Available tools
 
-Common tools exposed by `codebase_memory_mcp`:
+Common tools exposed by `mcp_tools_codebase_memory`:
 
 - `list_projects`
 - `index_repository`
@@ -376,29 +376,29 @@ Do not generate long ASCII architecture diagrams unless explicitly requested.
 Use these only for debugging the MCP runtime:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker --version
-$HOME/.local/bin/codebase-memory-mcp-docker --help
-$HOME/.local/bin/codebase-memory-mcp-docker config list
+$HOME/.local/bin/mcp-tools-codebase-memory-docker --version
+$HOME/.local/bin/mcp-tools-codebase-memory-docker --help
+$HOME/.local/bin/mcp-tools-codebase-memory-docker config list
 ```
 
 Check persistent container:
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep mcp-custom-codebase-memory-mcp
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep mcp-tools-codebase-memory
 ```
 
 Start container manually:
 
 ```bash
 cd $HOME/mcp-custom
-docker compose up -d codebase_memory_mcp
+docker compose up -d mcp_tools_codebase_memory
 ```
 
 Stop container manually:
 
 ```bash
 cd $HOME/mcp-custom
-docker compose stop codebase_memory_mcp
+docker compose stop mcp_tools_codebase_memory
 ```
 
 ## CLI fallback examples
@@ -406,37 +406,37 @@ docker compose stop codebase_memory_mcp
 List projects:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli list_projects '{}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli list_projects '{}'
 ```
 
 Get architecture:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
 ```
 
 Search graph:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli search_graph '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli search_graph '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
 ```
 
 Search code:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli search_code '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli search_code '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
 ```
 
 Get snippet:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'
 ```
 
 Compact snippet metadata with `jq`:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'   | jq 'del(.source, .fp, .sp, .bt)'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'   | jq 'del(.source, .fp, .sp, .bt)'
 ```
 
 Use the `jq` form when the full source is not needed.
@@ -470,7 +470,7 @@ ls -lh /home/tutitoos/Desktop/Kena/libraries/library-http/.codebase-memory/graph
 Use only:
 
 ```bash
-$HOME/.local/bin/codebase-memory-mcp-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
+$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
 ```
 
 Then produce a compact answer with:
