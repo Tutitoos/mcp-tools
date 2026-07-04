@@ -1,0 +1,9 @@
+{
+  "mcp": {
+    "codebase_memory_mcp": {
+      "type": "local",
+      "command": ["/home/YOUR_USER/.local/bin/codebase-memory-mcp-docker", "--ui=false"],
+      "enabled": true
+    }
+  }
+}

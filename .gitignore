@@ -1,0 +1,23 @@
+.env
+*.log
+.DS_Store
+
+# local/runtime data
+mcp-custom-data/
+data/
+.cache/
+tmp/
+
+# accidental binaries
+mcps/**/bin/
+
+# databases / persistent artifacts
+*.db
+*.sqlite
+*.sqlite3
+*.zst
+
+node_modules/
+__pycache__/
+.venv/
+venv/

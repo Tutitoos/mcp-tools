@@ -1,0 +1,30 @@
+services:
+  codebase_memory_mcp:
+    build:
+      context: ./mcps/codebase-memory-mcp
+      dockerfile: Dockerfile
+      args:
+        UID: "${HOST_UID}"
+        GID: "${HOST_GID}"
+
+    image: "${CODEBASE_MEMORY_MCP_IMAGE}"
+
+    container_name: mcp-custom-codebase-memory-mcp
+
+    restart: unless-stopped
+
+    network_mode: "none"
+
+    entrypoint: ["sleep"]
+    command: ["infinity"]
+
+    environment:
+      HOME: /home/mcp
+      RUST_LOG: warn
+
+    volumes:
+      - "${MCP_CUSTOM_DATA}/codebase-memory-mcp/cache:/home/mcp/.cache/codebase-memory-mcp"
+      - "${MCP_CUSTOM_DATA}/codebase-memory-mcp/config:/home/mcp/.config/codebase-memory-mcp"
+      - "${HOST_HOME}:${HOST_HOME}"
+
+    working_dir: "${HOST_HOME}"
