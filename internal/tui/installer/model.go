@@ -11,6 +11,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/tui/theme"
@@ -197,8 +198,14 @@ func (m Model) View() string {
 	// Footer
 	if m.failed {
 		b.WriteString(theme.ChipRed.Render(" ERROR ") + theme.Dim.Render(fmt.Sprintf("  tras %.1fs", m.totalMs.Seconds())) + "\n\n")
+		errBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("9")).
+			Padding(0, 1).
+			MarginBottom(1)
 		for k, v := range m.errors {
-			b.WriteString(theme.Red.Render("["+k+"]") + "\n" + v + "\n\n")
+			title := theme.Red.Bold(true).Render("● " + k)
+			b.WriteString(errBox.Render(title+"\n"+strings.TrimSpace(v)) + "\n")
 		}
 		b.WriteString(theme.Dim.Render("Corrige el error y relanza `mcp-tools install` — es idempotente.") + "\n")
 		return b.String()

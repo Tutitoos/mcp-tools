@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,7 @@ var skillsCmd = &cobra.Command{
 	Use:   "skills",
 	Short: "Instala los skills en Claude Code, OpenCode y OMP (symlinks)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return RunSkills(false)
+		return RunSkills(false, os.Stdout)
 	},
 }
 
@@ -24,7 +25,7 @@ func init() { rootCmd.AddCommand(skillsCmd) }
 var skillsNames = []string{"codebase-memory", "headroom"}
 
 // RunSkills is the skills-subcommand behaviour; usable from the installer TUI.
-func RunSkills(dry bool) error {
+func RunSkills(dry bool, out io.Writer) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -45,12 +46,12 @@ func RunSkills(dry bool) error {
 		filepath.Join(home, ".omp/agent/skills/headroom-mcp"),
 	}
 
-	fmt.Println("== cleaning stale skill dirs ==")
+	fmt.Fprintln(out, "== cleaning stale skill dirs ==")
 	for _, s := range stale {
 		if _, err := os.Lstat(s); errors.Is(err, os.ErrNotExist) {
 			continue
 		}
-		fmt.Printf("  rm %s\n", s)
+		fmt.Fprintf(out, "  rm %s\n", s)
 		if !dry {
 			if err := os.RemoveAll(s); err != nil {
 				return err
@@ -58,7 +59,7 @@ func RunSkills(dry bool) error {
 		}
 	}
 
-	fmt.Println("== installing symlinks ==")
+	fmt.Fprintln(out, "== installing symlinks ==")
 	for _, t := range targets {
 		if !dry {
 			if err := os.MkdirAll(t, 0o755); err != nil {
@@ -74,23 +75,23 @@ func RunSkills(dry bool) error {
 					return err
 				}
 			}
-			fmt.Printf("  %s -> %s\n", dst, srcPath)
+			fmt.Fprintf(out, "  %s -> %s\n", dst, srcPath)
 		}
 	}
 
 	if !dry {
-		fmt.Println("== verify ==")
+		fmt.Fprintln(out, "== verify ==")
 		for _, t := range targets {
 			for _, name := range skillsNames {
 				f := filepath.Join(t, name, "SKILL.md")
 				if _, err := os.Stat(f); err != nil {
 					return fmt.Errorf("FAIL %s: %w", f, err)
 				}
-				fmt.Printf("  OK %s\n", f)
+				fmt.Fprintf(out, "  OK %s\n", f)
 			}
 		}
 	}
 
-	fmt.Println("\nDone. Reload / restart your MCP client (Claude Code, OpenCode, OMP) to pick up the skills.")
+	fmt.Fprintln(out, "\nDone. Reload / restart your MCP client (Claude Code, OpenCode, OMP) to pick up the skills.")
 	return nil
 }

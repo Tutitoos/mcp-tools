@@ -76,7 +76,11 @@ func stepEnv(dry bool, log func(string)) error {
 		log("$ mcp-tools env")
 		return nil
 	}
-	return RunEnv(false, false)
+	var buf bytes.Buffer
+	if err := RunEnv(false, false, &buf); err != nil {
+		return fmt.Errorf("%w\n%s", err, strings.TrimSpace(buf.String()))
+	}
+	return nil
 }
 
 func stepMem0Src(dry bool, log func(string)) error {
@@ -91,10 +95,11 @@ func stepBuild(dry bool, log func(string)) error {
 	cmd := exec.Command("docker", "compose", "-f", "dockers/compose.yaml", "--env-file", ".env", "build")
 	cmd.Dir = config.RepoRoot()
 	cmd.Env = os.Environ()
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker compose build: %w\n%s", err, strings.TrimSpace(stderr.String()))
+		return fmt.Errorf("docker compose build: %w\n%s", err, strings.TrimSpace(out.String()))
 	}
 	return nil
 }
@@ -132,7 +137,11 @@ func stepSkills(dry bool, log func(string)) error {
 		log("$ mcp-tools skills")
 		return nil
 	}
-	return RunSkills(false)
+	var buf bytes.Buffer
+	if err := RunSkills(false, &buf); err != nil {
+		return fmt.Errorf("%w\n%s", err, strings.TrimSpace(buf.String()))
+	}
+	return nil
 }
 
 func stepRules(dry bool, log func(string)) error {
@@ -140,7 +149,11 @@ func stepRules(dry bool, log func(string)) error {
 		log("$ mcp-tools rules")
 		return nil
 	}
-	return RunRules(false)
+	var buf bytes.Buffer
+	if err := RunRules(false, &buf); err != nil {
+		return fmt.Errorf("%w\n%s", err, strings.TrimSpace(buf.String()))
+	}
+	return nil
 }
 
 func stepMcpConfig(dry bool, log func(string)) error {
@@ -148,7 +161,11 @@ func stepMcpConfig(dry bool, log func(string)) error {
 		log("$ mcp-tools mcp-config")
 		return nil
 	}
-	return RunMcpConfig(false)
+	var buf bytes.Buffer
+	if err := RunMcpConfig(false, &buf); err != nil {
+		return fmt.Errorf("%w\n%s", err, strings.TrimSpace(buf.String()))
+	}
+	return nil
 }
 
 func stepUp(dry bool, log func(string)) error {
@@ -159,10 +176,11 @@ func stepUp(dry bool, log func(string)) error {
 	cmd := exec.Command("docker", "compose", "-f", "dockers/compose.yaml", "--env-file", ".env", "up", "-d")
 	cmd.Dir = config.RepoRoot()
 	cmd.Env = os.Environ()
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker compose up: %w\n%s", err, strings.TrimSpace(stderr.String()))
+		return fmt.Errorf("docker compose up: %w\n%s", err, strings.TrimSpace(out.String()))
 	}
 	return nil
 }

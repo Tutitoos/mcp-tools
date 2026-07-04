@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,7 +18,7 @@ var rulesCmd = &cobra.Command{
 	Use:   "rules",
 	Short: "Instala RULES.md en Claude Code, OpenCode y OMP",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return RunRules(false)
+		return RunRules(false, os.Stdout)
 	},
 }
 
@@ -29,7 +30,7 @@ const (
 )
 
 // RunRules ports scripts/install-rules.sh. dry=true suppresses filesystem changes.
-func RunRules(dry bool) error {
+func RunRules(dry bool, out io.Writer) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -116,10 +117,10 @@ func RunRules(dry bool) error {
 			if _, err := os.Stat(f); err != nil {
 				return fmt.Errorf("FAIL %s: %w", f, err)
 			}
-			fmt.Printf("OK %s\n", f)
+			fmt.Fprintf(out, "OK %s\n", f)
 		}
 	}
-	fmt.Println("Done. Reload/restart your MCP client to pick up RULES.")
+	fmt.Fprintln(out, "Done. Reload/restart your MCP client to pick up RULES.")
 	return nil
 }
 

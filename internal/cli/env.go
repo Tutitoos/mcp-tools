@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -19,7 +20,7 @@ var envCmd = &cobra.Command{
 	Short: "(Re)genera .env si no existe y crea los directorios de datos",
 	Long:  "Idempotente: no toca un .env existente salvo con --force. Crea siempre los directorios bajo $MCP_TOOLS_DATA.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return RunEnv(false, envForce)
+		return RunEnv(false, envForce, os.Stdout)
 	},
 }
 
@@ -30,7 +31,7 @@ func init() {
 
 // RunEnv is the env-subcommand behaviour, reusable from the installer TUI.
 // If dry is true, no filesystem changes happen; only the intended actions are printed.
-func RunEnv(dry, force bool) error {
+func RunEnv(dry, force bool, out io.Writer) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -60,18 +61,18 @@ func RunEnv(dry, force bool) error {
 	// .env write (idempotent)
 	if _, err := os.Stat(envPath); err == nil && !force {
 		if dry {
-			fmt.Printf("OK: %s ya existe, se conserva (dry)\n", envPath)
+			fmt.Fprintf(out, "OK: %s ya existe, se conserva (dry)\n", envPath)
 		} else {
-			fmt.Printf("OK: %s ya existe, se conserva\n", envPath)
+			fmt.Fprintf(out, "OK: %s ya existe, se conserva\n", envPath)
 		}
 	} else {
 		if dry {
-			fmt.Printf("OK: escribiría %s con 10 variables (dry)\n", envPath)
+			fmt.Fprintf(out, "OK: escribiría %s con 10 variables (dry)\n", envPath)
 		} else {
 			if err := config.WriteEnv(envPath, contents); err != nil {
 				return fmt.Errorf("escribir .env: %w", err)
 			}
-			fmt.Printf("OK: generado %s\n", envPath)
+			fmt.Fprintf(out, "OK: generado %s\n", envPath)
 		}
 	}
 
@@ -97,9 +98,9 @@ func RunEnv(dry, force bool) error {
 	}
 
 	if dry {
-		fmt.Printf("OK: data en %s (dry — no se crean directorios)\n", dataDir)
+		fmt.Fprintf(out, "OK: data en %s (dry — no se crean directorios)\n", dataDir)
 	} else {
-		fmt.Printf("OK: data en %s\n", dataDir)
+		fmt.Fprintf(out, "OK: data en %s\n", dataDir)
 	}
 	return nil
 }
