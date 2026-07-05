@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
 // ConfigureOMP merges the ServerSpec list into ~/.omp/agent/mcp.json under `.mcpServers`.
 // Preserves other keys (disabledServers, etc.). SKIP silently if the parent dir is missing.
-func ConfigureOMP(log func(string)) error {
+func ConfigureOMP(st state.State, log func(string)) error {
 	home, _ := os.UserHomeDir()
 	file := filepath.Join(home, ".omp/agent/mcp.json")
 	parent := filepath.Dir(file)
 	if _, err := os.Stat(parent); err != nil {
 		if os.IsNotExist(err) {
-			log(fmt.Sprintf("SKIP OMP (%s missing — OMP not installed?)", parent))
+			log(fmt.Sprintf("  SKIP OMP (%s missing — OMP not installed?)", parent))
 			return nil
 		}
 		return err
@@ -38,8 +41,9 @@ func ConfigureOMP(log func(string)) error {
 		servers = map[string]any{}
 	}
 
-	for _, s := range Servers() {
-		// Omit "type": "stdio" per OMP schema default.
+	wanted := map[string]bool{}
+	for _, s := range Servers(st) {
+		wanted[s.Name] = true
 		servers[s.Name] = map[string]any{
 			"command": s.Wrapper,
 			"args":    argsToAny(s.Args),
@@ -47,11 +51,18 @@ func ConfigureOMP(log func(string)) error {
 			"enabled": true,
 		}
 	}
+	// Prune obsolete mcp_tools_* keys we no longer own.
+	for k := range servers {
+		if strings.HasPrefix(k, "mcp_tools_") && !wanted[k] {
+			delete(servers, k)
+			log(fmt.Sprintf("  prune OMP %s (obsolete)", k))
+		}
+	}
 	cfg["mcpServers"] = servers
 
 	if err := WriteJSON(file, cfg); err != nil {
 		return err
 	}
-	log(fmt.Sprintf("OK OMP %s", file))
+	log(fmt.Sprintf("  OK OMP %s", file))
 	return nil
 }

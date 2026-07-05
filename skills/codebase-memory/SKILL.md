@@ -2,12 +2,19 @@
 name: codebase-memory
 description: >
   Persistent code knowledge graph and code search over indexed local repositories
-  via the `mcp_tools_codebase_memory` MCP server. Use for codebase navigation,
-  architecture analysis, symbol tracing, code search, dependency graphs, refactor
-  risk assessment, or "explain this repo / find where X is implemented / trace flow
-  from A to B". Always call MCP tools through the Docker wrapper, never the host
-  binary. Pass absolute paths (never `~`). Default indexing mode is `moderate`;
-  use `full` only for architecture analysis or persistent team bootstrap.
+  via the `mcp_tools_codebase_memory` MCP server. Use for ANY repo-wide task:
+  search, grep, navigation, architecture, symbol trace, dependency graph, refactor
+  risk, "where is X implemented", "who calls Y", "trace flow from A to B", "explain
+  this repo". Triggers EN: "search", "grep", "find in repo", "where is", "who
+  calls", "trace", "navigate", "explain this codebase", "what depends on", "refactor
+  risk". Triggers ES: "busca", "encuentra", "grep en el repo", "dónde está",
+  "quién llama a", "traza", "explica el repo", "navega", "de qué depende".
+  ALWAYS prefer this MCP over native `Grep`/`Read`/`find`/`bash` for repo-scoped
+  operations. Native `Read` is OK only when opening ONE specific file the user
+  already named; native `Grep` is OK only inside a single known file with a fixed
+  path. Any multi-file / repo-wide search MUST go through this MCP. Pass absolute
+  paths (never `~`). Default indexing mode is `moderate`; use `full` only for
+  architecture analysis or persistent team bootstrap.
 ---
 
 # codebase-memory-mcp
@@ -17,8 +24,6 @@ description: >
 Use `mcp_tools_codebase_memory` whenever the user asks about a local codebase, architecture, code navigation, dependencies, flows, symbols, refactors, implementation details, repository structure, or code search.
 
 This MCP provides a persistent code knowledge graph and code search over indexed repositories.
-
-The MCP must be used through Docker. Do not call the host binary directly.
 
 ## Fast path
 
@@ -43,15 +48,9 @@ Do not ask follow-up questions after completing a simple read-only request.
 
 If the project name is already known, use it directly and avoid calling `list_projects` again.
 
-Known indexed project example:
-
-```txt
-home-tutitoos-Desktop-Kena-libraries-library-http
-```
-
 ## Fast architecture mode
 
-For requests like “analyze architecture”, “show architecture”, “explain the architecture”, “analiza la arquitectura”, or “dame la arquitectura”:
+For requests like "analyze architecture", "show architecture", "explain the architecture", "analiza la arquitectura", or "dame la arquitectura":
 
 1. Use only `get_architecture` first.
 2. Do not call `get_code_snippet` unless the user asks for implementation details.
@@ -59,20 +58,6 @@ For requests like “analyze architecture”, “show architecture”, “explai
 4. Do not call `trace_path` unless the user asks for a specific flow from A to B.
 5. Do not fetch full source files for a high-level architecture answer.
 6. Keep the answer compact: summary, main packages, hotspots, boundaries, and risks.
-
-If using CLI fallback, prefer compact output and avoid reading huge artifacts.
-
-Example:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
-```
-
-Bad for simple architecture requests:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_code_snippet '{"project":"PROJECT","qualified_name":"BIG_CLASS"}'
-```
 
 Only use snippets when the user asks for code-level details.
 
@@ -87,7 +72,6 @@ For normal architecture answers:
 - Maximum default answer: around 600-900 words.
 - If more detail is useful, summarize first and offer deeper sections.
 - Do not duplicate the same explanation multiple times.
-- Do not include broken ASCII diagrams.
 - Do not read large artifacts unless strictly necessary.
 
 When using `get_code_snippet`, summarize the relevant lines instead of dumping the whole `source` field.
@@ -102,31 +86,7 @@ The MCP server name is:
 mcp_tools_codebase_memory
 ```
 
-The runtime wrapper is:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker
-```
-
-The Docker project lives at:
-
-```bash
-$HOME/mcp-custom
-```
-
-Persistent data lives at:
-
-```bash
-$HOME/mcp-tools-data/codebase-memory
-```
-
-The wrapper uses a persistent Docker container and executes the MCP through:
-
-```bash
-docker exec -i mcp-tools-codebase-memory codebase-memory-mcp
-```
-
-Do not bypass this wrapper unless debugging the Docker setup.
+The runtime is a host binary at `~/.local/bin/codebase-memory-mcp` (symlinked from `~/.local/share/codebase-memory-mcp/`), installed by `mcp-tools codebase-memory install`. No Docker container is involved. Data lives at `~/.local/share/codebase-memory-mcp/` (upstream default) — mcp-tools does not manage it manually.
 
 ## Transport
 
@@ -146,13 +106,7 @@ mcp__mcp_tools_codebase_memory_get_architecture
 
 Use the MCP tools as exposed by the active client.
 
-If direct MCP tool calling fails because the client does not expose a specific tool, fall back to the Docker CLI:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"PROJECT_NAME"}'
-```
-
-Prefer direct MCP tools when available. Use CLI fallback only when the MCP client wrapper does not expose the tool.
+If direct MCP tool calling fails because the client does not expose a specific tool, the fallback is to inspect the upstream `codebase-memory-mcp --help` output — mcp-tools ships no bespoke CLI wrapper.
 
 ## Available tools
 
@@ -295,37 +249,37 @@ The file should exist and have size greater than zero.
 
 ## Search strategy
 
-For “where is X implemented?”:
+For "where is X implemented?":
 
 1. `search_code`
 2. `search_graph`
 3. `get_code_snippet`
 
-For “explain this architecture”:
+For "explain this architecture":
 
 1. `get_architecture`
 2. `query_graph` only if deeper graph relationships are needed.
 3. `search_graph` only if specific symbols/packages need expansion.
 
-For “trace flow from A to B”:
+For "trace flow from A to B":
 
 1. `search_graph` for both symbols.
 2. `trace_path`.
 3. `get_code_snippet` for relevant nodes only if the user asks for implementation details.
 
-For “what changed?”:
+For "what changed?":
 
 1. `detect_changes`.
 2. `search_code` if needed.
 
-For “show me the relevant code”:
+For "show me the relevant code":
 
 1. `search_code`.
 2. `get_code_snippet`.
 
 ## Error handling
 
-If indexing returns an “already indexing” or similar error:
+If indexing returns an "already indexing" or similar error:
 
 1. Do not launch another indexing job in parallel.
 2. Call `index_status`.
@@ -350,18 +304,10 @@ If indexing fails because the repo is too large:
 If an MCP tool is not exposed by the active client:
 
 1. Do not keep retrying invented internal tool names.
-2. Use CLI fallback once.
+2. Consult the upstream binary's `--help` for CLI equivalents.
 3. Report clearly that CLI fallback was used.
 
 ## Do not do
-
-Do not call the host binary directly:
-
-```bash
-$HOME/.local/opt/codebase-memory-mcp
-```
-
-Do not bypass Docker.
 
 Do not use relative repo paths.
 
@@ -388,70 +334,21 @@ Do not generate long ASCII architecture diagrams unless explicitly requested.
 Use these only for debugging the MCP runtime:
 
 ```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker --version
-$HOME/.local/bin/mcp-tools-codebase-memory-docker --help
-$HOME/.local/bin/mcp-tools-codebase-memory-docker config list
+codebase-memory-mcp --version
+codebase-memory-mcp --help
 ```
 
-Check persistent container:
+Verify install status via mcp-tools:
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep mcp-tools-codebase-memory
+mcp-tools codebase-memory status
 ```
 
-Start container manually:
+Reinstall (idempotent) if the binary is missing or stale:
 
 ```bash
-cd $HOME/mcp-custom
-docker compose up -d mcp_tools_codebase_memory
+mcp-tools codebase-memory install
 ```
-
-Stop container manually:
-
-```bash
-cd $HOME/mcp-custom
-docker compose stop mcp_tools_codebase_memory
-```
-
-## CLI fallback examples
-
-List projects:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli list_projects '{}'
-```
-
-Get architecture:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
-```
-
-Search graph:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli search_graph '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
-```
-
-Search code:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli search_code '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","query":"HttpClient","limit":10}'
-```
-
-Get snippet:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'
-```
-
-Compact snippet metadata with `jq`:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_code_snippet '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http","qualified_name":"QUALIFIED_NAME"}'   | jq 'del(.source, .fp, .sp, .bt)'
-```
-
-Use the `jq` form when the full source is not needed.
 
 ## Example: index library-http
 
@@ -477,15 +374,9 @@ If persistence was enabled, also verify:
 ls -lh /home/tutitoos/Desktop/Kena/libraries/library-http/.codebase-memory/graph.db.zst
 ```
 
-## Example: fast architecture answer for library-http
+## Example: fast architecture answer
 
-Use only:
-
-```bash
-$HOME/.local/bin/mcp-tools-codebase-memory-docker cli get_architecture '{"project":"home-tutitoos-Desktop-Kena-libraries-library-http"}'
-```
-
-Then produce a compact answer with:
+For a compact architecture answer, use only `get_architecture` on the target project and produce:
 
 - overall pattern
 - main packages

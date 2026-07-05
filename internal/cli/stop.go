@@ -8,7 +8,7 @@ import (
 
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Para los 5 contenedores (mantiene volúmenes)",
+	Short: "Para los servicios Docker (mantiene volúmenes)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return docker.Run("stop")
 	},

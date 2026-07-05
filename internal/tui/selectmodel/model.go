@@ -54,7 +54,6 @@ const (
 	phaseChooseModel
 	phaseConfirm
 	phasePulling
-	phaseRestarting
 	phaseDone
 	phaseError
 )
@@ -68,7 +67,7 @@ type Model struct {
 	phase     phase
 	kindIdx   int
 	modelIdx  int
-	kind      string  // "llm" | "embed"
+	kind      string // "llm" | "embed"
 	selected  string
 	err       error
 	spinner   spinner.Model
@@ -126,11 +125,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := config.UpdateEnv(config.EnvMem0File(), updates); err != nil {
 				m.err = err
 				m.phase = phaseError
-			return m, tea.Quit
+				return m, tea.Quit
 			}
-			m.phase = phaseRestarting
-			return m, tea.Batch(m.spinner.Tick, m.runRecreate())
-		case phaseRestarting:
 			m.phase = phaseDone
 			return m, tea.Quit
 		}
@@ -192,19 +188,6 @@ func (m Model) runPull() tea.Cmd {
 	sel := m.selected
 	return func() tea.Msg {
 		err := exec.Command("docker", "exec", "mcp-tools-ollama", "ollama", "pull", sel).Run()
-		return cmdDoneMsg{err: err}
-	}
-}
-
-func (m Model) runRecreate() tea.Cmd {
-	return func() tea.Msg {
-		cmd := exec.Command("docker", "compose",
-			"-f", "dockers/compose.yaml",
-			"--env-file", ".env",
-			"up", "-d", "--force-recreate", "mcp_tools_mem0",
-		)
-		cmd.Dir = config.RepoRoot()
-		err := cmd.Run()
 		return cmdDoneMsg{err: err}
 	}
 }
@@ -276,14 +259,10 @@ func (m Model) View() string {
 			think = "  + MEM0_OLLAMA_THINK=false"
 		}
 		fmt.Fprintf(&b, "   · escribir %s=%s en .env.mem0%s\n", m.envVar(), m.selected, think)
-		b.WriteString("   $ docker compose -f dockers/compose.yaml --env-file .env up -d --force-recreate mcp_tools_mem0\n")
 		b.WriteString("\nConfirmar (" + theme.CyanBold.Render("y") + "/" + theme.Dim.Render("N") + "): ")
 
 	case phasePulling:
 		fmt.Fprintf(&b, "%s Descargando %s (puede tardar según tamaño)...\n", m.spinner.View(), m.selected)
-
-	case phaseRestarting:
-		fmt.Fprintf(&b, "%s Recreando mcp-tools-mem0 con el env nuevo...\n", m.spinner.View())
 
 	case phaseDone:
 		fmt.Fprintf(&b, "%s  %s=%s\n", theme.ChipGreen.Render(" OK "), m.envVar(), m.selected)

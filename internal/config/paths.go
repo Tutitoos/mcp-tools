@@ -49,9 +49,3 @@ func ComposeFile() string { return filepath.Join(RepoRoot(), "dockers/compose.ya
 
 // WrapperDir returns $HOME/.local/bin.
 func WrapperDir() string { return filepath.Join(homeDir(), ".local/bin") }
-
-// WrapperPath returns the absolute path to the wrapper for the given MCP name.
-// e.g. WrapperPath("mem0") -> $HOME/.local/bin/mcp-tools-mem0-docker
-func WrapperPath(name string) string {
-	return filepath.Join(WrapperDir(), "mcp-tools-"+name+"-docker")
-}

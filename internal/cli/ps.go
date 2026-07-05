@@ -8,7 +8,7 @@ import (
 
 var psCmd = &cobra.Command{
 	Use:   "ps",
-	Short: "Estado de los 5 contenedores",
+	Short: "Estado de los servicios Docker (ollama, qdrant)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return docker.Run("ps")
 	},

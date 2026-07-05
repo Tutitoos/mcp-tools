@@ -4,18 +4,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
 // ConfigureOpenCode merges the ServerSpec list into ~/.config/opencode/opencode.json
 // under `.mcp`. Preserves every other key. SKIP silently if the parent dir is missing
 // (OpenCode not installed).
-func ConfigureOpenCode(log func(string)) error {
+func ConfigureOpenCode(st state.State, log func(string)) error {
 	home, _ := os.UserHomeDir()
 	file := filepath.Join(home, ".config/opencode/opencode.json")
 	parent := filepath.Dir(file)
 	if _, err := os.Stat(parent); err != nil {
 		if os.IsNotExist(err) {
-			log(fmt.Sprintf("SKIP OpenCode (%s missing — OpenCode not installed?)", parent))
+			log(fmt.Sprintf("  SKIP OpenCode (%s missing — OpenCode not installed?)", parent))
 			return nil
 		}
 		return err
@@ -38,7 +41,9 @@ func ConfigureOpenCode(log func(string)) error {
 		mcpSection = map[string]any{}
 	}
 
-	for _, s := range Servers() {
+	wanted := map[string]bool{}
+	for _, s := range Servers(st) {
+		wanted[s.Name] = true
 		cmdList := append([]any{s.Wrapper}, argsToAny(s.Args)...)
 		mcpSection[s.Name] = map[string]any{
 			"type":        "local",
@@ -47,12 +52,18 @@ func ConfigureOpenCode(log func(string)) error {
 			"environment": map[string]any{"HOME": home},
 		}
 	}
+	for k := range mcpSection {
+		if strings.HasPrefix(k, "mcp_tools_") && !wanted[k] {
+			delete(mcpSection, k)
+			log(fmt.Sprintf("  prune OpenCode %s (obsolete)", k))
+		}
+	}
 	cfg["mcp"] = mcpSection
 
 	if err := WriteJSON(file, cfg); err != nil {
 		return err
 	}
-	log(fmt.Sprintf("OK OpenCode %s", file))
+	log(fmt.Sprintf("  OK OpenCode %s", file))
 	return nil
 }
 

@@ -1,7 +1,6 @@
 # mcp-tools
 
-Stack de MCP servers self-hosted en Docker para Claude Code, OpenCode y OMP.
-Incluye memoria persistente (mem0), grafo de código (codebase-memory) y compresión de contexto (headroom), más Ollama y Qdrant compartidos.
+Instalador declarativo de MCPs, herramientas host y servicios Docker para Claude Code, OpenCode y OMP. La selección de componentes vive en un multi-select TUI y se persiste en `~/mcp-tools-data/state.json` para que `install` / `update` / `configure` / `uninstall` operen sobre el mismo conjunto.
 
 ## Instalación
 
@@ -13,61 +12,91 @@ cd ~/mcp-tools
 mcp-tools install
 ```
 
-El primer comando descarga el binario `mcp-tools` a `~/.local/bin/` (detecta OS/arch, resuelve la latest release). El tercero lanza el TUI 11-pasos: prereq → `.env` (+ `.env.mem0`) → clon de mem0-mcp-selfhosted → build → wrappers → skills → RULES → registro MCP en Claude/OpenCode/OMP → arranque de contenedores → descarga de modelos ollama (LLM + embed) → smoke test.
+`mcp-tools install` corre `env` (genera `.env` + `.env.mem0` + directorios de datos), abre un multi-select TUI con la lista de componentes disponibles y — al confirmar — instala cada tool en orden topológico. La selección se guarda en `state.json`; próximas ejecuciones sin flags reusan el mismo set. Añade `--dry` para preview, `--noselect` para reusar el state sin abrir el TUI, o `--reconfigure` para forzar el TUI.
 
-Idempotente. Añade `--dry` a `mcp-tools install` para preview sin ejecutar nada. Alternativas para el binario:
+Alternativas para bajar el binario:
 
 - `MCP_TOOLS_VERSION=v0.1.0 curl -fsSL https://raw.githubusercontent.com/Tutitoos/mcp-tools/main/install.sh | bash` fija una versión concreta.
 - `MCP_TOOLS_BIN=/usr/local/bin` instala en otro dir (requiere permisos).
-- `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@latest` desde source (requiere Go 1.22+).
+- `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@latest` desde source (Go 1.24+).
 
 ### Requisitos
 
 - Docker + `docker compose` v2.
-- `~/.local/bin` en `$PATH` (donde vive el binario y los wrappers).
-- Para `mcp_tools_mem0`: el installer clona `elvismdev/mem0-mcp-selfhosted` en `~/mcp-tools-data/mem0/src` automáticamente en el paso `mem0-src`. Necesitas `git` en PATH.
+- `~/.local/bin` en `$PATH` (donde vive el binario y `mem0-launcher`).
+- `git` en PATH (para `update --self`).
+- Nvidia GPU + driver instalado si vas a marcar `nvidia-toolkit` (opcional). En hosts sin GPU la fila no aparece en el TUI.
 
-## Servicios
+## Componentes gestionados
 
-| Servicio | Puerto | Propósito |
-| --- | --- | --- |
-| `mcp_tools_codebase_memory` | — | Grafo de código y búsqueda semántica sobre repos locales. |
-| `mcp_tools_mem0` | — | Memoria persistente self-hosted (mem0-mcp-selfhosted). |
-| `mcp_tools_ollama` | `127.0.0.1:11434` | Ollama compartido (LLM + embeddings) para mem0 y futuros MCPs. |
-| `mcp_tools_mem0_qdrant` | `127.0.0.1:6333` | Vector store de mem0 (qdrant v1.12.0). |
-| `mcp_tools_headroom` | — | Compresión de texto/logs para reducir tokens. |
+Nueve componentes vienen preconfigurados en el registry:
 
-Los 3 primeros exponen tools MCP vía wrappers stdio en `~/.local/bin`; ollama y qdrant son infra compartida (HTTP en loopback).
+| Componente | Deploy | Registrado por | Instalador |
+| --- | --- | --- | --- |
+| codebase-memory-mcp | Host | `mcp-config` | `mcp-tools install` (o `mcp-tools codebase-memory install`) |
+| mem0-mcp-selfhosted | Host | `mcp-config` | `mcp-tools install` (requiere qdrant + ollama) |
+| headroom | Host | `mcp-config` | `mcp-tools install` |
+| rtk | Host (hook shell) | — (hook shell) | `mcp-tools install` |
+| claude-mem | Host | Se auto-registra (Claude Code) | `mcp-tools install` (opt-in; Node ≥ 20) |
+| codegraph | Host | Se auto-registra (8 IDEs) | `mcp-tools install` (opt-in) |
+| ollama | Docker (+ GPU opcional) | — (infra) | `mcp-tools install` |
+| qdrant | Docker | — (infra) | `mcp-tools install` |
+| nvidia-container-toolkit | Sudo | — (infra) | `mcp-tools install` (sólo si hay GPU) |
+
+`ollama` y `qdrant` se exponen por defecto en todas las interfaces del host (`MCP_TOOLS_BIND=0.0.0.0`). Cambia el valor a `127.0.0.1` en `.env` para bindear sólo a loopback. Ninguno tiene autenticación por default — el user es responsable de firewall y segmentación.
+
+Si el host tiene GPU NVIDIA **y** marcas `nvidia-toolkit` en el TUI, `mcp-tools up` incluye `dockers/ollama-gpu-overlay.yml` para pasarle la GPU al contenedor de ollama. En cualquier otro caso ollama corre en CPU.
 
 ## Uso desde tu cliente MCP
 
-El installer registra los servers automáticamente en Claude Code, OpenCode y OMP. Reinicia el cliente y aparecerán en `/mcp list`.
+`mcp-tools install` registra los servers seleccionados en Claude Code, OpenCode y OMP. Reinicia el cliente para que aparezcan en `/mcp list`.
 
-- **Verificar Claude Code**: `claude mcp list` — debe listar los 3 como `✔ Connected`.
-- **Otro cliente MCP** (Codex, Cursor, etc.): añade este bloque a la config del cliente (ajusta `<USUARIO>`):
+- **Verificar Claude Code**: `claude mcp list` — debe listar los servers como `✔ Connected`.
+- **Otro cliente MCP** (Codex, Cursor, etc.): añade este bloque a la config del cliente (ajusta `<USUARIO>` y quita las entradas de tools no seleccionados):
   ```json
   {
     "mcp_tools_codebase_memory": {
       "type": "stdio",
-      "command": "/home/<USUARIO>/.local/bin/mcp-tools-codebase-memory-docker",
+      "command": "codebase-memory-mcp",
       "args": ["--ui=false"]
     },
     "mcp_tools_mem0": {
       "type": "stdio",
-      "command": "/home/<USUARIO>/.local/bin/mcp-tools-mem0-docker"
+      "command": "/home/<USUARIO>/.local/bin/mem0-launcher"
     },
     "mcp_tools_headroom": {
       "type": "stdio",
-      "command": "/home/<USUARIO>/.local/bin/mcp-tools-headroom-docker"
+      "command": "headroom",
+      "args": ["mcp", "serve"]
     }
   }
   ```
 
+`rtk`, `claude-mem` y `codegraph` **no** son MCP registrables desde `mcp-config`: rtk es un hook shell, `claude-mem` y `codegraph` se auto-registran ellos mismos en los IDEs correspondientes.
+
 ## Configuración
 
-- `.env` (root del repo, generado por `mcp-tools env`): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MEM0_SRC_PATH`, `MEM0_USER_ID`, tags de imagen.
+- `.env` (root del repo, generado por `mcp-tools env`): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MCP_TOOLS_BIND`, `MEM0_USER_ID`. 7 vars en total.
 - `.env.mem0` (root del repo, autogenerado por `mcp-tools env` con defaults; se conserva si ya existe para respetar cambios de `mcp-tools select-model`).
-- Datos persistentes: todo bajo `~/mcp-tools-data/{codebase-memory,mem0,headroom,ollama}/` — por convención rígida.
+- Datos persistentes: todo bajo `~/mcp-tools-data/{mem0,ollama}/` — por convención rígida. RTK, headroom, codebase-memory, claude-mem, codegraph viven en `~/.cargo/bin` o `~/.local/bin` / `~/.local/share`.
+
+### Estado persistente
+
+`~/mcp-tools-data/state.json` (schema v1):
+
+```json
+{
+  "version": 1,
+  "selected": ["qdrant", "ollama", "codebase-memory", "mem0", "headroom", "rtk"],
+  "versions": {
+    "codebase-memory": "codebase-memory-mcp 0.5.0",
+    "mem0": "mem0-mcp-selfhosted 0.2.1"
+  },
+  "updated_at": "2026-07-05T20:00:00Z"
+}
+```
+
+`selected` está topo-ordenado (deps primero). `versions` se actualiza tras cada `install` / `update`.
 
 ### `.env.mem0`
 
@@ -83,9 +112,11 @@ MEM0_ENABLE_GRAPH=false
 MEM0_HISTORY_DB_PATH=/data/history/history.db
 ```
 
-`MEM0_USER_ID` vive en `.env` no aquí. `MEM0_COLLECTION` se aísla por usuario para permitir varios devs en la misma qdrant.
+`MEM0_USER_ID` vive en `.env` no aquí. `MEM0_COLLECTION` se aísla por usuario para permitir varios devs en la misma qdrant. `mem0-launcher` sourcea `.env.mem0` en cada llamada, así que editarlo tiene efecto sin reinicios.
 
 ## Cambiar el modelo LLM de mem0
+
+`mcp-tools select-model` es un TUI **single-select** que edita `.env.mem0` (LLM o embed) y hace `ollama pull` del tag elegido. `mcp-tools models` es un TUI **multi-select** que gestiona el catálogo de modelos Ollama (pull + rm) sin tocar `.env.mem0`. Verbos ortogonales.
 
 mem0 usa el LLM para extraer memorias (function-calling). El LLM DEBE tener tag `tools` en https://ollama.com/library. `.env.mem0` trae `qwen2.5:7b` por defecto.
 
@@ -102,30 +133,15 @@ mem0 usa el LLM para extraer memorias (function-calling). El LLM DEBE tener tag 
 | `granite3.1-moe:3b` | 3B (MoE) | IBM mixture-of-experts, punchea por encima. |
 | `smollm2:1.7b` | 1.7B | Mínimo viable, solo para probar. |
 
-Embeddings (`MEM0_EMBED_MODEL`), tag `embedding` en el catálogo. La dimensión debe coincidir con `MEM0_EMBED_DIMS` y con la colección qdrant existente:
+Embeddings (`MEM0_EMBED_MODEL`), tag `embedding` en el catálogo:
 
 | Tag Ollama | Notas |
 | --- | --- |
 | `bge-m3` | **Default**. Multilingüe (100+ idiomas), 1024 dims. |
 | `mxbai-embed-large` | mixedbread.ai. Verificar dim con `ollama show`. |
-| `snowflake-arctic-embed` | Familia Snowflake, varias variantes por tamaño. |
-| `nomic-embed-text` | Contexto largo. Verificar dim antes de fijar `MEM0_EMBED_DIMS`. |
+| `snowflake-arctic-embed` | Familia Snowflake, varias variantes. |
+| `nomic-embed-text` | Contexto largo. Verificar dim. |
 | `all-minilm` | Mínimo (22m/33m params). Solo pruebas. |
-
-Cambio interactivo con selector (recomendado):
-
-```bash
-mcp-tools select-model
-```
-
-Elige LLM o Embed → selecciona modelo → confirma. Hace `ollama pull`, edita `.env.mem0` (incluye `MEM0_OLLAMA_THINK=false` automáticamente si eliges qwen3/deepseek-r1), y recrea `mcp-tools-mem0`.
-
-Cambio manual:
-
-1. `mcp-tools pull <tag>`.
-2. Editar `.env.mem0`: `MEM0_LLM_MODEL=<tag>` (o `MEM0_EMBED_MODEL=<tag>`).
-3. Si cambia dimensión de embeddings: cambiar `MEM0_COLLECTION` a nombre nuevo, o `curl -X DELETE http://127.0.0.1:6333/collections/<nombre>`.
-4. `mcp-tools restart mcp_tools_mem0`.
 
 Modelos qwen3/deepseek-r1 requieren `MEM0_OLLAMA_THINK=false` (default) para evitar colisión `<think>` + `format:"json"`.
 
@@ -133,44 +149,43 @@ Modelos qwen3/deepseek-r1 requieren `MEM0_OLLAMA_THINK=false` (default) para evi
 
 | Comando | Qué hace |
 | --- | --- |
-| `mcp-tools install [--dry]` | Instalador TUI end-to-end. Idempotente. |
-| `mcp-tools up` | Levanta los 5 contenedores. |
-| `mcp-tools stop` | Para los 5 contenedores (mantiene volúmenes). |
-| `mcp-tools build` | Reconstruye las imágenes locales tras editar Dockerfiles. |
-| `mcp-tools env` | (Re)genera `.env` si no existe. Idempotente. |
-| `mcp-tools select-model` | Selector TUI para cambiar `MEM0_LLM_MODEL` / `MEM0_EMBED_MODEL`, hacer `ollama pull` y recrear mem0. |
-| `mcp-tools mcp-config` | Re-registra los servers en Claude/OpenCode/OMP. |
-| `mcp-tools skills` | Symlinks de skills a los 3 clientes. |
-| `mcp-tools rules` | Instala `RULES.md` en los 3 clientes. |
-| `mcp-tools ps` | Estado de los 5 contenedores. |
-| `mcp-tools logs <svc> [--follow]` | Muestra logs de un servicio. |
-| `mcp-tools restart <svc>` | Recrea un servicio releyendo `.env` / `.env.mem0`. |
-| `mcp-tools pull <tag>` | Descarga un modelo Ollama. |
+| `mcp-tools install [--dry] [--reconfigure] [--noselect]` | Multi-select + instala componentes. |
+| `mcp-tools configure [--dry]` | Reabre el TUI y aplica el diff (uninstall dependents + install nuevos). |
+| `mcp-tools update [--self] [--tools] [--dry]` | Actualiza mcp-tools (git pull + make install) y/o los componentes. |
+| `mcp-tools uninstall <tool> [--dry] [--force]` | Quita un componente respetando reverse-deps. |
+| `mcp-tools status [--table]` | Estado de todos los componentes (JSON por default). |
+| `mcp-tools <tool> install/upgrade/status/uninstall` | Control per-tool granular. |
+| `mcp-tools models [list/pull/rm]` | Multi-select TUI de modelos Ollama (o CLI no-interactiva). |
+| `mcp-tools select-model` | Selector TUI de `MEM0_LLM_MODEL` / `MEM0_EMBED_MODEL`. |
+| `mcp-tools up` / `stop` / `ps` / `logs <svc>` / `restart <svc>` | Docker lifecycle (ollama + qdrant). |
+| `mcp-tools env [--force]` | (Re)genera `.env`. |
+| `mcp-tools mcp-config` | Re-registra en Claude/OpenCode/OMP según el state actual. |
+| `mcp-tools skills` / `rules` | Symlinks de skills y RULES a los 3 clientes. |
+| `mcp-tools pull <tag>` | Alias corto de `models pull`. |
 
-Para configuración avanzada por servicio, migraciones desde el layout previo o cómo añadir un servicio nuevo, ver [docs/ADVANCED.md](docs/ADVANCED.md).
+Para configuración avanzada por componente y la migración desde el pipeline viejo, ver [docs/ADVANCED.md](docs/ADVANCED.md).
 
 ## Estructura del repo
 
 ```
 mcp-tools/
-├── cmd/mcp-tools/         # entry point del binario Go
+├── cmd/mcp-tools/          # entry point del binario Go
 ├── internal/
-│   ├── cli/               # subcomandos cobra
-│   ├── config/            # .env / paths
-│   ├── docker/            # wrapper de docker compose
-│   ├── mcp/               # registro en Claude/OpenCode/OMP
-│   ├── tui/               # bubbletea TUIs (installer + select-model)
+│   ├── cli/                # subcomandos cobra (install, configure, update, uninstall, status, models, per-tool, docker lifecycle)
+│   ├── config/             # .env / paths
+│   ├── docker/             # wrapper de docker compose (con overlays)
+│   ├── mcp/                # registro en Claude/OpenCode/OMP
+│   ├── state/              # $MCP_TOOLS_DATA/state.json
+│   ├── tools/              # registry + Install/Upgrade/Uninstall/Status por tool
+│   ├── tui/                # bubbletea (installer progress, toolselect, modelselect, selectmodel)
 │   └── version/
 ├── dockers/
 │   ├── compose.yaml
-│   └── mem0-compose.yml
-├── mcps/
-│   ├── codebase-memory/Dockerfile
-│   ├── mem0/Dockerfile
-│   └── headroom/Dockerfile
-├── scripts/wrappers/      # mcp-tools-*-docker (los invoca el cliente MCP)
-├── skills/                # SKILL.md para clientes MCP
-├── RULES.md               # Reglas globales para clientes MCP
+│   ├── qdrant-compose.yml
+│   └── ollama-gpu-overlay.yml
+├── scripts/wrappers/       # mem0-launcher
+├── skills/                 # SKILL.md para clientes MCP
+├── RULES.md                # Reglas globales para clientes MCP
 ├── docs/ADVANCED.md
 ├── go.mod · Makefile · .goreleaser.yaml
 ├── .env.example
@@ -180,7 +195,8 @@ mcp-tools/
 ## Troubleshooting
 
 - **`missing .env`** en un wrapper → `mcp-tools env`.
-- **`MEM0_SRC_PATH does not exist`** → el paso `mem0-src` clona automáticamente; si falla, comprueba que `git` está en PATH y la red permite acceso a github.com.
+- **`mcp_tools_mem0` no arranca** → `ls ~/.local/bin/mem0-launcher` y `mem0-mcp-selfhosted --version`; si falta uno, `mcp-tools mem0 install`.
 - **`Failed to connect to url`** en el cliente MCP tras `/mcp list` → revisa configs residuales en `~/.claude/plugins/marketplaces/`, `~/.codex/config.toml`, o entradas viejas sin prefijo `mcp_tools_` en el cliente.
-- **`mcp_tools_mem0` no conecta con Ollama/Qdrant** → `mcp-tools ps` para ver estado; qdrant debe estar `Up (healthy)`.
-- **Rebuild tras cambiar Dockerfile** → `mcp-tools build && mcp-tools restart <servicio>`.
+- **Ollama sin GPU aunque tengo `nvidia-toolkit` seleccionado** → verifica que `nvidia-smi -L` pasa, luego `mcp-tools restart mcp_tools_ollama`.
+- **`state.json` corrupto** → bórralo y corre `mcp-tools install` (te abrirá el TUI de cero).
+- **`compose up` falla con `MCP_TOOLS_BIND: variable is not set`** → corre `mcp-tools env` para regenerar `.env` con la key.

@@ -46,33 +46,31 @@ func RunEnv(dry, force bool, out io.Writer) error {
 	}
 
 	contents := map[string]string{
-		"HOST_HOME":                       home,
-		"HOST_UID":                        fmt.Sprintf("%d", syscall.Getuid()),
-		"HOST_GID":                        fmt.Sprintf("%d", syscall.Getgid()),
-		"MCP_TOOLS_ROOT":                  repoDir,
-		"MCP_TOOLS_DATA":                  dataDir,
-		"MCP_TOOLS_CODEBASE_MEMORY_IMAGE": "mcp-tools/codebase-memory:latest",
-		"MCP_TOOLS_MEM0_IMAGE":            "mcp-tools/mem0:latest",
-		"MCP_TOOLS_HEADROOM_IMAGE":        "mcp-tools/headroom:latest",
-		"MEM0_SRC_PATH":                   filepath.Join(dataDir, "mem0/src"),
-		"MEM0_USER_ID":                    u.Username,
+		"HOST_HOME":      home,
+		"HOST_UID":       fmt.Sprintf("%d", syscall.Getuid()),
+		"HOST_GID":       fmt.Sprintf("%d", syscall.Getgid()),
+		"MCP_TOOLS_ROOT": repoDir,
+		"MCP_TOOLS_DATA": dataDir,
+		"MCP_TOOLS_BIND": "0.0.0.0",
+		"MEM0_USER_ID":   u.Username,
 	}
+	fmt.Fprintln(out, "── env")
 
 	// .env write (idempotent)
 	if _, err := os.Stat(envPath); err == nil && !force {
 		if dry {
-			fmt.Fprintf(out, "OK: %s ya existe, se conserva (dry)\n", envPath)
+			fmt.Fprintf(out, "  OK %s ya existe, se conserva (dry)\n", envPath)
 		} else {
-			fmt.Fprintf(out, "OK: %s ya existe, se conserva\n", envPath)
+			fmt.Fprintf(out, "  OK %s ya existe, se conserva\n", envPath)
 		}
 	} else {
 		if dry {
-			fmt.Fprintf(out, "OK: escribiría %s con 10 variables (dry)\n", envPath)
+			fmt.Fprintf(out, "  OK escribiría %s con 7 variables (dry)\n", envPath)
 		} else {
 			if err := config.WriteEnv(envPath, contents); err != nil {
 				return fmt.Errorf("escribir .env: %w", err)
 			}
-			fmt.Fprintf(out, "OK: generado %s\n", envPath)
+			fmt.Fprintf(out, "  OK generado %s\n", envPath)
 		}
 	}
 
@@ -80,9 +78,9 @@ func RunEnv(dry, force bool, out io.Writer) error {
 	mem0EnvPath := filepath.Join(repoDir, ".env.mem0")
 	if _, err := os.Stat(mem0EnvPath); err == nil && !force {
 		if dry {
-			fmt.Fprintf(out, "OK: %s ya existe, se conserva (dry)\n", mem0EnvPath)
+			fmt.Fprintf(out, "  OK %s ya existe, se conserva (dry)\n", mem0EnvPath)
 		} else {
-			fmt.Fprintf(out, "OK: %s ya existe, se conserva\n", mem0EnvPath)
+			fmt.Fprintf(out, "  OK %s ya existe, se conserva\n", mem0EnvPath)
 		}
 	} else {
 		mem0EnvBody := fmt.Sprintf(`MEM0_PROVIDER=ollama
@@ -100,25 +98,20 @@ MEM0_HISTORY_DB_PATH=/data/history/history.db
 MEM0_OLLAMA_THINK=false
 `, u.Username)
 		if dry {
-			fmt.Fprintf(out, "OK: escribiría %s con defaults (dry)\n", mem0EnvPath)
+			fmt.Fprintf(out, "  OK escribiría %s con defaults (dry)\n", mem0EnvPath)
 		} else {
 			if err := os.WriteFile(mem0EnvPath, []byte(mem0EnvBody), 0o644); err != nil {
 				return fmt.Errorf("escribir .env.mem0: %w", err)
 			}
-			fmt.Fprintf(out, "OK: generado %s\n", mem0EnvPath)
+			fmt.Fprintf(out, "  OK generado %s\n", mem0EnvPath)
 		}
 	}
 
 	// mkdirs (always; -p is idempotent)
 	dirs := []string{
-		filepath.Join(dataDir, "codebase-memory/cache"),
-		filepath.Join(dataDir, "codebase-memory/config"),
 		filepath.Join(dataDir, "mem0/history"),
 		filepath.Join(dataDir, "mem0/uv-cache"),
 		filepath.Join(dataDir, "mem0/config"),
-		filepath.Join(dataDir, "headroom/cache"),
-		filepath.Join(dataDir, "headroom/config"),
-		filepath.Join(dataDir, "headroom/share"),
 		filepath.Join(dataDir, "ollama"),
 	}
 	for _, d := range dirs {
@@ -131,9 +124,9 @@ MEM0_OLLAMA_THINK=false
 	}
 
 	if dry {
-		fmt.Fprintf(out, "OK: data en %s (dry — no se crean directorios)\n", dataDir)
+		fmt.Fprintf(out, "  OK data en %s (dry — no se crean directorios)\n", dataDir)
 	} else {
-		fmt.Fprintf(out, "OK: data en %s\n", dataDir)
+		fmt.Fprintf(out, "  OK data en %s\n", dataDir)
 	}
 	return nil
 }

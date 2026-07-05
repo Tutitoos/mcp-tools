@@ -5,18 +5,41 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
+
+	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
 // ConfigureClaude registers each ServerSpec in Claude Code via `claude mcp add-json`.
 // SKIP silently if the `claude` CLI is not on PATH.
-func ConfigureClaude(log func(string)) error {
+func ConfigureClaude(st state.State, log func(string)) error {
 	if _, err := exec.LookPath("claude"); err != nil {
-		log("SKIP Claude Code (claude CLI not found)")
+		log("  SKIP Claude Code (claude CLI not found)")
 		return nil
 	}
 	home, _ := os.UserHomeDir()
 
-	for _, s := range Servers() {
+	wanted := map[string]bool{}
+	for _, s := range Servers(st) {
+		wanted[s.Name] = true
+	}
+
+	// Prune obsolete mcp_tools_* entries the user still has registered.
+	if listOut, err := exec.Command("claude", "mcp", "list").Output(); err == nil {
+		for _, line := range strings.Split(string(listOut), "\n") {
+			name, _, ok := strings.Cut(line, ":")
+			name = strings.TrimSpace(name)
+			if !ok || !strings.HasPrefix(name, "mcp_tools_") || wanted[name] {
+				continue
+			}
+			rm := exec.Command("claude", "mcp", "remove", "--scope", "user", name)
+			if err := rm.Run(); err == nil {
+				log(fmt.Sprintf("  prune Claude %s (obsolete)", name))
+			}
+		}
+	}
+
+	for _, s := range Servers(st) {
 		// remove is idempotent; ignore exit code (server may not exist yet)
 		removeCmd := exec.Command("claude", "mcp", "remove", "--scope", "user", s.Name)
 		removeCmd.Stdout = nil
@@ -40,6 +63,6 @@ func ConfigureClaude(log func(string)) error {
 		}
 	}
 
-	log(fmt.Sprintf("OK Claude Code (%d servers via claude mcp add-json --scope user)", len(Servers())))
+	log(fmt.Sprintf("  OK Claude Code (%d servers)", len(Servers(st))))
 	return nil
 }

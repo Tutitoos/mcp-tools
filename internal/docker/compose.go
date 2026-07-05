@@ -12,11 +12,20 @@ import (
 // Compose builds an exec.Cmd for `docker compose -f dockers/compose.yaml --env-file .env <args...>`.
 // stdout/stderr are wired to the caller's terminal unless the caller overrides them.
 func Compose(args ...string) *exec.Cmd {
-	full := append([]string{
-		"compose",
-		"-f", "dockers/compose.yaml",
-		"--env-file", ".env",
-	}, args...)
+	return ComposeWithFiles([]string{"dockers/compose.yaml"}, args...)
+}
+
+// ComposeWithFiles is like Compose but lets the caller specify the compose
+// files (relative to RepoRoot). Used by callers that need overlays (e.g.
+// dockers/ollama-gpu-overlay.yml).
+func ComposeWithFiles(files []string, args ...string) *exec.Cmd {
+	full := make([]string, 0, len(args)+2*len(files)+3)
+	full = append(full, "compose")
+	for _, f := range files {
+		full = append(full, "-f", f)
+	}
+	full = append(full, "--env-file", ".env")
+	full = append(full, args...)
 	cmd := exec.Command("docker", full...)
 	cmd.Dir = config.RepoRoot()
 	cmd.Env = os.Environ()
@@ -27,6 +36,11 @@ func Compose(args ...string) *exec.Cmd {
 
 // Run executes `docker compose ... <args>` and returns any error.
 func Run(args ...string) error { return Compose(args...).Run() }
+
+// RunWithFiles runs `docker compose -f <files...> --env-file .env <args>`.
+func RunWithFiles(files []string, args ...string) error {
+	return ComposeWithFiles(files, args...).Run()
+}
 
 // Output captures stdout of `docker compose ... <args>`.
 func Output(args ...string) ([]byte, error) {

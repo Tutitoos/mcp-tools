@@ -1,68 +1,23 @@
 # mcp-tools agent instructions
 
-This repository contains custom Dockerized MCP servers and operational skills.
+This repository contains an installer + registry for MCP servers and operational skills.
 
 Before working with local code repositories, read:
 
 - `skills/codebase-memory/SKILL.md`
+- `skills/mem0/SKILL.md`
 
 Use `mcp_tools_codebase_memory` for codebase navigation, indexing, architecture analysis, code search, symbol tracing, and repository understanding.
 
+Use `mcp_tools_mem0` for persistent cross-session memory (facts, preferences, decisions). Always call `search_memories` before `add_memory` to avoid duplicates.
+
 Important rules:
 
-- Always use the Docker wrapper.
-- Do not call the host `codebase-memory-mcp` binary directly.
-- The active wrapper is `$HOME/.local/bin/mcp-tools-codebase-memory-docker`.
-- The MCP runtime uses Docker exec into the persistent container `mcp-tools-codebase-memory`.
-- Persistent data lives under `$HOME/mcp-tools-data/codebase-memory`.
-
-## Headroom MCP hard rule
-
-When the user asks to use Headroom, compress text, compress logs, reduce context, save tokens, retrieve compressed content, or inspect Headroom stats, use the MCP tools directly:
-
-- `headroom_compress`
-- `headroom_retrieve`
-- `headroom_stats`
-
-Do not use shell commands, Docker commands, the host `headroom` binary, Python imports, package internals, or synthetic expanded test cases for normal Headroom tasks.
-
-Forbidden unless explicitly debugging MCP setup:
-- `which headroom`
-- `headroom --help`
-- `docker exec ... headroom`
-- `docker exec ... python`
-- `python -c "from headroom import ..."`
-- reading Headroom source files
-
-If the MCP tools are missing, ask the user to run `/mcp list` and `/mcp test mcp_tools_headroom`. Do not invent a CLI fallback.
-
-For compression requests, pass the exact user-provided content to `headroom_compress`. Do not expand, replicate, or modify the input unless the user asks.
-
-## Headroom OMP tool names
-
-In OMP, the Headroom MCP server exposes tools with namespaced callable names:
-
-- `mcp__mcp_tools_headroom_compress`
-- `mcp__mcp_tools_headroom_retrieve`
-- `mcp__mcp_tools_headroom_stats`
-
-Do not look for bare `headroom_compress` in the model tool inventory. `/mcp test mcp_tools_headroom` shows bare server tool names, but OMP injects callable tools as `mcp__<server>_<tool>`.
-
-For Headroom compression requests, call `mcp__mcp_tools_headroom_compress` with the exact user-provided content.
-
-## OMP MCP tool discovery rule
-
-OMP may expose MCP tools behind `search_tool_bm25` instead of loading every MCP tool directly.
-
-When the user asks for a Headroom task and the callable Headroom tools are not directly visible, first use tool discovery with a query like:
-
-- `headroom compress text logs reduce tokens`
-- `headroom retrieve compressed content hash`
-- `headroom stats compression savings`
-
-After discovery activates the Headroom tools, call the matching Headroom MCP tool.
-
-Do not claim Headroom is unavailable just because the MCP tool is not initially visible. First try tool discovery.
+- The MCP servers run as host binaries (not Docker). `codebase-memory-mcp` lives at `~/.local/bin/codebase-memory-mcp`; `mem0-mcp-selfhosted` runs behind the `~/.local/bin/mem0-launcher` wrapper (sourcea `.env.mem0`).
+- Do not spawn old `mcp-tools-*-docker` wrappers — they were removed. If a client still references them, run `mcp-tools mcp-config` to re-register cleanly.
+- Persistent data lives under `$HOME/mcp-tools-data/` (subdirs per MCP: `mem0`, `ollama`, plus `state.json`).
+- NEVER fall back to native `Grep`/`Read`/`find`/`bash grep` for repo-wide search — that's what `mcp_tools_codebase_memory` is for.
+- NEVER write local `notes.md`/scratchpad files to persist facts across sessions — that's what `mcp_tools_mem0` is for.
 
 ## OMP MCP discovery workflow
 
@@ -73,9 +28,6 @@ When a user asks for a task handled by an MCP server and the corresponding `mcp_
 First use `search_tool_bm25` with a query describing the needed capability.
 
 Examples:
-- Headroom compression: `headroom compress text logs reduce tokens`
-- Headroom retrieve: `headroom retrieve compressed content hash`
-- Headroom stats: `headroom stats compression savings`
 - codebase-memory architecture: `codebase memory architecture repository graph`
 - codebase-memory search: `codebase memory search code symbols`
 - mem0 memory search: `mem0 search memories persistent context`

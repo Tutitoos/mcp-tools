@@ -1,13 +1,11 @@
-// Package installer implements the mcp-tools install TUI (10 phases + --dry).
+// Package installer runs a sequence of Steps with a Bubbletea progress UI.
+// Used by mcp-tools install/configure/update to show per-tool progress with
+// OK/Fail/Pending glyphs and optional dry-run capture.
 package installer
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,7 +13,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/tui/theme"
 )
 
@@ -34,11 +31,11 @@ type DryCmd struct {
 	Cmd     string
 }
 
-// StepFn is what each step implements. Log is used to append dry-run commands (as
-// "$ <cmd>") or to print progress lines.
+// StepFn is what each step implements. `log` appends dry-run commands ("$ …")
+// or progress lines to the model's dry-command capture buffer.
 type StepFn func(dry bool, log func(string)) error
 
-// Step is one item in the installer sequence.
+// Step is one item in the install / configure / update sequence.
 type Step struct {
 	Key   string
 	Label string
@@ -46,12 +43,10 @@ type Step struct {
 	Run   StepFn
 }
 
-// Phases in display order.
-var Phases = []string{"Preparación", "Build", "Instalación", "Arranque"}
-
-// Model is the bubbletea state for the installer.
+// Model is the bubbletea state.
 type Model struct {
 	steps       []Step
+	phases      []string
 	dry         bool
 	states      map[string]Status
 	durations   map[string]time.Duration
@@ -71,11 +66,12 @@ type stepDoneMsg struct {
 	key      string
 	elapsed  time.Duration
 	err      error
-	captured []string // "$ ..." lines emitted by the step (dry-run)
+	captured []string
 }
 
-// New constructs an installer Model wired to the given steps.
-func New(steps []Step, dry bool) Model {
+// New constructs a Model. `phases` is the display order; a Step whose Phase is
+// not listed lands under a synthesised final group.
+func New(steps []Step, phases []string, dry bool) Model {
 	states := map[string]Status{}
 	for _, s := range steps {
 		states[s.Key] = StatusPending
@@ -85,12 +81,12 @@ func New(steps []Step, dry bool) Model {
 	sp.Style = theme.Cyan
 	return Model{
 		steps:     steps,
+		phases:    phases,
 		dry:       dry,
 		states:    states,
 		durations: map[string]time.Duration{},
 		errors:    map[string]string{},
 		spinner:   sp,
-		current:   0,
 		startTime: time.Now(),
 	}
 }
@@ -118,6 +114,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" || msg.String() == "q" {
+			if !m.done {
+				key := "cancel"
+				if m.current < len(m.steps) {
+					key = m.steps[m.current].Key
+					m.states[key] = StatusFail
+				}
+				m.failed = true
+				m.errors[key] = "cancelado por el user (ctrl+c)"
+			}
+			m.done = true
 			return m, tea.Quit
 		}
 		if m.done {
@@ -155,107 +161,77 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	var b strings.Builder
-
-	// Header
-	b.WriteString(theme.Magenta.Render("mcp-tools") + theme.Dim.Render("  installer") + "\n")
-	b.WriteString(theme.Dim.Render("self-hosted MCP servers para Claude Code, OpenCode y OMP") + "\n\n")
-
+	b.WriteString(theme.Magenta.Render("mcp-tools") + theme.Dim.Render("  progress") + "\n\n")
 	if m.dry {
-		b.WriteString(theme.ChipYellow.Render(" DRY RUN ") + theme.Dim.Render("  no se ejecuta nada; solo se muestra qué haría") + "\n\n")
+		b.WriteString(theme.ChipYellow.Render(" DRY RUN ") + "\n\n")
 	}
-
-	// Phases
-	for _, phase := range Phases {
-		stepsInPhase := m.stepsInPhase(phase)
-		if len(stepsInPhase) == 0 {
+	for _, phase := range m.phases {
+		steps := m.stepsInPhase(phase)
+		if len(steps) == 0 {
 			continue
 		}
 		b.WriteString(theme.PhaseAccent.Render(phase) + "\n")
-		for _, s := range stepsInPhase {
-			idx := m.stepIndex(s.Key) + 1
-			st := m.states[s.Key]
-			dt, hasDT := m.durations[s.Key]
-			numStr := fmt.Sprintf("%02d  ", idx)
-			label := padRight(s.Label, 52)
-			var line string
-			switch st {
-			case StatusRunning:
-				line = theme.Dim.Render(numStr) + m.spinner.View() + "  " + label
-			default:
-				glyph := theme.StatusStyle(string(st)).Render(theme.StatusGlyph(string(st))) + "  "
-				labelStr := label
-				if st == StatusFail {
-					labelStr = theme.Red.Render(label)
-				}
-				line = theme.Dim.Render(numStr) + glyph + labelStr
-			}
-			if hasDT {
-				line += theme.Dim.Render(fmt.Sprintf("%.1fs", dt.Seconds()))
-			}
-			b.WriteString(" " + line + "\n")
+		for _, s := range steps {
+			b.WriteString(" " + m.renderStep(s) + "\n")
 		}
 		b.WriteString("\n")
 	}
-
 	if !m.done {
 		return b.String()
 	}
-
-	// Footer
 	if m.failed {
 		b.WriteString(theme.ChipRed.Render(" ERROR ") + theme.Dim.Render(fmt.Sprintf("  tras %.1fs", m.totalMs.Seconds())) + "\n\n")
-		boxWidth := m.width - 2 // leave 1 col margin each side
-		if boxWidth < 40 {
-			boxWidth = 40 // sane minimum
-		}
-		if boxWidth > 120 {
-			boxWidth = 120 // cap so lines wrap on ultra-wide terminals too
-		}
-		errBox := lipgloss.NewStyle().
+		box := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("9")).
 			Padding(0, 1).
 			MarginBottom(1).
-			Width(boxWidth)
+			Width(clampWidth(m.width))
 		for k, v := range m.errors {
 			title := theme.Red.Bold(true).Render("● " + k)
-			b.WriteString(errBox.Render(title+"\n"+strings.TrimSpace(v)) + "\n")
+			b.WriteString(box.Render(title+"\n"+strings.TrimSpace(v)) + "\n")
 		}
-		b.WriteString(theme.Dim.Render("Corrige el error y relanza `mcp-tools install` — es idempotente.") + "\n")
 		return b.String()
 	}
-
 	if m.dry {
-		phaseCount := m.stepsWithCommands()
-		b.WriteString(theme.ChipGreen.Render(" DRY RUN OK ") +
-			theme.Dim.Render(fmt.Sprintf("  %.1fs · %d comandos en %d pasos", m.totalMs.Seconds(), len(m.dryCommands), phaseCount)) + "\n\n")
-		b.WriteString(theme.Dim.Render("Comandos que ejecutaría (sh -c):") + "\n")
+		b.WriteString(theme.ChipGreen.Render(" DRY RUN OK ") + theme.Dim.Render(fmt.Sprintf("  %.1fs · %d comandos", m.totalMs.Seconds(), len(m.dryCommands))) + "\n\n")
 		home, _ := os.UserHomeDir()
 		for _, s := range m.steps {
 			cmds := m.commandsFor(s.Key)
 			if len(cmds) == 0 {
 				continue
 			}
-			idx := m.stepIndex(s.Key) + 1
-			b.WriteString("\n " + theme.CyanBold.Render(fmt.Sprintf("%02d", idx)) + theme.Dim.Render("  ") + s.Label + "\n")
+			b.WriteString(theme.CyanBold.Render(s.Key) + "\n")
 			for _, c := range cmds {
-				b.WriteString(theme.Dim.Render("     $ " + strings.ReplaceAll(c, home, "~")) + "\n")
+				b.WriteString(theme.Dim.Render("  $ "+strings.ReplaceAll(c, home, "~")) + "\n")
 			}
 		}
-		b.WriteString("\n" + theme.Dim.Render("Relanza sin ") + theme.Yellow.Render("--dry") + theme.Dim.Render(" para aplicar.") + "\n")
 		return b.String()
 	}
-
-	// Success
-	b.WriteString(theme.ChipGreen.Render(" INSTALADO ") + theme.Dim.Render(fmt.Sprintf("  %.1fs", m.totalMs.Seconds())) + "\n\n")
-	b.WriteString(theme.Dim.Render("Próximos pasos:") + "\n")
-	b.WriteString("  → Reinicia tu cliente MCP (Claude Code, OpenCode, OMP).\n")
-	b.WriteString("  → Verifica: " + theme.CyanBold.Render("claude mcp list") + " · los 3 servers como ✔ Connected.\n")
-	b.WriteString("  → Config avanzada: " + theme.CyanBold.Render("docs/ADVANCED.md") + "\n")
+	b.WriteString(theme.ChipGreen.Render(" DONE ") + theme.Dim.Render(fmt.Sprintf("  %.1fs", m.totalMs.Seconds())) + "\n")
 	return b.String()
 }
 
-// stepsInPhase returns the ordered slice of steps in the named phase.
+func (m Model) renderStep(s Step) string {
+	st := m.states[s.Key]
+	dt, hasDT := m.durations[s.Key]
+	label := padRight(s.Label, 44)
+	var line string
+	if st == StatusRunning {
+		line = m.spinner.View() + "  " + label
+	} else {
+		glyph := theme.StatusStyle(string(st)).Render(theme.StatusGlyph(string(st)))
+		if st == StatusFail {
+			label = theme.Red.Render(label)
+		}
+		line = glyph + "  " + label
+	}
+	if hasDT {
+		line += theme.Dim.Render(fmt.Sprintf("%.1fs", dt.Seconds()))
+	}
+	return line
+}
+
 func (m Model) stepsInPhase(phase string) []Step {
 	var out []Step
 	for _, s := range m.steps {
@@ -264,15 +240,6 @@ func (m Model) stepsInPhase(phase string) []Step {
 		}
 	}
 	return out
-}
-
-func (m Model) stepIndex(key string) int {
-	for i, s := range m.steps {
-		if s.Key == key {
-			return i
-		}
-	}
-	return -1
 }
 
 func (m Model) commandsFor(key string) []string {
@@ -285,14 +252,6 @@ func (m Model) commandsFor(key string) []string {
 	return out
 }
 
-func (m Model) stepsWithCommands() int {
-	seen := map[string]bool{}
-	for _, c := range m.dryCommands {
-		seen[c.StepKey] = true
-	}
-	return len(seen)
-}
-
 // ExitCode returns the shell exit code to use after the TUI quits.
 func (m Model) ExitCode() int {
 	if m.failed {
@@ -301,52 +260,26 @@ func (m Model) ExitCode() int {
 	return 0
 }
 
-func padRight(s string, width int) string {
-	if len(s) >= width {
+// DryCommands surfaces the captured "$ …" lines so a caller can print them
+// after the TUI has torn down (e.g. for scripting friendliness).
+func (m Model) DryCommands() []DryCmd { return m.dryCommands }
+
+// Errors returns collected step errors keyed by step Key.
+func (m Model) Errors() map[string]string { return m.errors }
+
+func padRight(s string, w int) string {
+	if len(s) >= w {
 		return s
 	}
-	return s + strings.Repeat(" ", width-len(s))
+	return s + strings.Repeat(" ", w-len(s))
 }
 
-// CheckMem0Src validates MEM0_SRC_PATH and clones the mem0-mcp-selfhosted repo if missing.
-func CheckMem0Src(dry bool, log func(string)) error {
-	envPath := config.EnvFile()
-	if _, err := os.Stat(envPath); err != nil {
-		if errors.Is(err, os.ErrNotExist) && dry {
-			log("· skip (.env aún no existe; env step lo creará)")
-			return nil
-		}
-		return fmt.Errorf(".env ausente en %s — el paso 'env' debería haberlo generado", envPath)
+func clampWidth(w int) int {
+	switch {
+	case w < 40:
+		return 40
+	case w > 120:
+		return 120
 	}
-	env, err := config.LoadEnv(envPath)
-	if err != nil {
-		return err
-	}
-	srcPath := env["MEM0_SRC_PATH"]
-	if srcPath == "" {
-		return fmt.Errorf("MEM0_SRC_PATH ausente en .env")
-	}
-	pyproject := filepath.Join(srcPath, "pyproject.toml")
-	if _, err := os.Stat(pyproject); err == nil {
-		return nil // already cloned + valid
-	}
-	if dry {
-		log(fmt.Sprintf("$ git clone https://github.com/elvismdev/mem0-mcp-selfhosted %s", srcPath))
-		return nil
-	}
-	// If the path exists but is not a valid clone, refuse to touch it.
-	if _, err := os.Stat(srcPath); err == nil {
-		return fmt.Errorf("%s existe pero no es un clon válido (falta pyproject.toml); bórralo o clónalo manualmente", srcPath)
-	}
-	if err := os.MkdirAll(filepath.Dir(srcPath), 0o755); err != nil {
-		return fmt.Errorf("crear parent de MEM0_SRC_PATH: %w", err)
-	}
-	cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/elvismdev/mem0-mcp-selfhosted", srcPath)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git clone mem0-mcp-selfhosted: %w\n%s", err, strings.TrimSpace(out.String()))
-	}
-	return nil
+	return w
 }

@@ -1,0 +1,20 @@
+services:
+  mcp_tools_mem0_qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: mcp-tools-mem0-qdrant
+    restart: unless-stopped
+    ports:
+      - "${MCP_TOOLS_BIND}:6333:6333"
+    volumes:
+      - mem0-qdrant-storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  mem0-qdrant-storage:
+    name: mcp-qdrant-storage
+    external: true

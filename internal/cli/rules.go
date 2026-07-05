@@ -42,6 +42,7 @@ func RunRules(dry bool, out io.Writer) error {
 		}
 		return err
 	}
+	fmt.Fprintln(out, "── install rules (Claude Code, OpenCode, OMP)")
 
 	// --- OMP: symlink como rule file ---
 	ompRules := filepath.Join(home, ".omp/rules")
@@ -117,10 +118,9 @@ func RunRules(dry bool, out io.Writer) error {
 			if _, err := os.Stat(f); err != nil {
 				return fmt.Errorf("FAIL %s: %w", f, err)
 			}
-			fmt.Fprintf(out, "OK %s\n", f)
+			fmt.Fprintf(out, "  OK %s\n", f)
 		}
 	}
-	fmt.Fprintln(out, "Done. Reload/restart your MCP client to pick up RULES.")
 	return nil
 }
 

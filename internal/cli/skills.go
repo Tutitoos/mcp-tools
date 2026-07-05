@@ -22,7 +22,7 @@ var skillsCmd = &cobra.Command{
 
 func init() { rootCmd.AddCommand(skillsCmd) }
 
-var skillsNames = []string{"codebase-memory", "headroom"}
+var skillsNames = []string{"codebase-memory", "mem0"}
 
 // RunSkills is the skills-subcommand behaviour; usable from the installer TUI.
 func RunSkills(dry bool, out io.Writer) error {
@@ -39,27 +39,31 @@ func RunSkills(dry bool, out io.Writer) error {
 	// stale entries from the previous naming (before rename to mcp-tools- prefix)
 	stale := []string{
 		filepath.Join(home, ".claude/skills/codebase-memory-mcp"),
-		filepath.Join(home, ".claude/skills/headroom-mcp"),
 		filepath.Join(home, ".config/opencode/skills/codebase-memory-mcp"),
-		filepath.Join(home, ".config/opencode/skills/headroom-mcp"),
 		filepath.Join(home, ".omp/agent/skills/codebase-memory-mcp"),
-		filepath.Join(home, ".omp/agent/skills/headroom-mcp"),
 	}
 
-	fmt.Fprintln(out, "== cleaning stale skill dirs ==")
+	fmt.Fprintln(out, "── install skills (Claude Code, OpenCode, OMP)")
+
+	// Silent stale cleanup — cuenta y menciona SOLO si hubo trabajo.
+	stalesRemoved := 0
 	for _, s := range stale {
 		if _, err := os.Lstat(s); errors.Is(err, os.ErrNotExist) {
 			continue
 		}
-		fmt.Fprintf(out, "  rm %s\n", s)
 		if !dry {
 			if err := os.RemoveAll(s); err != nil {
 				return err
 			}
 		}
+		stalesRemoved++
+	}
+	if stalesRemoved > 0 {
+		fmt.Fprintf(out, "  · %d stale dir(s) removed\n", stalesRemoved)
 	}
 
-	fmt.Fprintln(out, "== installing symlinks ==")
+	// Silent symlink install; falla → mensaje concreto con la ruta que rompió.
+	symlinksTotal := 0
 	for _, t := range targets {
 		if !dry {
 			if err := os.MkdirAll(t, 0o755); err != nil {
@@ -72,26 +76,26 @@ func RunSkills(dry bool, out io.Writer) error {
 			if !dry {
 				_ = os.Remove(dst) // unlink previous (idempotent)
 				if err := os.Symlink(srcPath, dst); err != nil {
-					return err
+					return fmt.Errorf("symlink %s: %w", dst, err)
 				}
 			}
-			fmt.Fprintf(out, "  %s -> %s\n", dst, srcPath)
+			symlinksTotal++
 		}
 	}
 
+	// Silent verify; falla → error con la ruta que no existe.
 	if !dry {
-		fmt.Fprintln(out, "== verify ==")
 		for _, t := range targets {
 			for _, name := range skillsNames {
 				f := filepath.Join(t, name, "SKILL.md")
 				if _, err := os.Stat(f); err != nil {
 					return fmt.Errorf("FAIL %s: %w", f, err)
 				}
-				fmt.Fprintf(out, "  OK %s\n", f)
 			}
 		}
+		fmt.Fprintf(out, "  OK %d symlinks verificados (%d skills × %d clients)\n", symlinksTotal, len(skillsNames), len(targets))
+	} else {
+		fmt.Fprintf(out, "  OK %d symlinks (dry — %d skills × %d clients)\n", symlinksTotal, len(skillsNames), len(targets))
 	}
-
-	fmt.Fprintln(out, "\nDone. Reload / restart your MCP client (Claude Code, OpenCode, OMP) to pick up the skills.")
 	return nil
 }

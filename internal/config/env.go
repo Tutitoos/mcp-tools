@@ -66,9 +66,8 @@ func WriteEnv(path string, contents map[string]string) error {
 	// Exact layout: matches scripts/init-env.sh lines 10-24 (blank lines between groups).
 	groups := [][]string{
 		{"HOST_HOME", "HOST_UID", "HOST_GID"},
-		{"MCP_TOOLS_ROOT", "MCP_TOOLS_DATA"},
-		{"MCP_TOOLS_CODEBASE_MEMORY_IMAGE"},
-		{"MCP_TOOLS_MEM0_IMAGE", "MCP_TOOLS_HEADROOM_IMAGE", "MEM0_SRC_PATH", "MEM0_USER_ID"},
+		{"MCP_TOOLS_ROOT", "MCP_TOOLS_DATA", "MCP_TOOLS_BIND"},
+		{"MEM0_USER_ID"},
 	}
 	written := map[string]bool{}
 	var b strings.Builder

@@ -11,8 +11,11 @@ data/
 .cache/
 tmp/
 
+# rtk/OMP per-project state written by `rtk init` when CWD is a project root
+.rtk/
+.omp/
+
 # accidental binaries
-mcps/**/bin/
 bin/
 dist/
 scripts/installer/

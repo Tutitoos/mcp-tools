@@ -4,13 +4,13 @@ package theme
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	Magenta      = lipgloss.NewStyle().Foreground(lipgloss.Color("13")).Bold(true)
-	Cyan         = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
-	CyanBold     = Cyan.Bold(true)
-	Green        = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	Red          = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	Yellow       = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-	Dim          = lipgloss.NewStyle().Faint(true)
+	Magenta  = lipgloss.NewStyle().Foreground(lipgloss.Color("13")).Bold(true)
+	Cyan     = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+	CyanBold = Cyan.Bold(true)
+	Green    = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	Red      = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	Yellow   = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	Dim      = lipgloss.NewStyle().Faint(true)
 
 	ChipYellow = lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("0")).Bold(true).Padding(0, 1)
 	ChipGreen  = lipgloss.NewStyle().Background(lipgloss.Color("10")).Foreground(lipgloss.Color("0")).Bold(true).Padding(0, 1)
