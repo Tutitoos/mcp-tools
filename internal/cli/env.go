@@ -94,7 +94,7 @@ MEM0_QDRANT_URL=http://127.0.0.1:6333/
 MEM0_COLLECTION=mem0_%s
 MEM0_ENABLE_GRAPH=false
 
-MEM0_HISTORY_DB_PATH=/data/history/history.db
+MEM0_HISTORY_DB_PATH=$HOME/mcp-tools-data/mem0/history/history.db
 MEM0_OLLAMA_THINK=false
 `, u.Username)
 		if dry {
