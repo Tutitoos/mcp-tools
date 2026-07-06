@@ -22,7 +22,7 @@ var skillsCmd = &cobra.Command{
 
 func init() { rootCmd.AddCommand(skillsCmd) }
 
-var skillsNames = []string{"codebase-memory", "mem0"}
+var skillsNames = []string{"codebase-memory", "mem0", "serena", "tokensave"}
 
 // RunSkills is the skills-subcommand behaviour; usable from the installer TUI.
 func RunSkills(dry bool, out io.Writer) error {

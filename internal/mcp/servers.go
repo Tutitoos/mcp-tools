@@ -34,7 +34,7 @@ func Servers(st state.State) []ServerSpec {
 			out = append(out, ServerSpec{
 				Name:    "mcp_tools_codebase_memory",
 				Wrapper: "codebase-memory-mcp",
-				Args:    []string{"--ui=false"},
+				Args:    []string{"--ui=true"},
 			})
 		case "mem0":
 			out = append(out, ServerSpec{
@@ -47,6 +47,12 @@ func Servers(st state.State) []ServerSpec {
 				Name:    "mcp_tools_headroom",
 				Wrapper: "headroom",
 				Args:    []string{"mcp", "serve"},
+			})
+		case "serena":
+			out = append(out, ServerSpec{
+				Name:    "mcp_tools_serena",
+				Wrapper: "serena",
+				Args:    []string{"start-mcp-server", "--context", "agent", "--project-from-cwd"},
 			})
 		}
 	}

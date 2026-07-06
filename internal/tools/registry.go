@@ -75,6 +75,8 @@ func Registry() []Tool {
 		rtkTool(),
 		claudeMemTool(),
 		codegraphTool(),
+		serenaTool(),
+		tokensaveTool(),
 	}
 }
 

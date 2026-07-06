@@ -48,7 +48,7 @@ func installCodebaseMemory(dry bool, log func(string)) error {
 	}
 
 	curl := exec.Command("curl", "-fsSL", codebaseMemoryInstallURL)
-	bash := exec.Command("bash", "-s", "--", "--standard", "--skip-config", "--dir", installDir)
+	bash := exec.Command("bash", "-s", "--", "--ui", "--skip-config", "--dir", installDir)
 	bash.Env = append(os.Environ(), "HOME="+home)
 	pipe, err := curl.StdoutPipe()
 	if err != nil {

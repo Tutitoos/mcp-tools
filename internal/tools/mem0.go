@@ -96,7 +96,11 @@ func uninstallMem0(dry bool, log func(string)) error {
 }
 
 func statusMem0() (StatusPayload, error) {
-	p := StatusPayload{}
+	home, err := hostHome()
+	if err != nil {
+		return StatusPayload{}, err
+	}
+	p := StatusPayload{MCPClients: []string{}}
 	bin := which("mem0-mcp-selfhosted")
 	if bin == "" {
 		return p, nil
@@ -105,6 +109,20 @@ func statusMem0() (StatusPayload, error) {
 	p.Binary = bin
 	if v := versionOf(bin, "--version"); v != "" {
 		p.Version = v
+	}
+	// OMP
+	if hasKeyIn(filepath.Join(home, ".omp/agent/mcp.json"), []string{"mcpServers", "mcp_tools_mem0"}) {
+		p.MCPClients = append(p.MCPClients, "omp")
+	}
+	// OpenCode
+	if hasKeyIn(filepath.Join(home, ".config/opencode/opencode.json"), []string{"mcp", "mcp_tools_mem0"}) {
+		p.MCPClients = append(p.MCPClients, "opencode")
+	}
+	// Claude
+	if out, err := exec.Command("claude", "mcp", "list").Output(); err == nil {
+		if strings.Contains(string(out), "mcp_tools_mem0") {
+			p.MCPClients = append(p.MCPClients, "claude")
+		}
 	}
 	return p, nil
 }

@@ -12,10 +12,15 @@ var (
 )
 
 var logsCmd = &cobra.Command{
-	Use:   "logs <servicio>",
+	Use:   "logs [servicio]",
 	Short: "Muestra logs de un servicio (--follow para seguir en tiempo real)",
-	Args:  cobra.ExactArgs(1),
+	Long: "Muestra logs de un servicio Docker gestionado por mcp-tools.\n" +
+		"Sin argumentos, imprime la lista de servicios disponibles.",
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return docker.Run("config", "--services")
+		}
 		if logsFollow {
 			return docker.Run("logs", "-f", args[0])
 		}
