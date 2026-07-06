@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -40,14 +41,18 @@ func RunMcpConfig(dry bool, st state.State, out io.Writer) error {
 		return nil
 	}
 	log := func(s string) { fmt.Fprintln(out, s) }
+	var errs []error
 	if err := mcp.ConfigureClaude(st, log); err != nil {
-		return err
+		errs = append(errs, fmt.Errorf("claude: %w", err))
 	}
 	if err := mcp.ConfigureOpenCode(st, log); err != nil {
-		return err
+		errs = append(errs, fmt.Errorf("opencode: %w", err))
 	}
 	if err := mcp.ConfigureOMP(st, log); err != nil {
-		return err
+		errs = append(errs, fmt.Errorf("omp: %w", err))
 	}
-	return nil
+	if len(errs) == 0 {
+		return nil
+	}
+	return errors.Join(errs...)
 }
