@@ -27,6 +27,20 @@ Alternativas para bajar el binario:
 - `git` en PATH (para `update --self`).
 - Nvidia GPU + driver instalado si vas a marcar `nvidia-toolkit` (opcional). En hosts sin GPU la fila no aparece en el TUI.
 
+## Plataformas soportadas
+
+Soportado: Linux (x86_64 / aarch64) y macOS (Intel / Apple Silicon). Windows no está soportado — `install.sh` rechaza cualquier OS distinto de `linux`/`darwin`.
+
+Diferencias entre plataformas:
+
+| Tool | Linux | macOS |
+| --- | --- | --- |
+| codebase-memory, mem0, headroom, serena, tokensave (install/upgrade/status/uninstall) | ✓ | ✓ |
+| claude-mem, codegraph, rtk | ✓ | ✓ |
+| ollama, qdrant (Docker) | ✓ | ✓ (Docker Desktop) |
+| `mcp-tools tokensave cap` / `uncap` | ✓ | ✗ — requiere `systemd-run`, devuelve error |
+| `mcp-tools nvidia-toolkit install` | ✓ (Debian/Ubuntu/RHEL/Fedora/CentOS/Rocky/Alma) | ✗ — el row no aparece en el TUI y el CLI directo devuelve error |
+
 ## Componentes gestionados
 
 Once componentes vienen preconfigurados en el registry:

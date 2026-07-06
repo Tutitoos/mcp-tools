@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/spf13/cobra"
 )
@@ -83,6 +84,9 @@ func tokensaveTargets(home string) []tokensaveClientTarget {
 }
 
 func runTokensaveCap(cmd *cobra.Command, _ []string) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("tokensave cap requires systemd (Linux only); current OS: %s", runtime.GOOS)
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -117,6 +121,9 @@ func runTokensaveCap(cmd *cobra.Command, _ []string) error {
 }
 
 func runTokensaveUncap(cmd *cobra.Command, _ []string) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("tokensave uncap requires systemd (Linux only); current OS: %s", runtime.GOOS)
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err

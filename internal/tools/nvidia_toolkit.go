@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -28,6 +29,9 @@ func nvidiaToolkitTool() Tool {
 }
 
 func installNvidiaToolkit(dry bool, log func(string)) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("nvidia-toolkit is Linux-only (apt/systemctl); current OS: %s", runtime.GOOS)
+	}
 	distroID, err := readDistroID()
 	if err != nil {
 		return err
@@ -66,6 +70,9 @@ func installNvidiaToolkit(dry bool, log func(string)) error {
 }
 
 func uninstallNvidiaToolkit(dry bool, log func(string)) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("nvidia-toolkit uninstall is Linux-only (apt/systemctl); current OS: %s", runtime.GOOS)
+	}
 	distroID, err := readDistroID()
 	if err != nil {
 		return err

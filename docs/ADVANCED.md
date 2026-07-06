@@ -104,7 +104,7 @@ MCP semántico en Rust (code-graph, 40+ tools). Opt-in en el TUI (`DefaultOn: fa
 - **Instalación**: `mcp-tools tokensave install` — instala `cargo`/rustup si falta (`ensureCargo`, compartido con rtk), corre `cargo install tokensave --locked`, luego `tokensave install --git-hook no` (autodetecta y se registra en Claude Code, OpenCode, OMP y demás agentes soportados).
 - **Upgrade**: `mcp-tools tokensave upgrade` (`cargo install --force`).
 - **Uninstall**: `mcp-tools uninstall tokensave`.
-- **Cap de memoria** (opt-in, recomendado): `mcp-tools tokensave cap` instala `~/.local/bin/tokensave-capped` (wrapper `systemd-run --scope`) y reescribe la entrada `tokensave` en los configs MCP de Claude Code/OpenCode/OMP para que cada spawn arranque en un cgroup transient con `MemoryMax=30G`, `MemoryHigh=28G`, sin swap. Idempotente; `tokensave install`/`upgrade` restauran el binario crudo en los configs, así que re-correr `cap` después. `mcp-tools tokensave uncap` deshace el wrap.
+- **Cap de memoria** (opt-in, recomendado): `mcp-tools tokensave cap` instala `~/.local/bin/tokensave-capped` (wrapper `systemd-run --scope`) y reescribe la entrada `tokensave` en los configs MCP de Claude Code/OpenCode/OMP para que cada spawn arranque en un cgroup transient con `MemoryMax=30G`, `MemoryHigh=28G`, sin swap. Idempotente; `tokensave install`/`upgrade` restauran el binario crudo en los configs, así que re-correr `cap` después. `mcp-tools tokensave uncap` deshace el wrap. No aplica en macOS: `systemd-run` no existe, y `mcp-tools tokensave cap`/`uncap` devuelve error explícito.
 - Requiere `.tokensave/` en el proyecto (`tokensave init`, side effect del propio binario) — `mcp-tools` no gestiona el init por-proyecto, solo la instalación del binario y el registro MCP.
 
 ### ollama (Docker + GPU opcional)
@@ -130,6 +130,7 @@ Requerido para GPU passthrough a ollama. Solo aparece en el TUI si `nvidia-smi -
 - **Upgrade**: no expuesto (se hace vía `apt-get upgrade nvidia-container-toolkit` a mano).
 - **Uninstall**: `mcp-tools uninstall nvidia-toolkit` corre `nvidia-ctk runtime configure --runtime=docker --unset` + `apt-get purge -y nvidia-container-toolkit` + `systemctl restart docker`.
 - **CI / no-TTY**: el prompt sudo requiere shell interactivo; en CI el step falla con "corre en shell interactiva". El resto del install sigue por diseño (cada tool independiente).
+- **Linux only**: en macOS el row no aparece en el TUI (`nvidia-smi -L` gate) y `mcp-tools nvidia-toolkit install` rechaza con error explícito.
 
 ## Estado persistente
 
