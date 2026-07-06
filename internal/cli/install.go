@@ -56,6 +56,15 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// 3a. Persiste la selección YA (antes del loop de install/mcp-config/skills)
+	// para que un crash a mitad de instalación no re-abra el TUI la próxima vez.
+	if !installDry {
+		stEarly := state.State{Selected: selected, Versions: stOld.Versions}
+		if err := stEarly.Save(); err != nil {
+			return fmt.Errorf("save state (early): %w", err)
+		}
+	}
+
 	// 3. Partición en 3: sudo primero (prompt upfront, timestamp fresco),
 	//    silent en el TUI Bubbletea (feedback rápido), interactive al final
 	//    (user solo atiende TUIs upstream cuando lo silencioso terminó).
@@ -71,8 +80,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	}
 
 	// 4. Registro MCP con la selección fresca (state aún no persistida).
-	stNew := state.State{Selected: selected}
-	if err := RunMcpConfig(installDry, stNew, os.Stdout); err != nil {
+	if err := RunMcpConfig(installDry, state.State{Selected: selected}, os.Stdout); err != nil {
 		return fmt.Errorf("mcp-config: %w", err)
 	}
 
@@ -93,7 +101,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(os.Stdout, "SKIP (dry) — no toca state.json")
 		return nil
 	}
-	stNew.Versions = collectVersions(selected)
+	stNew := state.State{Selected: selected, Versions: collectVersions(selected)}
 	if err := stNew.Save(); err != nil {
 		return fmt.Errorf("save state: %w", err)
 	}
