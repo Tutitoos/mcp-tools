@@ -57,7 +57,7 @@ La release "${VERSION}" no existe (aún) en GitHub. Causas típicas:
   - GitHub Actions está deshabilitado en el repo (Settings → Actions → General → 'Allow all actions').
   - El workflow .github/workflows/release.yml falló; revisa https://github.com/${REPO}/actions.
 
-Alternativa mientras tanto (construye desde source; requiere Go 1.22+):
+Alternativa mientras tanto (construye desde source; requiere Go 1.24+):
   git clone https://github.com/${REPO} ~/mcp-tools
   cd ~/mcp-tools
   make install    # instala en ~/.local/bin/mcp-tools
