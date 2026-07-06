@@ -27,8 +27,8 @@ Correr `mcp-tools install --reconfigure` para verlo aparecer en el TUI.
 ### codebase-memory (host)
 
 - Binario en `~/.local/share/codebase-memory-mcp/codebase-memory-mcp`, symlink en `~/.local/bin/codebase-memory-mcp`.
-- Instalación vía script upstream de DeusData (`curl … | bash -s -- --standard --skip-config --dir …`).
-- Registrado en clientes como MCP `mcp_tools_codebase_memory`, `command=codebase-memory-mcp`, `args=["--ui=false"]`.
+- Instalación vía script upstream de DeusData (`curl … | bash -s -- --ui --skip-config --dir …`).
+- Registrado en clientes como MCP `mcp_tools_codebase_memory`, `command=codebase-memory-mcp`, `args=["--ui=true"]`.
 - Al pasar a host desaparece la sandbox de red (Docker `network_mode: none`). Upstream promete "100% local, no telemetry". Si no confías, desmárcalo en el TUI.
 
 ### mem0 (host)
@@ -86,6 +86,26 @@ MCP con auto-registro en 8 IDEs (Claude Code, Cursor, Windsurf, etc.). Opt-in en
 
 - **Instalación**: `mcp-tools codegraph install` corre el bundle self-contained (`curl -fsSL … | sh`) y luego `codegraph install --yes` para auto-registrarse.
 - **Uninstall**: `mcp-tools uninstall codegraph` corre `codegraph uninstall --yes`.
+
+### serena (host)
+
+MCP semántico LSP-accurate. Opt-in en el TUI.
+
+- **Instalación**: `mcp-tools serena install` — instala `uv` si falta (`ensureUV`, compartido con headroom/mem0), corre `uv tool install -p 3.13 serena-agent`, luego `serena init`.
+- **Upgrade**: `mcp-tools serena upgrade`.
+- **Registrado en clientes** como MCP `mcp_tools_serena`, `command=serena`, `args=["start-mcp-server", "--context", "agent", "--project-from-cwd"]`.
+- **Uninstall**: `mcp-tools uninstall serena`.
+- Requiere `activate_project` explícito en la sesión del cliente antes de operar sobre un proyecto (no lo hace `mcp-config`).
+
+### tokensave (host)
+
+MCP semántico en Rust (code-graph, 40+ tools). Opt-in en el TUI (`DefaultOn: false`). Se auto-registra — no pasa por `internal/mcp/servers.go`.
+
+- **Instalación**: `mcp-tools tokensave install` — instala `cargo`/rustup si falta (`ensureCargo`, compartido con rtk), corre `cargo install tokensave --locked`, luego `tokensave install --git-hook no` (autodetecta y se registra en Claude Code, OpenCode, OMP y demás agentes soportados).
+- **Upgrade**: `mcp-tools tokensave upgrade` (`cargo install --force`).
+- **Uninstall**: `mcp-tools uninstall tokensave`.
+- **Cap de memoria** (opt-in, recomendado): `mcp-tools tokensave cap` instala `~/.local/bin/tokensave-capped` (wrapper `systemd-run --scope`) y reescribe la entrada `tokensave` en los configs MCP de Claude Code/OpenCode/OMP para que cada spawn arranque en un cgroup transient con `MemoryMax=30G`, `MemoryHigh=28G`, sin swap. Idempotente; `tokensave install`/`upgrade` restauran el binario crudo en los configs, así que re-correr `cap` después. `mcp-tools tokensave uncap` deshace el wrap.
+- Requiere `.tokensave/` en el proyecto (`tokensave init`, side effect del propio binario) — `mcp-tools` no gestiona el init por-proyecto, solo la instalación del binario y el registro MCP.
 
 ### ollama (Docker + GPU opcional)
 
@@ -167,6 +187,6 @@ Si tenías qdrant/ollama corriendo bajo el proyecto compose `mcp-infra`, ahora s
 
 ## Seguridad
 
-Cinco instaladores upstream usan `curl … | sh`: rustup (RTK), uv (headroom + mem0), install.sh de codebase-memory, install.sh de codegraph, y el apt repo de nvidia-container-toolkit. Audita los scripts si no confías en la fuente antes de correr `mcp-tools install`. Los tools instalados aquí son opt-in per-registry: puedes marcar sólo lo que quieras en el TUI multi-select.
+Cinco instaladores upstream usan `curl … | sh`: rustup (RTK + tokensave), uv (headroom + mem0 + serena), install.sh de codebase-memory, install.sh de codegraph, y el apt repo de nvidia-container-toolkit. Audita los scripts si no confías en la fuente antes de correr `mcp-tools install`. Los tools instalados aquí son opt-in per-registry: puedes marcar sólo lo que quieras en el TUI multi-select.
 
 Con `MCP_TOOLS_BIND=0.0.0.0` (default), qdrant y ollama son alcanzables desde toda la LAN. Ninguno tiene auth por default. Setea `MCP_TOOLS_BIND=127.0.0.1` en `.env` antes de `mcp-tools install` para bindear sólo a loopback.

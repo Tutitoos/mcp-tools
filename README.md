@@ -29,7 +29,7 @@ Alternativas para bajar el binario:
 
 ## Componentes gestionados
 
-Nueve componentes vienen preconfigurados en el registry:
+Once componentes vienen preconfigurados en el registry:
 
 | Componente | Deploy | Registrado por | Instalador |
 | --- | --- | --- | --- |
@@ -39,6 +39,8 @@ Nueve componentes vienen preconfigurados en el registry:
 | rtk | Host (hook shell) | — (hook shell) | `mcp-tools install` |
 | claude-mem | Host | Se auto-registra (Claude Code) | `mcp-tools install` (opt-in; Node ≥ 20) |
 | codegraph | Host | Se auto-registra (8 IDEs) | `mcp-tools install` (opt-in) |
+| serena | Host | `mcp-config` | `mcp-tools install` (o `mcp-tools serena install`; opt-in, uv tool Python 3.13) |
+| tokensave | Host | Se auto-registra (Claude/OpenCode/OMP + agentes detectados) | `mcp-tools install` (opt-in; cargo install) |
 | ollama | Docker (+ GPU opcional) | — (infra) | `mcp-tools install` |
 | qdrant | Docker | — (infra) | `mcp-tools install` |
 | nvidia-container-toolkit | Sudo | — (infra) | `mcp-tools install` (sólo si hay GPU) |
@@ -58,7 +60,7 @@ Si el host tiene GPU NVIDIA **y** marcas `nvidia-toolkit` en el TUI, `mcp-tools 
     "mcp_tools_codebase_memory": {
       "type": "stdio",
       "command": "codebase-memory-mcp",
-      "args": ["--ui=false"]
+      "args": ["--ui=true"]
     },
     "mcp_tools_mem0": {
       "type": "stdio",
@@ -68,11 +70,16 @@ Si el host tiene GPU NVIDIA **y** marcas `nvidia-toolkit` en el TUI, `mcp-tools 
       "type": "stdio",
       "command": "headroom",
       "args": ["mcp", "serve"]
+    },
+    "mcp_tools_serena": {
+      "type": "stdio",
+      "command": "serena",
+      "args": ["start-mcp-server", "--context", "agent", "--project-from-cwd"]
     }
   }
   ```
 
-`rtk`, `claude-mem` y `codegraph` **no** son MCP registrables desde `mcp-config`: rtk es un hook shell, `claude-mem` y `codegraph` se auto-registran ellos mismos en los IDEs correspondientes.
+`rtk`, `claude-mem`, `codegraph` y `tokensave` **no** son MCP registrables desde `mcp-config`: rtk es un hook shell, y `claude-mem`/`codegraph`/`tokensave` se auto-registran ellos mismos en los IDEs/clientes correspondientes.
 
 ## Configuración
 
@@ -162,6 +169,8 @@ Modelos qwen3/deepseek-r1 requieren `MEM0_OLLAMA_THINK=false` (default) para evi
 | `mcp-tools mcp-config` | Re-registra en Claude/OpenCode/OMP según el state actual. |
 | `mcp-tools skills` / `rules` | Symlinks de skills y RULES a los 3 clientes. |
 | `mcp-tools pull <tag>` | Alias corto de `models pull`. |
+| `mcp-tools tokensave cap` / `uncap` | Envuelve/restaura el MCP `tokensave` en un cgroup con `MemoryMax=30G` en los clients MCP (idempotente; re-correr tras cada `tokensave install`/`upgrade`). |
+| `mcp-tools tokens` / `tokens set <n>` | Lee/edita `compaction.thresholdTokens` de OMP (requiere `omp` en PATH). |
 
 Para configuración avanzada por componente y la migración desde el pipeline viejo, ver [docs/ADVANCED.md](docs/ADVANCED.md).
 
