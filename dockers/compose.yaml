@@ -5,7 +5,7 @@ include:
 
 services:
   mcp_tools_ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.31.1
     container_name: mcp-tools-ollama
     restart: unless-stopped
     environment:
