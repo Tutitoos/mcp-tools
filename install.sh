@@ -96,6 +96,8 @@ case ":$PATH:" in
   *)
     warn "$BIN_DIR no está en tu \$PATH."
     warn "Añade a tu shell rc (~/.bashrc o ~/.zshrc):"
+    # literal instruction text for the user to paste, not expanded here
+    # shellcheck disable=SC2016
     printf '\n    export PATH="%s:$PATH"\n\n' "$BIN_DIR" >&2
     ;;
 esac
