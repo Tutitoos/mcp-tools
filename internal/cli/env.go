@@ -70,6 +70,9 @@ func RunEnv(dry, force bool, out io.Writer) error {
 			if err := config.WriteEnv(envPath, contents); err != nil {
 				return fmt.Errorf("escribir .env: %w", err)
 			}
+			if err := os.Chmod(envPath, 0o600); err != nil {
+				return fmt.Errorf("chmod .env: %w", err)
+			}
 			fmt.Fprintf(out, "  OK generado %s\n", envPath)
 		}
 	}
@@ -100,8 +103,11 @@ MEM0_OLLAMA_THINK=false
 		if dry {
 			fmt.Fprintf(out, "  OK escribiría %s con defaults (dry)\n", mem0EnvPath)
 		} else {
-			if err := os.WriteFile(mem0EnvPath, []byte(mem0EnvBody), 0o644); err != nil {
+			if err := os.WriteFile(mem0EnvPath, []byte(mem0EnvBody), 0o600); err != nil {
 				return fmt.Errorf("escribir .env.mem0: %w", err)
+			}
+			if err := os.Chmod(mem0EnvPath, 0o600); err != nil {
+				return fmt.Errorf("chmod .env.mem0: %w", err)
 			}
 			fmt.Fprintf(out, "  OK generado %s\n", mem0EnvPath)
 		}

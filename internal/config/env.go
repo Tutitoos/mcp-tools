@@ -55,7 +55,7 @@ func UpdateEnv(path string, updates map[string]string) error {
 			text += newLine + "\n"
 		}
 	}
-	return os.WriteFile(path, []byte(text), 0o644)
+	return os.WriteFile(path, []byte(text), 0o600)
 }
 
 // WriteEnv writes a full .env with the exact key order + blank-line separators produced
@@ -91,5 +91,5 @@ func WriteEnv(path string, contents map[string]string) error {
 		}
 		fmt.Fprintf(&b, "%s=%s\n", k, v)
 	}
-	return os.WriteFile(path, []byte(b.String()), 0o644)
+	return os.WriteFile(path, []byte(b.String()), 0o600)
 }

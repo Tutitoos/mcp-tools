@@ -52,6 +52,7 @@ Correr `mcp-tools install --reconfigure` para verlo aparecer en el TUI.
 
 - `MEM0_USER_ID` vive en `.env` (por defecto `$(whoami)`), no en `.env.mem0`.
 - Datos persistentes en `~/mcp-tools-data/mem0/{history,uv-cache,config}`.
+- **Permisos**: `.env` y `.env.mem0` se generan con `0600` desde esta versión; ficheros pre-existentes conservan sus permisos hasta correr `mcp-tools env --force` o `chmod 600` manual.
 
 ### headroom (host)
 
