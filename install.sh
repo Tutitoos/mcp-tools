@@ -36,7 +36,9 @@ if [ "$VERSION" = "latest" ]; then
   # Follow redirect and read the tag from the location header without needing jq.
   latest="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest")"
   VERSION="${latest##*/}"
-  [ -n "$VERSION" ] && [ "$VERSION" != "releases" ] || err "no pude resolver 'latest' release; ¿existe una?"
+  if [ -z "$VERSION" ] || [ "$VERSION" = "releases" ]; then
+    err "no pude resolver 'latest' release; ¿existe una?"
+  fi
 fi
 # Strip leading 'v' from the tag when composing the tarball filename (goreleaser default).
 version_no_v="${VERSION#v}"
