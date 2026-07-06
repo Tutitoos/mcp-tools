@@ -23,6 +23,18 @@ func qdrantTool() Tool {
 }
 
 func installQdrant(dry bool, log func(string)) error {
+	volArgs := []string{"volume", "create", "mcp-qdrant-storage"}
+	if dry {
+		log("$ docker " + strings.Join(volArgs, " "))
+	} else {
+		volCmd := exec.Command("docker", volArgs...)
+		volCmd.Dir = config.RepoRoot()
+		volCmd.Env = os.Environ()
+		if err := runCombined(volCmd, "docker volume create qdrant-storage"); err != nil {
+			return err
+		}
+	}
+
 	args := []string{
 		"compose",
 		"-f", "dockers/compose.yaml",
