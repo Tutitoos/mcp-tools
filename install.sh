@@ -68,6 +68,20 @@ MSG
   exit 1
 }
 
+log "verificando checksum"
+curl -fsSL "https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt" -o "$tmp/checksums.txt" \
+  || err "no pude descargar checksums.txt de la release ${VERSION}"
+expected="$(grep " ${tarball}\$" "$tmp/checksums.txt" | awk '{print $1}')"
+[ -n "$expected" ] || err "checksums.txt no contiene ${tarball}"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual="$(sha256sum "$tmp/pkg.tar.gz" | awk '{print $1}')"
+elif command -v shasum >/dev/null 2>&1; then
+  actual="$(shasum -a 256 "$tmp/pkg.tar.gz" | awk '{print $1}')"
+else
+  err "necesita sha256sum o shasum en PATH para verificar checksum"
+fi
+[ "$actual" = "$expected" ] || err "checksum mismatch: esperado $expected, actual $actual"
+
 log "extrayendo binario"
 tar -xzf "$tmp/pkg.tar.gz" -C "$tmp" mcp-tools \
   || err "no encontré 'mcp-tools' dentro del tarball"
