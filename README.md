@@ -130,7 +130,7 @@ MEM0_OLLAMA_URL=http://127.0.0.1:11434/
 MEM0_QDRANT_URL=http://127.0.0.1:6333/
 MEM0_COLLECTION=mem0_<username>
 MEM0_ENABLE_GRAPH=false
-MEM0_HISTORY_DB_PATH=/data/history/history.db
+MEM0_HISTORY_DB_PATH=$HOME/mcp-tools-data/mem0/history/history.db
 ```
 
 `MEM0_USER_ID` vive en `.env` no aquí. `MEM0_COLLECTION` se aísla por usuario para permitir varios devs en la misma qdrant. `mem0-launcher` sourcea `.env.mem0` en cada llamada, así que editarlo tiene efecto sin reinicios.
