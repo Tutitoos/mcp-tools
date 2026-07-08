@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/mattn/go-isatty"
 )
 
 func serenaTool() Tool {
@@ -36,7 +34,7 @@ func installSerena(dry bool, log func(string)) error {
 	}
 	if dry {
 		log("$ uv tool install -p 3.13 " + serenaSpec)
-		log("$ serena init")
+		log("$ serena init --yes")
 		return nil
 	}
 	cmd := exec.Command(uvBin(home), "tool", "install", "-p", "3.13", serenaSpec)
@@ -48,17 +46,16 @@ func installSerena(dry bool, log func(string)) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("uv tool install %s: %w\n%s", serenaSpec, err, strings.TrimSpace(out.String()))
 	}
-	initArgs := []string{"init"}
-	if !isatty.IsTerminal(os.Stdin.Fd()) {
-		initArgs = append(initArgs, "--yes")
-	}
-	initCmd := exec.Command("serena", initArgs...)
+	// Always run `serena init --yes` with stdio captured. Bubbletea owns
+	// the terminal during mcp-tools install, so we can't pass os.Stdin
+	// through; serena would otherwise interleave its setup probing (and
+	// a flurry of harmless 'claude: not found' / 'codex: not found'
+	// stderr lines for IDEs the user hasn't installed yet) into the
+	// progress UI render. Capturing also keeps the install idempotent
+	// and non-interactive.
+	initCmd := exec.Command("serena", "init", "--yes")
 	initCmd.Env = withLocalBinPath(os.Environ(), home)
 	initCmd.Env = append(initCmd.Env, "HOME="+home)
-	if isatty.IsTerminal(os.Stdin.Fd()) {
-		initCmd.Stdin, initCmd.Stdout, initCmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-		return initCmd.Run()
-	}
 	var initOut bytes.Buffer
 	initCmd.Stdout = &initOut
 	initCmd.Stderr = &initOut
