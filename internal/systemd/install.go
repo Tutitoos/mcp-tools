@@ -58,6 +58,59 @@ func Install(mode Mode, port int, bind, binaryPath, envFile string) error {
 
 // Stop / Restart / Status are thin wrappers used by the CLI's `stop`,
 // `restart`, and `status-web` subcommands.
+// SetPort re-renders the unit with the new port (keeping the existing
+// bind, binaryPath, and envFile from the current unit), runs
+// `daemon-reload`, and restarts the unit if it's currently active.
+// Returns the bind that was actually used (so the caller can print the
+// new URL).
+func SetPort(mode Mode, port int, bind, binaryPath, envFile string) (string, error) {
+	if mode == ModeNone {
+		return "", fmt.Errorf("systemd: no installable mode (¿WSL sin systemd?)")
+	}
+	unitPath, err := UnitPath(mode)
+	if err != nil {
+		return "", err
+	}
+	// Default bind from caller, fall back to current unit, then loopback.
+	if bind == "" {
+		bind = CurrentBind(mode)
+		if bind == "" {
+			bind = "127.0.0.1"
+		}
+	}
+	cfg := UnitConfig{
+		BinaryPath: binaryPath,
+		Port:       port,
+		Bind:       bind,
+		EnvFile:    envFile,
+		User:       mode == ModeUser,
+	}
+	rendered, err := RenderUnit(cfg)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(unitPath), 0o755); err != nil {
+		return "", fmt.Errorf("systemd: mkdir %s: %w", filepath.Dir(unitPath), err)
+	}
+	if err := os.WriteFile(unitPath, []byte(rendered), 0o644); err != nil {
+		return "", fmt.Errorf("systemd: write %s: %w", unitPath, err)
+	}
+	prefix := SystemctlPrefix(mode)
+	if err := run(prefix, "daemon-reload"); err != nil {
+		return "", fmt.Errorf("systemd: daemon-reload: %w", err)
+	}
+	// Only restart if the unit is currently active. If it's inactive,
+	// daemon-reload + the new port take effect on next `enable --now`.
+	if IsActive(mode) {
+		if err := Restart(mode); err != nil {
+			return "", fmt.Errorf("systemd: restart after set-port: %w", err)
+		}
+	}
+	return bind, nil
+}
+
+// Stop / Restart / Status are thin wrappers used by the CLI's `stop`,
+// `restart`, and `status-web` subcommands.
 func Stop(mode Mode) error { return run(SystemctlPrefix(mode), "stop", "mcp-tools-web.service") }
 func Restart(mode Mode) error {
 	return run(SystemctlPrefix(mode), "restart", "mcp-tools-web.service")

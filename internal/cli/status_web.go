@@ -1,20 +1,22 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tutitoos/mcp-tools/internal/systemd"
+
 )
 
+// `mcp-tools status-web` is a thin alias for `mcp-tools web --status`.
+// Kept for backward compatibility with existing scripts.
 var statusWebModeOverride string
 
 var statusWebCmd = &cobra.Command{
 	Use:   "status-web",
-	Short: "Estado del servicio systemd mcp-tools-web + últimas líneas del journal.",
+	Short: "Estado del servicio systemd mcp-tools-web (alias de `mcp-tools web --status`).",
 	RunE:  runStatusWeb,
 }
 
@@ -24,28 +26,20 @@ func init() {
 }
 
 func runStatusWeb(cmd *cobra.Command, args []string) error {
-	mode, err := systemd.DetectMode(parseModeOverride(statusWebModeOverride))
+	mode, err := detectMode(statusWebModeOverride)
 	if err != nil {
 		return err
 	}
-	if mode == systemd.ModeNone {
-		return fmt.Errorf("status-web: systemd no disponible en este host")
+	if err := runWebStatus(mode); err != nil {
+		if errors.Is(err, errNoSystemd("--status")) {
+			return fmt.Errorf("status-web: systemd no disponible en este host")
+		}
+		return err
 	}
-	state, _ := systemd.Status(mode)
-	fmt.Fprintf(os.Stdout, "systemd mode: %s\n", mode)
-	fmt.Fprintf(os.Stdout, "state:       %s\n", state)
-	unitPath, _ := systemd.UnitPath(mode)
-	fmt.Fprintf(os.Stdout, "unit:        %s\n", unitPath)
-
-	// Last 20 journal lines.
-	prefix := systemd.SystemctlPrefix(mode)
-	journalArgs := append(prefix, "log", "--no-pager", "-n", "20", "-u", "mcp-tools-web.service")
-	out, err := exec.Command("journalctl", journalArgs...).CombinedOutput()
-	if err != nil {
-		fmt.Fprintf(os.Stdout, "journal:     (no se pudo leer: %v)\n", err)
-		return nil
-	}
-	fmt.Fprintf(os.Stdout, "── journal (últimas 20 líneas)\n")
-	fmt.Fprintln(os.Stdout, string(out))
 	return nil
 }
+
+// keep fmt / os reference for any future expansion; the imports are
+// also used by sibling files in this package.
+var _ = fmt.Sprint
+var _ = os.Stdout

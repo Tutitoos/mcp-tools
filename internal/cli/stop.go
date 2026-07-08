@@ -1,19 +1,20 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-
-	"github.com/Tutitoos/mcp-tools/internal/systemd"
 )
 
+// `mcp-tools stop` is a thin alias for `mcp-tools web --disable`. Kept
+// for backward compatibility with existing scripts.
 var stopModeOverride string
 
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Detiene el servicio systemd mcp-tools-web.",
+	Short: "Detiene + deshabilita el servicio systemd (alias de `mcp-tools web --disable`).",
 	RunE:  runStop,
 }
 
@@ -23,26 +24,25 @@ func init() {
 }
 
 func runStop(cmd *cobra.Command, args []string) error {
-	mode, err := systemd.DetectMode(parseModeOverride(stopModeOverride))
+	mode, err := detectModeOrNone(stopModeOverride)
 	if err != nil {
 		return err
 	}
-	if mode == systemd.ModeNone {
-		return fmt.Errorf("stop: systemd no disponible en este host")
-	}
-	if err := systemd.Stop(mode); err != nil {
+	if err := runWebDisable(mode); err != nil {
+		// keep the historical message wording for backward compat
+		if errors.Is(err, errNoSystemd("--disable")) {
+			return fmt.Errorf("stop: systemd no disponible en este host")
+		}
 		return err
 	}
 	fmt.Fprintln(os.Stdout, "── mcp-tools-web detenido")
 	return nil
 }
 
-func parseModeOverride(s string) systemd.Mode {
-	switch s {
-	case "user":
-		return systemd.ModeUser
-	case "system":
-		return systemd.ModeSystem
+func detectModeOrNone(override string) (modeValue, error) {
+	m, err := detectMode(override)
+	if err != nil {
+		return "", err
 	}
-	return systemd.Mode("")
+	return m, nil
 }

@@ -9,6 +9,10 @@ import (
 	"github.com/Tutitoos/mcp-tools/internal/systemd"
 )
 
+// `mcp-tools restart` is a thin wrapper around `systemctl restart
+// mcp-tools-web.service`. Kept as a separate verb (vs. `mcp-tools web
+// --enable`) because the semantics differ: restart re-runs the unit
+// without changing its enable state.
 var restartModeOverride string
 
 var restartCmd = &cobra.Command{
@@ -23,7 +27,7 @@ func init() {
 }
 
 func runRestart(cmd *cobra.Command, args []string) error {
-	mode, err := systemd.DetectMode(parseModeOverride(restartModeOverride))
+	mode, err := detectMode(restartModeOverride)
 	if err != nil {
 		return err
 	}
