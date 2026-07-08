@@ -6,12 +6,20 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
+// isolatedHome sets HOME to a fresh tempdir for the duration of the test
+// so the bearer-token middleware doesn't pick up a real ~/.mcp-tools-web.token
+// from the developer's machine. Every test that exercises the router
+// should call this first.
+func isolatedHome(t *testing.T) {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+}
+
 // TestHandleVersion confirms /api/version returns 200 with the build
-// metadata keys populated.
+// metadata keys populated. /api/version is the one endpoint that does
+// NOT require auth, so no token file setup is needed here.
 func TestHandleVersion(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/version", nil)
@@ -32,9 +40,9 @@ func TestHandleVersion(t *testing.T) {
 }
 
 // TestAPIToolsEndpoint hits /api/tools and asserts the response contains
-// the canonical claude, ollama, and qdrant keys. The handler depends on
-// tools.Registry(); the test relies on the embedded registry.
+// the canonical claude, ollama, and qdrant keys.
 func TestAPIToolsEndpoint(t *testing.T) {
+	isolatedHome(t)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/tools", nil)
 	req.RemoteAddr = "127.0.0.1:1234"
@@ -64,6 +72,7 @@ func TestAPIToolsEndpoint(t *testing.T) {
 // TestAPIStatusEndpoint confirms /api/status returns a JSON envelope with
 // the expected keys (even when state.json is empty and docker is missing).
 func TestAPIStatusEndpoint(t *testing.T) {
+	isolatedHome(t)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/status", nil)
 	req.RemoteAddr = "127.0.0.1:1234"
@@ -85,9 +94,9 @@ func TestAPIStatusEndpoint(t *testing.T) {
 // TestRouterAcceptsNonLoopback confirms the router no longer rejects
 // non-loopback requests at the IP layer. The default bind is 0.0.0.0
 // (all interfaces); the security gate is the bearer token, not the
-// source IP. Without a token file, dev mode allows the request
-// through; with one, the auth middleware handles 401s.
+// source IP. Without a token file, dev mode allows the request through.
 func TestRouterAcceptsNonLoopback(t *testing.T) {
+	isolatedHome(t)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/version", nil)
 	req.RemoteAddr = "8.8.8.8:80"
@@ -119,6 +128,7 @@ func TestSPAFallbackReturnsIndex(t *testing.T) {
 // TestAPINotFound confirms that unknown /api/* routes get 404 (not the
 // SPA fallback).
 func TestAPINotFound(t *testing.T) {
+	isolatedHome(t)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/does-not-exist", nil)
 	req.RemoteAddr = "127.0.0.1:1234"
@@ -126,14 +136,4 @@ func TestAPINotFound(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", rec.Code)
 	}
-}
-
-// stateHas returns true if the current state.json contains key. Used as
-// a quick check in tests that touch state.Load.
-func stateHas(key string) bool {
-	st, err := state.Load()
-	if err != nil {
-		return false
-	}
-	return st.Has(key)
 }

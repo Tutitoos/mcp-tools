@@ -1,104 +1,36 @@
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-  isRouteErrorResponse,
-  useRouteError,
-} from "react-router";
-import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
-import type { LinksFunction } from "react-router";
+// Root helpers used by routes. In library mode there's no App shell
+// component requirement (the framework's <Layout> export is gone); the
+// QueryClient + ThemeProvider live in entry.client.tsx and wrap the
+// entire <RouterProvider />.
+//
+// This file is kept for shared meta/links + ErrorBoundary so routes can
+// stay small. ErrorBoundary is wired through createBrowserRouter's
+// `errorElement` per-route (or globally on the router) — see router.tsx.
+
+import type { ReactNode } from "react";
+import type { LinksFunction, MetaFunction } from "react-router";
 import "./app.css";
 
-type LinkDescriptor = {
-  rel: string;
-  href: string;
-  crossOrigin?: "anonymous" | "use-credentials" | "" | undefined;
-};
-
-const preconnectGoogle: LinkDescriptor = {
-  rel: "preconnect",
-  href: "https://fonts.googleapis.com",
-};
-
-const preconnectGstatic: LinkDescriptor = {
-  rel: "preconnect",
-  href: "https://fonts.gstatic.com",
-  crossOrigin: "anonymous",
-};
-
-const geistStylesheet: LinkDescriptor = {
-  rel: "stylesheet",
-  href: "https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap",
-};
-
 export const links: LinksFunction = () => [
-  preconnectGoogle,
-  preconnectGstatic,
-  geistStylesheet,
+  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+  {
+    rel: "stylesheet",
+    href: "https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap",
+  },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="es" suppressHydrationWarning>
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <Meta />
-        <Links />
-      </head>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange={false}
-        >
-          <div className="relative isolate">
-            <div className="gradient-mesh pointer-events-none fixed inset-0 -z-10" />
-            {children}
-            <Toaster richColors position="top-right" />
-          </div>
-        </ThemeProvider>
-        <ScrollRestoration />
-        <Scripts />
-      </body>
-    </html>
-  );
-}
+export const meta: MetaFunction = () => [
+  { title: "mcp-tools · admin panel" },
+  { name: "description", content: "Web admin panel auto-hospedado para el stack MCP" },
+  { name: "viewport", content: "width=device-width, initial-scale=1" },
+  { charSet: "utf-8" },
+];
 
-export default function App() {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 2_000,
-            refetchOnWindowFocus: false,
-          },
-        },
-      }),
-  );
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Outlet />
-    </QueryClientProvider>
-  );
-}
-
-export function ErrorBoundary() {
-  const error = useRouteError();
+export function ErrorBoundary({ error }: { error: unknown }) {
   let title = "Algo salió mal";
   let detail = "Error inesperado.";
-  if (isRouteErrorResponse(error)) {
-    title = `${error.status} ${error.statusText}`;
-    detail = typeof error.data === "string" ? error.data : detail;
-  } else if (error instanceof Error) {
+  if (error instanceof Error) {
     detail = error.message;
   }
   return (
@@ -110,3 +42,7 @@ export function ErrorBoundary() {
     </div>
   );
 }
+
+// keep ReactNode imported for downstream consumers; silences unused-
+// import linters in tools that read this file's symbol exports.
+export type { ReactNode };
