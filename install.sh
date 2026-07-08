@@ -109,10 +109,10 @@ case ":$PATH:" in
 esac
 
 "$BIN_DIR/mcp-tools" --version
-cat <<'MSG'
+cat <<MSG
 
 Siguiente paso:
-  git clone https://github.com/Tutitoos/mcp-tools ~/mcp-tools
-  cd ~/mcp-tools
-  mcp-tools install
+  git clone https://github.com/${REPO} \${HOME}/mcp-tools
+  cd \${HOME}/mcp-tools
+  $BIN_DIR/mcp-tools install
 MSG
