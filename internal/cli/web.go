@@ -88,11 +88,11 @@ func runWeb(cmd *cobra.Command, args []string) error {
 }
 
 // runWebOpen is the default action: launch the browser on the unit's
-// port (falling back to 8080 when the unit isn't loaded yet).
+// port (falling back to DefaultPort when the unit isn't loaded yet).
 func runWebOpen(mode systemd.Mode) error {
 	port := systemd.CurrentPort(mode)
 	if port == 0 {
-		port = 8080
+		port = DefaultPort
 	}
 	bind := systemd.CurrentBind(mode)
 	if bind == "" {
@@ -165,7 +165,7 @@ func runWebStatus(mode systemd.Mode) error {
 	port := systemd.CurrentPort(mode)
 	bind := systemd.CurrentBind(mode)
 	if port == 0 {
-		port = 8080
+		port = DefaultPort
 	}
 	if bind == "" {
 		bind = "127.0.0.1"

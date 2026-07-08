@@ -34,7 +34,7 @@ var installCmd = &cobra.Command{
 }
 
 func init() {
-	installCmd.Flags().IntVar(&installPort, "port", 0, "puerto del panel (default 8080)")
+	installCmd.Flags().IntVar(&installPort, "port", 0, "puerto del panel (default 8888)")
 	installCmd.Flags().StringVar(&installBind, "bind", "", "dirección de escucha (default 127.0.0.1)")
 	installCmd.Flags().StringVar(&installModeOverride, "mode", "", "user|system|auto (default auto)")
 	installCmd.Flags().BoolVar(&installAllowPublic, "allow-public-bind", false, "permite --bind fuera de loopback")
@@ -131,14 +131,14 @@ func resolvePort(flagVal int) (int, error) {
 		return 0, fmt.Errorf("MCP_TOOLS_WEB_PORT=%q no es un puerto válido", v)
 	}
 	for {
-		fmt.Fprintf(os.Stderr, "Puerto del panel [8080]: ")
+		fmt.Fprintf(os.Stderr, "Puerto del panel [%d]: ", DefaultPort)
 		line, err := readPromptLine()
 		if err != nil {
-			return 8080, nil
+			return DefaultPort, nil
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {
-			return 8080, nil
+			return DefaultPort, nil
 		}
 		p, err := strconv.Atoi(line)
 		if err != nil || p < 1 || p > 65535 {
