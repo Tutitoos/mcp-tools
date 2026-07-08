@@ -9,6 +9,7 @@ set -euo pipefail
 REPO="Tutitoos/mcp-tools"
 BIN_DIR="${MCP_TOOLS_BIN:-$HOME/.local/bin}"
 VERSION="${MCP_TOOLS_VERSION:-latest}"
+REQUIRED_GO_VERSION="1.24.4"
 
 log()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mwarn:\033[0m %s\n' "$*" >&2; }
@@ -30,6 +31,45 @@ case "$os" in
   linux|darwin) ;;
   *) err "OS no soportado: $os (soportados: linux, darwin)" ;;
 esac
+
+# Ensure Go is available for `make install` (rebuild from source). Skipped if
+# a matching version is already on PATH; warns on mismatch instead of upgrading
+# to avoid clobbering a toolchain the user manages themselves.
+ensure_go() {
+  if command -v go >/dev/null 2>&1; then
+    current="$(go version | awk '{print $3}' | sed 's/^go//')"
+    if [ "$current" = "$REQUIRED_GO_VERSION" ]; then
+      return 0
+    fi
+    warn "go $current encontrado; el proyecto usa $REQUIRED_GO_VERSION — sigo con la versión instalada"
+    return 0
+  fi
+
+  local go_arch go_tarball go_url go_tmp
+  case "$arch" in
+    amd64) go_arch="amd64" ;;
+    arm64) go_arch="arm64" ;;
+    *) err "arquitectura no soportada para Go: $arch" ;;
+  esac
+
+  go_tarball="go${REQUIRED_GO_VERSION}.${os}-${go_arch}.tar.gz"
+  go_url="https://go.dev/dl/${go_tarball}"
+
+  go_tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp" "$go_tmp"' EXIT
+
+  log "go no encontrado — instalando $REQUIRED_GO_VERSION en \$HOME/.local/go"
+  curl -fsSL "$go_url" -o "$go_tmp/$go_tarball" \
+    || err "no pude descargar Go desde $go_url"
+  mkdir -p "$HOME/.local"
+  tar -C "$HOME/.local" -xzf "$go_tmp/$go_tarball" \
+    || err "no pude extraer Go en \$HOME/.local"
+  log "go $REQUIRED_GO_VERSION instalado en \$HOME/.local/go"
+  warn "añade a tu shell rc (~/.bashrc o ~/.zshrc):"
+  # shellcheck disable=SC2016
+  printf '\n    export PATH="$HOME/.local/go/bin:$PATH"\n\n' >&2
+}
+ensure_go
 
 if [ "$VERSION" = "latest" ]; then
   log "resolviendo última release en GitHub..."
