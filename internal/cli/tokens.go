@@ -1,11 +1,15 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -89,7 +93,9 @@ func ensureOMP() error {
 }
 
 func ompConfigGet(key string) (string, error) {
-	out, err := exec.Command("omp", "config", "get", key, "--json").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "omp", "config", "get", key, "--json").Output()
 	if err != nil {
 		return "", err
 	}
@@ -105,7 +111,10 @@ func ompConfigGet(key string) (string, error) {
 
 func ompConfigSet(key, value string) error {
 	cmd := exec.Command("omp", "config", "set", key, value)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("omp config set %s=%s: %w (%s)", key, value, err, strings.TrimSpace(stderr.String()))
+	}
+	return nil
 }

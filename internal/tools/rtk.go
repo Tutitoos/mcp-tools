@@ -27,6 +27,8 @@ func rtkTool() Tool {
 	}
 }
 
+// TODO(security): pin to a stable upstream tag. The branch below can be
+// force-pushed. See docs/REVIEW.md (H5) for guidance.
 const (
 	rtkGitURL    = "https://github.com/makoMakoGo/rtk.git"
 	rtkGitBranch = "feat/omp-extension-rewrite"

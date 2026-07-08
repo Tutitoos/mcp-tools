@@ -93,24 +93,41 @@ func runConfigure(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	stNew := state.State{Selected: newSelected}
+	stNew := state.State{Selected: newSelected, Versions: st.Versions}
 	if err := RunMcpConfig(configureDry, stNew, os.Stdout); err != nil {
 		return fmt.Errorf("mcp-config: %w", err)
 	}
+
+	// 5. Skills + rules (idempotentes; sirven a los 3 clientes). Errores
+	//    se acumulan y se reportan al final — los tools ya están instalados
+	//    y mcp-config ya corrió; un fallo aquí no debe revertir state.
 	var buf bytes.Buffer
-	_ = RunSkills(configureDry, &buf)
-	_ = RunRules(configureDry, &buf)
+	var skErrs []error
+	if err := RunSkills(configureDry, &buf); err != nil {
+		skErrs = append(skErrs, fmt.Errorf("skills: %w", err))
+	}
+	if err := RunRules(configureDry, &buf); err != nil {
+		skErrs = append(skErrs, fmt.Errorf("rules: %w", err))
+	}
 	if s := strings.TrimRight(buf.String(), "\n"); s != "" {
 		fmt.Fprintln(os.Stdout, s)
 	}
 
+	// 6. Persistir state ANTES de un eventual return por error (H31): el
+	//    state debe reflejar la nueva selección aunque skills/rules fallen.
 	if configureDry {
 		fmt.Fprintln(os.Stdout, "SKIP (dry) — no toca state.json")
+		if len(skErrs) > 0 {
+			return errors.Join(skErrs...)
+		}
 		return nil
 	}
 	stNew.Versions = collectVersions(newSelected)
 	if err := stNew.Save(); err != nil {
 		return fmt.Errorf("save state: %w", err)
+	}
+	if len(skErrs) > 0 {
+		return errors.Join(skErrs...)
 	}
 	unchanged := len(newSelected) - len(toAdd)
 	fmt.Fprintf(os.Stdout, "── configure completo — +%d añadidos, -%d eliminados, =%d sin cambios\n", len(toAdd), len(toRemove), unchanged)

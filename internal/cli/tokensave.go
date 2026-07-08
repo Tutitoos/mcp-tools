@@ -203,7 +203,7 @@ func recapTokensaveConfig(path, root, bin string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(path, out, 0o644); err != nil {
+	if err := os.WriteFile(path, out, 0o600); err != nil {
 		return "", err
 	}
 	return "rewritten", nil

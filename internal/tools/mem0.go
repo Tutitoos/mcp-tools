@@ -24,6 +24,7 @@ func mem0Tool() Tool {
 	}
 }
 
+// TODO(security): pin mem0-mcp-selfhosted to a known-good commit. See docs/REVIEW.md (H6).
 const mem0GitURL = "git+https://github.com/elvismdev/mem0-mcp-selfhosted.git"
 
 func installMem0(dry bool, log func(string)) error {

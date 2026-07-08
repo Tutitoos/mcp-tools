@@ -45,7 +45,7 @@ func installHeadroom(dry bool, log func(string)) error {
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
 		msg := strings.TrimSpace(out.String())
-		if strings.Contains(msg, "mitmproxy") || strings.Contains(msg, "proxy") {
+		if strings.Contains(msg, "Failed to build") && strings.Contains(msg, "mitmproxy") {
 			log("WARN extras [proxy] fallaron; reintentando sin el proxy extra")
 			retry := exec.Command(uvBin(home), "tool", "install", "headroom-ai[mcp]")
 			retry.Env = cmd.Env

@@ -7,32 +7,59 @@ alwaysApply: true
 
 Este fichero es cargado globalmente por Claude Code, OpenCode y OMP. Define qué MCP de `mcp-tools` usar para cada intención, cuándo NO recurrir a herramientas nativas, y las reglas duras compartidas.
 
-## Cómo decidir qué herramienta usar
+## Known bugs — read first
 
-Árbol de decisión basado en **medición empírica de tokens/precisión/latencia** (benchmark 2026-07-06 sobre `tasks-pilot` y `mcp-tools`, ver sección "Datos de decisión" abajo). Aplícalo en orden — el primer paso que matchee gana:
+## ⚠️ mem0: `search_memories` y `get_memories` rotos upstream (verificado 2026-07-06)
 
+Las dos operaciones listadas abajo pasan `user_id` al top level; la lib mem0 nueva exige `filters={user_id: ...}`. NO uses estas operaciones; usa los workarounds indicados.
+
+| Operación | Estado | Workaround |
+| --- | --- | --- |
+| `mcp_tools_mem0` → `search_memories(query)` | ❌ roto | `add_memory` con `event: ADD` para guardar; `get_memory` por UUID para recuperar |
+| `mcp_tools_mem0` → `get_memories(user_id)` | ❌ roto | `list_entities` + UUIDs conocidos |
+| `mcp_tools_mem0` → `add_memory(...)` | ✅ funciona | usar tal cual, aceptar riesgo de duplicado |
+| `mcp_tools_mem0` → `get_memory(uuid)` | ✅ funciona | usar tal cual |
+| `mcp_tools_mem0` → `list_entities()` | ✅ funciona | usar tal cual |
+
+**Regla**: nunca borres memorias sin confirmación explícita del user.
+
+## How to decide which tool to use (default: serena for code)
+
+**Serena is the default for any code operation on a named symbol.** Use `mcp_tools_serena` (after `activate_project("/absolute/path")`) for: reading a function/method/struct body, listing who calls a function, finding its declaration, getting a file's symbol outline, renaming a symbol, replacing a symbol's body. It is LSP-accurate (~60% fewer tokens than `rtk grep`, ZERO false positives).
+
+Decision tree (apply in order, first match wins):
+
+0. **Code operation on a NAMED symbol** (function, class, method, struct, type, constant, field) — even "show me how X works", "muéstrame el cuerpo", "dónde se usa X" → **`mcp_tools_serena`**. Call `activate_project` first if you haven't. Default fallback to native `Read` for these is PROHIBITED (see hard rules below).
 1. **Memoria persistente cross-session** (recordar, recuperar, guardar decisiones/preferencias/hechos, "qué habíamos hablado", "el usuario prefiere")
-   → **`mcp_tools_mem0`**. Empieza SIEMPRE por `search_memories` (bug conocido — ver "Bugs conocidos"). Nunca uses `echo >> notes.md`, scratchpad del agente, ni memoria de contexto para persistir.
+   → **`mcp_tools_mem0`**. Empieza SIEMPRE por `search_memories` (bug conocido — ver "Known bugs — read first" arriba). Nunca uses `echo >> notes.md`, scratchpad del agente, ni memoria de contexto para persistir.
 
-2. **Operación sobre UN SÍMBOLO NOMBRADO en código** — "quién usa X", "referencias de Y", "declaración de Z", "renombra W", "reemplaza el cuerpo de V", "símbolos del archivo F"
-   → **`mcp_tools_serena`** (LSP-accurate). Requiere `activate_project` previa. Empíricamente: **60% menos tokens y CERO falsos positivos** vs `rtk grep` para el mismo query.
+2. **Pregunta natural-language sobre CÓMO funciona una zona del código** (proyecto con `tokensave init`) — "cómo funciona X", "explora el flujo Y", "encuentra el código que hace Z"
+   → **`tokensave` (`tokensave_context`)**. Devuelve entry points + call paths verbatim en 1 call. Si el proyecto NO está init'd → cae al paso 3.
 
-3. **Pregunta natural-language sobre CÓMO funciona una zona del código** (proyecto con `tokensave init`) — "cómo funciona X", "explora el flujo Y", "encuentra el código que hace Z"
-   → **`tokensave` (`tokensave_context`)**. Devuelve entry points + call paths verbatim en 1 call. Si el proyecto NO está init'd → cae al paso 4.
-
-4. **Arquitectura, cross-repo, comunidades, ADR o repo no indexado por tokensave**
+3. **Arquitectura, cross-repo, comunidades, ADR o repo no indexado por tokensave**
    → **`mcp_tools_codebase_memory`**. Único con `get_architecture`, community detection y `manage_adr`.
 
-5. **Búsqueda de TEXTO LITERAL en fichero(s)** (no semántica; ej. una palabra concreta en comentarios, config, docs, `TODO`, un string exacto)
+4. **Búsqueda de TEXTO LITERAL en fichero(s)** (no semántica; ej. una palabra concreta en comentarios, config, docs, `TODO`, un string exacto)
    → **`rtk grep`** (o `rtk find` si es por nombre de fichero, `rtk tree` para overview de directorio). Empíricamente: **60-77% menos tokens** que `grep`/`find` nativos con el mismo resultado textual.
 
-6. **Lectura de un fichero muy grande** (log >500 líneas, JSON verboso, output docker)
+5. **Lectura de un fichero muy grande** (log >500 líneas, JSON verboso, output docker)
    → **`rtk read`**. Ahorra 60-90% en volumen. **NO uses `rtk read` en código fuente pequeño** — ahí `rtk read` ≈ `cat` (0% savings).
 
-7. **Ninguna de las anteriores**: leer UN fichero pequeño que el user ya nombró, editar código puntual, correr un test, `cd`/`ls` puntual
+6. **Ninguna de las anteriores**: leer UN fichero pequeño que el user ya nombró (raw config, doc, `.env`, log), editar código puntual, correr un test, `cd`/`ls` puntual
    → **herramientas nativas** (`Read`, `edit`, `bash`).
 
-Si la petición mezcla varias (p.ej. "busca dónde se usa X, tráza el flujo hasta Y y recuérdame qué decidimos"), llama a cada MCP en el orden del árbol. No preguntes al user; ejecuta.
+If the user's request matches multiple branches, apply them in the listed order and merge the results — do not skip serena just because another tool also fits.
+
+### Serena-first quick reference
+
+- "show me function X" / "muéstrame el cuerpo de X" / "cómo funciona X" → `find_symbol(name_path_pattern: "X", include_body: true)`
+- "where is X used" / "quién llama a X" / "references of X" → `find_referencing_symbols(name_path_pattern: "X")`
+- "where is X defined" / "declaración de X" → `find_declaration(name_path_pattern: "X")`
+- "outline of file.go" / "symbols in file" → `get_symbols_overview(relative_path: "internal/.../file.go")`
+- "rename X to Y" / "replace body of X" → `rename_symbol` / `replace_symbol_body`
+- "list all classes / functions in this file" → `get_symbols_overview(relative_path: "...")`
+
+If you have not yet called `activate_project` for the project, do it FIRST with the absolute path. After activation, all serena tools work for the rest of the session.
 
 ### Datos de decisión (benchmark empírico)
 
@@ -63,13 +90,15 @@ Regla: **si el target es un NOMBRE → serena. Si es una PREGUNTA → tokensave 
 
 ## Regla dura de preferencia
 
-Para toda tarea que caiga en (1), (2), (3) o (4) del árbol:
+Para toda tarea que caiga en (0), (1), (2), (3) o (4) del árbol:
 
+- **PROHIBIDO** saltarse serena para "ver el cuerpo de una función", "encontrar refs de un símbolo nombrado", "obtener el outline de un fichero" o "editar un símbolo". Estos casos van al paso 0 → serena SIEMPRE. Si serena no responde, ver escalación al final; NO caer a `Read`/`Grep`/`rtk grep` por inercia.
+- **PROHIBIDO** llamar a `Read` sobre un fichero `.go`/`.ts`/`.py`/`.rs`/`.java` cuyo objetivo es entender el código — usa serena. `Read` sobre código solo se permite cuando el user nombró el fichero por path (no por nombre de símbolo) y quiere ver el contenido raw.
 - **PROHIBIDO** hacer fallback a `Grep`/`Read`/`find`/`bash grep`/scratchpad para búsqueda semántica de símbolos, refs, arquitectura o memoria persistente, salvo que el MCP correspondiente haya devuelto error explícito en la sesión actual.
-- **PROHIBIDO** usar `rtk grep` para buscar refs de un símbolo — devuelve 60% más tokens que serena Y trae falsos positivos (matches en strings/comments). `rtk grep` es SOLO para texto literal (paso 5), no para código semántico (pasos 2-4).
-- **PROHIBIDO** usar `rtk read` sobre código fuente pequeño (<300 líneas) — 0% savings. Usa native `Read`.
+- **PROHIBIDO** usar `rtk grep` para buscar refs de un símbolo — devuelve 60% más tokens que serena Y trae falsos positivos (matches en strings/comments). `rtk grep` es SOLO para texto literal (paso 4), no para código semántico (pasos 0-3).
+- **PROHIBIDO** usar `rtk read` sobre código fuente pequeño (<300 líneas) — 0% savings. Usa native `Read` solo si el fichero no es LSP-indexable.
 - **PROHIBIDO** sintetizar "notas" en ficheros locales para reemplazar mem0.
-- **PROHIBIDO** intentar responder de memoria si el user pregunta por decisiones/preferencias previas sin haber llamado a `search_memories` primero.
+- **PROHIBIDO** intentar responder de memoria si el user pregunta por decisiones/preferencias previas sin haber llamado a `search_memories` primero (NOTA: `search_memories` está roto upstream, ver "Known bugs" — usar `get_memory` por UUID o `list_entities` como workaround).
 - **PROHIBIDO** usar `serena.write_memory` o `tokensave_todos` como sustituto de `mcp_tools_mem0` — son scratchpads per-project que mueren con el índice.
 - Si el MCP no está expuesto por el cliente activo → `search_tool_bm25` con la capacidad como query (activa tool discovery en OMP). CLI fallback solo tras eso.
 
@@ -77,10 +106,10 @@ Para toda tarea que caiga en (1), (2), (3) o (4) del árbol:
 
 | Intención | Tool | Comandos/APIs principales |
 | --- | --- | --- |
-| Símbolo nombrado en un proyecto (refs, decl, rename, edit semántico) | `mcp_tools_serena` | `activate_project`, `find_symbol`, `find_declaration`, `find_referencing_symbols`, `find_implementations`, `replace_symbol_body`, `get_symbols_overview` |
+| **Code operation on a named symbol** (read body, refs, declaration, outline, rename, replace body) — DEFAULT para código | `mcp_tools_serena` | `activate_project` (primera vez), `find_symbol` (con `include_body: true` para cuerpo), `find_referencing_symbols`, `find_declaration`, `find_implementations`, `get_symbols_overview`, `replace_symbol_body`, `rename_symbol` |
 | Exploración natural-language en proyecto `tokensave init`'d | `tokensave` | `tokensave_context`, `tokensave_search`, `tokensave_callers`, `tokensave_callees`, `tokensave_impact`, `tokensave_node` |
 | Cross-repo, arquitectura, grafo global, ADR, comunidades | `mcp_tools_codebase_memory` | `list_projects`, `index_repository`, `index_status`, `search_code`, `search_graph`, `query_graph`, `trace_path`, `get_code_snippet`, `get_graph_schema`, `get_architecture`, `detect_changes`, `manage_adr`, `ingest_traces` |
-| Memoria persistente cross-session: preferencias, decisiones, hechos del user | `mcp_tools_mem0` | `search_memories`, `add_memory`, `get_memories`, `search_graph`, `get_memory`, `update_memory`, `list_entities` |
+| Memoria persistente cross-session: preferencias, decisiones, hechos del user | `mcp_tools_mem0` | `search_memories` (BUG: ver "Known bugs"), `add_memory`, `get_memories` (BUG), `get_memory` (UUID), `list_entities`, `update_memory` |
 | Texto literal en fichero(s) (comments, config, strings, `TODO`) | `rtk grep` | `rtk grep <pattern> [path]` — ripgrep con output compacto |
 | Ficheros por patrón / árbol de directorio | `rtk find` / `rtk tree` / `rtk ls` | 77% menos tokens que `find`/`tree`/`ls` nativos |
 | Log largo, JSON verboso, output docker | `rtk read` / `rtk log` | 60-90% savings en volúmenes grandes |
@@ -117,24 +146,19 @@ Si en OMP no aparecen visibles, usa `search_tool_bm25` con la capacidad como que
 
 ## Escalación si un MCP no responde
 
+0. **Serena first**: si serena no está conectado, ESTO es prioritario — el agente DEBE intentar activarlo antes de cualquier otra acción. Pasos:
+   1. `mcp-tools serena install` (idempotente, instala `~/.local/bin/serena`).
+   2. `which serena` para confirmar que está en PATH.
+   3. `mcp-tools mcp-config` para re-registrar el MCP server en el cliente activo.
+   4. Si el cliente sigue sin exponerlo: `search_tool_bm25` con query `serena find symbol activate project`.
+   5. Si tras 3 intentos sigue sin responder, recurre a `tokensave_context` (paso 2) o `mcp_tools_codebase_memory` (paso 3) — NUNCA a `Read`/`Grep` para entender código.
 1. **`/mcp list`** para ver el estado por cliente.
 2. **`/mcp reload`** o **`/mcp reconnect <server>`**.
 3. Si sigue fallando: **cierra completamente el cliente y relánzalo** (`/mcp reload` no purga entradas removidas de la config).
 4. Container caído (mem0-qdrant, ollama): `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d`.
 5. Ver logs Docker: `docker logs mcp-tools-<name> --tail 50`.
 6. `tokensave` marca "not connected" en Claude/OpenCode → el cwd no tiene `.tokensave/`. Corre `tokensave init` en un proyecto (una vez basta para que serve arranque desde cualquier cwd).
-7. `serena` marca "not connected" → falta `mcp-tools serena install` o `~/.local/bin/serena` no está en PATH.
-
-## Bugs conocidos
-
-- **`mcp_tools_mem0` partial API breakage** (upstream `mem0-mcp-selfhosted`, verificado empíricamente 2026-07-06):
-  - **Rotos**: `search_memories` (semantic) y `get_memories` (browse/list). Pasan `user_id` al top level de `Memory.search()` / `Memory.get_all()`, la lib mem0 nueva exige `filters={user_id: ...}` → `ValueError: Top-level entity parameters ... not supported`.
-  - **Funcionan**: `add_memory` (con `event: ADD`), `get_memory` por UUID, `list_entities`.
-  - **Consecuencia práctica**: no se puede cumplir la política "search antes de add" (dedupe imposible por semántica). Los `add_memory` van append-only y pueden acumular duplicados. Las recuperaciones requieren conocer el UUID de antemano o listar todos los entities.
-  - **Workaround hasta fix upstream**: 
-    (a) para "recuerda X" — corre `add_memory` directamente aceptando riesgo de duplicado; 
-    (b) para "qué habíamos decidido X" — di al user que semantic search está roto y ofrece browsear via `list_entities` + UUIDs conocidos; 
-    (c) no borres nada sin confirmación explícita del user.
+7. `serena` marca "not connected" tras los pasos 0.1–0.4 → `~/.local/bin/serena` no está en PATH o `activate_project` no se ha llamado. Llama `activate_project("/absolute/path")` antes de cualquier otra tool de serena.
 
 ## Skills específicos por MCP
 

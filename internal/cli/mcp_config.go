@@ -1,10 +1,10 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -41,18 +41,44 @@ func RunMcpConfig(dry bool, st state.State, out io.Writer) error {
 		return nil
 	}
 	log := func(s string) { fmt.Fprintln(out, s) }
-	var errs []error
+	type clientErr struct {
+		client string
+		err    error
+		hint   string
+	}
+	var failures []clientErr
 	if err := mcp.ConfigureClaude(st, log); err != nil {
-		errs = append(errs, fmt.Errorf("claude: %w", err))
+		failures = append(failures, clientErr{
+			client: "claude",
+			err:    err,
+			hint:   "revisa ~/.claude.json y 'claude mcp list'",
+		})
 	}
 	if err := mcp.ConfigureOpenCode(st, log); err != nil {
-		errs = append(errs, fmt.Errorf("opencode: %w", err))
+		failures = append(failures, clientErr{
+			client: "opencode",
+			err:    err,
+			hint:   "revisa ~/.config/opencode/opencode.json",
+		})
 	}
 	if err := mcp.ConfigureOMP(st, log); err != nil {
-		errs = append(errs, fmt.Errorf("omp: %w", err))
+		failures = append(failures, clientErr{
+			client: "omp",
+			err:    err,
+			hint:   "revisa ~/.omp/agent/mcp.json",
+		})
 	}
-	if len(errs) == 0 {
+	if len(failures) == 0 {
 		return nil
 	}
-	return errors.Join(errs...)
+	// Build a multi-client recovery message. We do NOT roll back successful
+	// clients automatically: rolling back would destructively mutate the
+	// other configs and the user must decide.
+	var b strings.Builder
+	fmt.Fprintf(&b, "mcp-config parcial — %d/%d clientes fallaron:\n", len(failures), 3)
+	for _, f := range failures {
+		fmt.Fprintf(&b, "  %s: %v — %s\n", f.client, f.err, f.hint)
+	}
+	b.WriteString("Para reintentar: mcp-tools mcp-config")
+	return fmt.Errorf("%s", b.String())
 }

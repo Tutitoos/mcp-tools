@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/mattn/go-isatty"
 )
 
 func serenaTool() Tool {
@@ -46,13 +48,25 @@ func installSerena(dry bool, log func(string)) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("uv tool install %s: %w\n%s", serenaSpec, err, strings.TrimSpace(out.String()))
 	}
-	initCmd := exec.Command("serena", "init")
+	initArgs := []string{"init"}
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		initArgs = append(initArgs, "--yes")
+	}
+	initCmd := exec.Command("serena", initArgs...)
 	initCmd.Env = withLocalBinPath(os.Environ(), home)
 	initCmd.Env = append(initCmd.Env, "HOME="+home)
+	if isatty.IsTerminal(os.Stdin.Fd()) {
+		initCmd.Stdin, initCmd.Stdout, initCmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+		return initCmd.Run()
+	}
 	var initOut bytes.Buffer
 	initCmd.Stdout = &initOut
 	initCmd.Stderr = &initOut
 	if err := initCmd.Run(); err != nil {
+		if strings.Contains(initOut.String(), "unknown flag") || strings.Contains(initOut.String(), "unrecognized") {
+			log("WARN serena init --yes no soportado por esta versión; salta auto-register. Corre 'serena init' manualmente tras el install.")
+			return nil
+		}
 		return fmt.Errorf("serena init: %w\n%s", err, strings.TrimSpace(initOut.String()))
 	}
 	return nil

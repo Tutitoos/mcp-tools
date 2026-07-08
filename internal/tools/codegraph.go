@@ -24,6 +24,8 @@ func codegraphTool() Tool {
 	}
 }
 
+// TODO(security): pin to a known-good commit. The script is fetched from
+// `main` (not a tagged release) and executed locally. See docs/REVIEW-rd2.md (H27).
 const codegraphInstallURL = "https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh"
 
 func installCodegraph(dry bool, log func(string)) error {
@@ -69,13 +71,12 @@ func installCodegraph(dry bool, log func(string)) error {
 	reg := exec.Command(bin, "install", "--yes")
 	reg.Env = os.Environ()
 	if err := runCombined(reg, "codegraph install --yes"); err != nil {
-		// Fallback: some upstream releases prompt without --yes.
-		fallback := exec.Command(bin, "install")
-		fallback.Env = os.Environ()
-		fallback.Stdin = strings.NewReader("y\n")
-		if err2 := runCombined(fallback, "codegraph install (stdin y)"); err2 != nil {
-			return fmt.Errorf("codegraph auto-register: %w (fallback: %v)", err, err2)
+		errStr := err.Error()
+		if strings.Contains(errStr, "unknown flag") || strings.Contains(errStr, "unrecognized") {
+			log("WARN codegraph install --yes no soportado por esta versión; salta auto-register. Corre 'codegraph install' manualmente.")
+			return nil
 		}
+		return fmt.Errorf("codegraph auto-register: %w", err)
 	}
 	return nil
 }

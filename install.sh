@@ -33,11 +33,15 @@ esac
 
 if [ "$VERSION" = "latest" ]; then
   log "resolviendo última release en GitHub..."
-  # Follow redirect and read the tag from the location header without needing jq.
-  latest="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest")"
+  resp="$(curl -sSL -o /dev/null -w '%{http_code} %{url_effective}' "https://github.com/${REPO}/releases/latest")"
+  code="${resp%% *}"
+  latest="${resp#* }"
+  if [ "$code" != "200" ] && [ "$code" != "301" ] && [ "$code" != "302" ]; then
+    err "GitHub respondió HTTP $code al resolver 'latest' (¿rate-limit?). Reintenta en unos minutos o fija MCP_TOOLS_VERSION=vX.Y.Z"
+  fi
   VERSION="${latest##*/}"
   if [ -z "$VERSION" ] || [ "$VERSION" = "releases" ]; then
-    err "no pude resolver 'latest' release; ¿existe una?"
+    err "no pude resolver 'latest' release; ¿existe una? Si acabas de publicar, espera 1-2 min y reintenta."
   fi
 fi
 # Strip leading 'v' from the tag when composing the tarball filename (goreleaser default).

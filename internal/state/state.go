@@ -45,6 +45,9 @@ func Load() (State, error) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return State{}, fmt.Errorf("state.json: %w", err)
 	}
+	if s.Version > SchemaVersion {
+		return State{}, fmt.Errorf("state.json: schema v%d más nuevo que este binario (soporta v%d); actualiza mcp-tools", s.Version, SchemaVersion)
+	}
 	if s.Version == 0 {
 		s.Version = SchemaVersion
 	}

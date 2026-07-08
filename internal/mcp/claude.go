@@ -25,7 +25,10 @@ func ConfigureClaude(st state.State, log func(string)) error {
 	}
 
 	// Prune obsolete mcp_tools_* entries the user still has registered.
-	if listOut, err := exec.Command("claude", "mcp", "list").Output(); err == nil {
+	listOut, err := exec.Command("claude", "mcp", "list").Output()
+	if err != nil {
+		log(fmt.Sprintf("  SKIP Claude prune — 'claude mcp list' falló: %v", err))
+	} else {
 		for _, line := range strings.Split(string(listOut), "\n") {
 			name, _, ok := strings.Cut(line, ":")
 			name = strings.TrimSpace(name)

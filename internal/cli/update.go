@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -105,6 +106,15 @@ func runSelfUpdate(dry bool, log func(string)) error {
 	}
 	if err := runCmdWithLog("make", []string{"-C", root, "install"}); err != nil {
 		return fmt.Errorf("make install: %w", err)
+	}
+	binDir := os.Getenv("MCP_TOOLS_BIN")
+	if binDir == "" {
+		binDir = config.WrapperDir()
+	}
+	binPath := filepath.Join(binDir, "mcp-tools")
+	if err := runCmdWithLog(binPath, []string{"--version"}); err != nil {
+		log(fmt.Sprintf("WARN mcp-tools instalado en %s está roto (--version falla). Re-corre 'make -C %s install' o revisa el PATH.", binPath, root))
+		return fmt.Errorf("post-install verify: %w", err)
 	}
 	if v, err := exec.Command("git", "-C", root, "describe", "--tags", "--always").Output(); err == nil {
 		log(fmt.Sprintf("mcp-tools actualizado a %s", strings.TrimSpace(string(v))))

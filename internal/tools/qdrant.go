@@ -4,8 +4,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
+	"github.com/Tutitoos/mcp-tools/internal/docker"
 )
 
 func qdrantTool() Tool {
@@ -70,16 +72,25 @@ func uninstallQdrant(dry bool, log func(string)) error {
 
 func statusQdrant() (StatusPayload, error) {
 	p := StatusPayload{Extra: map[string]any{}}
-	out, err := exec.Command("docker", "container", "inspect", "-f", "{{.State.Status}}", "mcp-tools-mem0-qdrant").Output()
-	if err != nil {
-		return p, nil
+	timeout := 5 * time.Second
+	if out, err := docker.RunCmdWithTimeout(timeout, "container", "inspect", "-f", "{{.State.Status}}", "mcp-tools-mem0-qdrant").Output(); err == nil {
+		p.Installed = true
+		p.Extra["state"] = strings.TrimSpace(string(out))
 	}
-	state := strings.TrimSpace(string(out))
-	p.Installed = true
-	p.Extra["state"] = state
-	// image tag = version
-	if img, err := exec.Command("docker", "container", "inspect", "-f", "{{.Config.Image}}", "mcp-tools-mem0-qdrant").Output(); err == nil {
+	if img, err := docker.RunCmdWithTimeout(timeout, "container", "inspect", "-f", "{{.Config.Image}}", "mcp-tools-mem0-qdrant").Output(); err == nil {
 		p.Version = strings.TrimSpace(string(img))
+	}
+	// image_drift: local image digest != running container's image digest
+	if imgDigest, err := docker.RunCmdWithTimeout(timeout, "images", "inspect", "mcp-tools-mem0-qdrant", "-f", "{{.Id}}").Output(); err == nil {
+		p.Extra["image_digest"] = strings.TrimSpace(string(imgDigest))
+		if ctrDigest, err := docker.RunCmdWithTimeout(timeout, "container", "inspect", "-f", "{{.Image}}", "mcp-tools-mem0-qdrant").Output(); err == nil {
+			p.Extra["container_digest"] = strings.TrimSpace(string(ctrDigest))
+			if p.Extra["image_digest"] != p.Extra["container_digest"] {
+				p.Extra["image_drift"] = true
+			}
+		}
+	} else {
+		p.Extra["image_missing"] = true
 	}
 	return p, nil
 }

@@ -45,8 +45,8 @@ func installNvidiaToolkit(dry bool, log func(string)) error {
 		// Import upstream signing key.
 		{"sh", "-c", "curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --yes --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg"},
 		{"sh", "-c", `curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list`},
-		{"bash", "-c", `set -o pipefail; sudo apt-get update 2>&1 | { grep -v 'configured multiple times' || true; }`},
-		{"bash", "-c", `set -o pipefail; sudo apt-get install -y nvidia-container-toolkit 2>&1 | { grep -v 'configured multiple times' || true; }`},
+		{"sudo", "apt-get", "-qq", "update"},
+		{"sudo", "apt-get", "-qq", "-y", "install", "nvidia-container-toolkit"},
 		{"sudo", "nvidia-ctk", "runtime", "configure", "--runtime=docker"},
 		{"sudo", "systemctl", "restart", "docker"},
 	}

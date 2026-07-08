@@ -40,6 +40,9 @@ func toMap(v any) (map[string]any, error) {
 }
 
 // WriteJSON pretty-writes obj to path with a trailing newline. Creates parents.
+// Atomic (tempfile + rename) and 0o600 — configs of MCP clients may carry
+// tokens and must not be world-readable, and a partial write must not corrupt
+// the live config.
 func WriteJSON(path string, obj any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
@@ -49,7 +52,12 @@ func WriteJSON(path string, obj any) error {
 		return err
 	}
 	data = append(data, '\n')
-	return os.WriteFile(path, data, 0o644)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // Backup copies path to path.bak.<timestamp> if it exists. Silent no-op if missing.

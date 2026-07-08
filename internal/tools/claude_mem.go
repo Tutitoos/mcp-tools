@@ -33,6 +33,9 @@ func installClaudeMem(dry bool, log func(string)) error {
 		log("$ npx --yes claude-mem@latest install")
 		return nil
 	}
+	// TODO(security): pin claude-mem to a stable version. `@latest` pulls
+	// whatever is on npm at install time and is propagated to all users.
+	// See docs/REVIEW-rd2.md (H28).
 	cmd := exec.Command("npx", "--yes", "claude-mem@latest", "install")
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
@@ -52,6 +55,7 @@ func uninstallClaudeMem(dry bool, log func(string)) error {
 		log("$ npx --yes claude-mem@latest uninstall")
 		return nil
 	}
+	// TODO(security): mirror H28 — see docs/REVIEW-rd2.md.
 	cmd := exec.Command("npx", "--yes", "claude-mem@latest", "uninstall")
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin

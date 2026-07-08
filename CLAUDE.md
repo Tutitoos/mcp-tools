@@ -2,22 +2,54 @@
 
 This repository ships an installer + registry for MCP servers and operational skills.
 
+## Serena-first code exploration (READ THIS FIRST)
+
+**`mcp_tools_serena` is the default for any code operation on a named symbol.** Use it for: finding a function/class/method/struct/constant, reading its body, listing who calls it, locating its declaration, getting a file's symbol outline, and editing a symbol's body. It is LSP-accurate, returns ~60% fewer tokens than `rtk grep` and ZERO false positives (no string/comment noise).
+
+Workflow (EVERY session):
+1. `activate_project("/absolute/path")` once per project. For this repo: `activate_project("/home/tutitoos/mcp-tools")`.
+2. Then use `find_symbol` / `find_referencing_symbols` / `find_declaration` / `get_symbols_overview` / `find_symbol(include_body: true)` as the situation demands.
+
+Default tool mapping (overrides "use native Read" instinct):
+- "show me function X" / "cómo funciona X" / "muéstrame el cuerpo" → `find_symbol(name_path_pattern: "X", include_body: true)`
+- "where is X used" / "quién llama a X" / "references of X" → `find_referencing_symbols(name_path_pattern: "X")`
+- "where is X defined" / "declaración de X" → `find_declaration(name_path_pattern: "X")`
+- "outline of file.go" / "symbols in file" → `get_symbols_overview(relative_path: "internal/.../file.go")`
+- "rename X to Y" / "replace body of X" → `replace_symbol_body` / `rename_symbol` (LSP-accurate)
+
+Fall back to native `Read` only for: raw config, docs, `.env`, logs, JSON dumps, or when the file is not in an LSP-indexable language. **Never** fall back to native `Read` to "see how function X works" — that is exactly what serena is for.
+
+If serena returns an error or "not connected" → see the escalation list at the bottom of this file.
+
+## Other MCP servers
+
 Before working with local code repositories, read:
 
 - `skills/codebase-memory/SKILL.md`
+- `skills/serena/SKILL.md`
+- `skills/tokensave/SKILL.md`
 - `skills/mem0/SKILL.md`
 
-Use `mcp_tools_codebase_memory` for codebase navigation, indexing, architecture analysis, code search, symbol tracing, and repository understanding.
+Use `mcp_tools_serena` for symbol-level code operations (see block above — DEFAULT for any named symbol).
 
-Use `mcp_tools_mem0` for persistent cross-session memory (facts, preferences, decisions). Always call `search_memories` before `add_memory` to avoid duplicates.
+Use `tokensave` (`tokensave_context`) for natural-language exploration in a `tokensave init`'d project ("how does X work" open-ended questions).
+
+Use `mcp_tools_codebase_memory` for cross-repo architecture, ADR, community detection, dependency graphs.
+
+Use `mcp_tools_mem0` for persistent cross-session memory (facts, preferences, decisions). Always call `search_memories` before `add_memory` to avoid duplicates. NOTE: `search_memories` and `get_memories` are BROKEN upstream (lib mem0 API change) — see RULES.md "Known bugs" before relying on them.
 
 Important rules:
 
-- The MCP servers run as host binaries (not Docker). `codebase-memory-mcp` lives at `~/.local/bin/codebase-memory-mcp`; `mem0-mcp-selfhosted` runs behind the `~/.local/bin/mem0-launcher` wrapper (sourcea `.env.mem0`).
+- The MCP servers run as host binaries (not Docker). `codebase-memory-mcp` lives at `~/.local/bin/codebase-memory-mcp`; `mem0-mcp-selfhosted` runs behind the `~/.local/bin/mem0-launcher` wrapper (sourcea `.env.mem0`); `serena` lives at `~/.local/bin/serena` (installed by `mcp-tools serena install`).
 - Do not spawn old `mcp-tools-*-docker` wrappers — they were removed. If a client still references them, run `mcp-tools mcp-config` to re-register cleanly.
-- Persistent data lives under `$HOME/mcp-tools-data/` (subdirs per MCP: `mem0`, `ollama`, plus `state.json`).
-- NEVER fall back to native `Grep`/`Read`/`find`/`bash grep` for repo-wide search — that's what `mcp_tools_codebase_memory` is for.
+- Persistent data lives under `$HOME/mcp-tools-data/` (subdirs per MCP: `mem0`, `ollama`, plus `state.json`). Per-project serena state lives at `<project>/.serena/`.
+- NEVER fall back to native `Grep`/`Read`/`find`/`bash grep` for repo-wide code search — use serena (named symbol), tokensave (open question), or codebase-memory (cross-repo).
+- NEVER use `rtk grep` to find references of a named symbol — `rtk grep` matches strings/comments, not symbol identity. Use serena.
 - NEVER write local `notes.md`/scratchpad files to persist facts across sessions — that's what `mcp_tools_mem0` is for.
+
+## Serena activation reminder
+
+If you have not called `activate_project` for the current project in this session, the FIRST code-operation call you make must be `activate_project("/absolute/path")`. After that, all serena tools work without re-activation for the rest of the session. If you find yourself about to call `Read` on a `.go` / `.ts` / `.py` / `.rs` / `.java` file, stop and use serena instead.
 
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands

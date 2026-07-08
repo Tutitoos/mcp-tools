@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -137,7 +139,10 @@ type installedModel struct {
 }
 
 func listInstalledModels() ([]installedModel, error) {
-	out, err := exec.Command("docker", "exec", "mcp-tools-ollama", "ollama", "list").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "docker", "exec", "mcp-tools-ollama", "ollama", "list")
+	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("ollama list: %w", err)
 	}
@@ -184,15 +189,10 @@ func installedTags(items []installedModel) []string {
 }
 
 // buildItems merges installed + curated. Curated tags land under LLM/Embed;
-// installed-but-not-curated land under "Otros instalados".
+// installed-but-not-curated land under "Otros instalados". Tags are matched
+// by HasPrefix (curated + ":") so a curated entry like `bge-m3` matches the
+// installed `bge-m3:f32` or `bge-m3:latest` (no `:latest` normalization).
 func buildItems(installed []installedModel) []modelselect.Item {
-	// Curated → tag suffix normalisation: `bge-m3` maps to `bge-m3:latest`.
-	norm := func(v string) string {
-		if strings.Contains(v, ":") {
-			return v
-		}
-		return v + ":latest"
-	}
 	installedSet := map[string]installedModel{}
 	for _, m := range installed {
 		installedSet[m.Tag] = m
@@ -201,7 +201,7 @@ func buildItems(installed []installedModel) []modelselect.Item {
 	var items []modelselect.Item
 	seen := map[string]bool{}
 	for _, m := range selectmodel.LLMModels {
-		tag := norm(m.Value)
+		tag := m.Value
 		items = append(items, modelselect.Item{
 			Tag:       tag,
 			Label:     m.Label,
@@ -212,7 +212,7 @@ func buildItems(installed []installedModel) []modelselect.Item {
 		seen[tag] = true
 	}
 	for _, m := range selectmodel.EmbedModels {
-		tag := norm(m.Value)
+		tag := m.Value
 		items = append(items, modelselect.Item{
 			Tag:       tag,
 			Label:     m.Label,
@@ -222,7 +222,6 @@ func buildItems(installed []installedModel) []modelselect.Item {
 		})
 		seen[tag] = true
 	}
-	// Any installed tag not in the curated set → "Otros instalados".
 	tags := make([]string, 0, len(installedSet))
 	for tag := range installedSet {
 		if seen[tag] {
@@ -244,15 +243,16 @@ func buildItems(installed []installedModel) []modelselect.Item {
 	return items
 }
 
-// fuzzyInstalled matches "bge-m3:latest" against "bge-m3" too.
+// fuzzyInstalled matches a curated tag against installed tags: exact match OR
+// `installed` has the curated tag as a prefix followed by `:` / `@` (covers
+// ollama naming `bge-m3:f32` against curated `bge-m3`).
 func fuzzyInstalled(tag string, installed map[string]installedModel) bool {
 	if _, ok := installed[tag]; ok {
 		return true
 	}
-	// Strip :latest and try again.
-	if strings.HasSuffix(tag, ":latest") {
-		bare := strings.TrimSuffix(tag, ":latest")
-		if _, ok := installed[bare]; ok {
+	prefix := tag + ":"
+	for existing := range installed {
+		if strings.HasPrefix(existing, prefix) || strings.HasPrefix(existing, tag+"@") {
 			return true
 		}
 	}
@@ -263,8 +263,9 @@ func sizeOf(tag string, installed map[string]installedModel) string {
 	if m, ok := installed[tag]; ok {
 		return m.Size
 	}
-	if strings.HasSuffix(tag, ":latest") {
-		if m, ok := installed[strings.TrimSuffix(tag, ":latest")]; ok {
+	prefix := tag + ":"
+	for existing, m := range installed {
+		if strings.HasPrefix(existing, prefix) || strings.HasPrefix(existing, tag+"@") {
 			return m.Size
 		}
 	}

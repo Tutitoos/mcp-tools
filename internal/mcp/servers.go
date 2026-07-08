@@ -9,51 +9,49 @@ import (
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/state"
-	"github.com/Tutitoos/mcp-tools/internal/tools"
 )
 
-// ServerSpec is one MCP server entry the installer registers in every client.
 type ServerSpec struct {
 	Name    string
 	Wrapper string
 	Args    []string
 }
 
+// mcpServers is the canonical list of tools that ARE MCP servers.
+// Tools not in this map (nvidia-toolkit, qdrant, ollama, rtk, tokensave,
+// claude-mem) are "system tools" and are NOT registered with MCP clients.
+// To register a new tool as MCP, add it here AND to tools.Registry().
+var mcpServers = map[string]ServerSpec{
+	"codebase-memory": {
+		Name:    "mcp_tools_codebase_memory",
+		Wrapper: "codebase-memory-mcp",
+		Args:    []string{"--ui=true"},
+	},
+	"mem0": {
+		Name:    "mcp_tools_mem0",
+		Wrapper: filepath.Join(config.WrapperDir(), "mem0-launcher"),
+		Args:    []string{},
+	},
+	"headroom": {
+		Name:    "mcp_tools_headroom",
+		Wrapper: "headroom",
+		Args:    []string{"mcp", "serve"},
+	},
+	"serena": {
+		Name:    "mcp_tools_serena",
+		Wrapper: "serena",
+		Args:    []string{"start-mcp-server", "--context", "agent", "--project-from-cwd"},
+	},
+}
+
 // Servers returns the ServerSpec list to register in Claude/OpenCode/OMP,
-// filtered by the user's persisted selection: only tools that expose an
-// MCP stdio surface AND aren't SelfRegisters=true land here.
+// filtered by the user's persisted selection. Tools that aren't MCP servers
+// (per mcpServers) are silently skipped.
 func Servers(st state.State) []ServerSpec {
 	out := []ServerSpec{}
 	for _, key := range st.Selected {
-		t, err := tools.Get(key)
-		if err != nil || t.SelfRegisters {
-			continue
-		}
-		switch key {
-		case "codebase-memory":
-			out = append(out, ServerSpec{
-				Name:    "mcp_tools_codebase_memory",
-				Wrapper: "codebase-memory-mcp",
-				Args:    []string{"--ui=true"},
-			})
-		case "mem0":
-			out = append(out, ServerSpec{
-				Name:    "mcp_tools_mem0",
-				Wrapper: filepath.Join(config.WrapperDir(), "mem0-launcher"),
-				Args:    []string{},
-			})
-		case "headroom":
-			out = append(out, ServerSpec{
-				Name:    "mcp_tools_headroom",
-				Wrapper: "headroom",
-				Args:    []string{"mcp", "serve"},
-			})
-		case "serena":
-			out = append(out, ServerSpec{
-				Name:    "mcp_tools_serena",
-				Wrapper: "serena",
-				Args:    []string{"start-mcp-server", "--context", "agent", "--project-from-cwd"},
-			})
+		if s, ok := mcpServers[key]; ok {
+			out = append(out, s)
 		}
 	}
 	return out

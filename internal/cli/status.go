@@ -27,7 +27,10 @@ func init() {
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
-	st, _ := state.Load()
+	st, err := state.Load()
+	if err != nil {
+		return fmt.Errorf("state.json: %w", err)
+	}
 	reg := tools.Registry()
 	rows := make([]statusRow, 0, len(reg))
 	for _, t := range reg {

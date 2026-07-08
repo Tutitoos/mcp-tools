@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
+	"github.com/Tutitoos/mcp-tools/internal/docker"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
@@ -77,15 +79,25 @@ func uninstallOllama(dry bool, log func(string)) error {
 	return runCombined(cmd, "docker compose rm ollama")
 }
 
+// statusOllama reports the live state of mcp-tools-ollama. Inspect uses a
+// host-level `docker container inspect` (via docker.RunCmdWithTimeout); the
+// version is read inside the container via `docker exec`, for which we share
+// the same 5-second budget via a one-shot context.
 func statusOllama() (StatusPayload, error) {
 	p := StatusPayload{Extra: map[string]any{}}
-	out, err := exec.Command("docker", "container", "inspect", "-f", "{{.State.Status}}", "mcp-tools-ollama").Output()
+	timeout := 5 * time.Second
+	inspectCmd := docker.RunCmdWithTimeout(timeout, "container", "inspect", "-f", "{{.State.Status}}", "mcp-tools-ollama")
+	out, err := inspectCmd.Output()
 	if err != nil {
+		p.Extra["state"] = "unreachable"
 		return p, nil
 	}
 	p.Installed = true
 	p.Extra["state"] = strings.TrimSpace(string(out))
-	if v, err := exec.Command("docker", "exec", "mcp-tools-ollama", "ollama", "--version").Output(); err == nil {
+	// Version read — share the same 5s budget but route through `docker exec`.
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if v, err := exec.CommandContext(ctx, "docker", "exec", "mcp-tools-ollama", "ollama", "--version").Output(); err == nil {
 		p.Version = firstLine(string(v))
 	}
 	p.Extra["gpu_overlay"] = len(OllamaComposeFiles(loadStateOrEmpty())) > 1
@@ -114,11 +126,12 @@ func pullMem0Models(log func(string)) error {
 		return nil
 	}
 	var listOut []byte
-	for range 10 {
+	for i := range 10 {
 		listOut, err = exec.Command("docker", "exec", "mcp-tools-ollama", "ollama", "list").Output()
 		if err == nil {
 			break
 		}
+		log(fmt.Sprintf("· esperando ollama (intento %d/10)...", i+1))
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {

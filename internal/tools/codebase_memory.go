@@ -24,6 +24,8 @@ func codebaseMemoryTool() Tool {
 	}
 }
 
+// TODO(security): pin to a known-good commit. The script is fetched from
+// `main` (not a tagged release) and executed locally. See docs/REVIEW-rd2.md (H26).
 const codebaseMemoryInstallURL = "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh"
 
 func installCodebaseMemory(dry bool, log func(string)) error {

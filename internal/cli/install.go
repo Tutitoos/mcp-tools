@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -84,26 +85,35 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("mcp-config: %w", err)
 	}
 
-	// 5. Skills + rules (idempotentes; sirven a los 3 clientes).
+	// 5. Persistir state ANTES de skills/rules (H31): un fallo aquí no debe
+	//    dejar el state desincronizado con la instalación real.
+	if !installDry {
+		stNew := state.State{Selected: selected, Versions: collectVersions(selected)}
+		if err := stNew.Save(); err != nil {
+			return fmt.Errorf("save state: %w", err)
+		}
+	}
+
+	// 6. Skills + rules (idempotentes; sirven a los 3 clientes). Errores
+	//    se reportan pero NO bloquean — el install ya quedó consistente.
 	var buf bytes.Buffer
+	var skErr error
 	if err := RunSkills(installDry, &buf); err != nil {
-		return fmt.Errorf("skills: %w", err)
+		skErr = errors.Join(skErr, fmt.Errorf("skills: %w", err))
 	}
 	if err := RunRules(installDry, &buf); err != nil {
-		return fmt.Errorf("rules: %w", err)
+		skErr = errors.Join(skErr, fmt.Errorf("rules: %w", err))
 	}
 	if s := strings.TrimRight(buf.String(), "\n"); s != "" {
 		fmt.Fprintln(os.Stdout, s)
 	}
 
-	// 6. Persiste state al final con versiones frescas (skip en dry).
 	if installDry {
 		fmt.Fprintln(os.Stdout, "SKIP (dry) — no toca state.json")
 		return nil
 	}
-	stNew := state.State{Selected: selected, Versions: collectVersions(selected)}
-	if err := stNew.Save(); err != nil {
-		return fmt.Errorf("save state: %w", err)
+	if skErr != nil {
+		return skErr
 	}
 	fmt.Fprintf(os.Stdout, "── install completo — %d tools · reinicia tu cliente MCP\n", len(selected))
 	return nil
@@ -243,16 +253,36 @@ func preChecked(st state.State, avail []tools.Tool) map[string]bool {
 		}
 		return pre
 	}
+	type statusResult struct {
+		key       string
+		installed bool
+	}
+	results := make(chan statusResult, len(avail))
+	sem := make(chan struct{}, 5)
+	var wg sync.WaitGroup
 	for _, t := range avail {
 		if t.DefaultOn {
 			pre[t.Key] = true
 			continue
 		}
-		if t.Status != nil {
-			if s, err := t.Status(); err == nil && s.Installed {
-				pre[t.Key] = true
-			}
+		if t.Status == nil {
+			continue
 		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(t tools.Tool) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			s, err := t.Status()
+			if err == nil && s.Installed {
+				results <- statusResult{key: t.Key, installed: true}
+			}
+		}(t)
+	}
+	wg.Wait()
+	close(results)
+	for r := range results {
+		pre[r.key] = r.installed
 	}
 	return pre
 }

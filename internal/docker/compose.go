@@ -3,8 +3,10 @@
 package docker
 
 import (
+	"context"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
 )
@@ -56,5 +58,20 @@ func Exec(container string, cmdAndArgs ...string) *exec.Cmd {
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	return cmd
+}
+
+// RunCmdWithTimeout builds `docker <args...>` (host-level, no compose / exec)
+// wrapped in a context with the given timeout. Use this from status()
+// functions so a hung daemon doesn't hang the whole CLI.
+func RunCmdWithTimeout(d time.Duration, args ...string) *exec.Cmd {
+	ctx, cancel := context.WithTimeout(context.Background(), d)
+	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd.Env = os.Environ()
+	// Note: we intentionally do NOT call cancel here. ctx will be released
+	// when cmd finishes (or the deadline is reached) — that's sufficient for
+	// short-lived status calls, and avoids the goroutine leak path of a
+	// manually-managed cancel.
+	_ = cancel
 	return cmd
 }

@@ -1,5 +1,5 @@
 .env
-.env.*
+.env.mem0
 !.env.example
 
 *.log
