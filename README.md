@@ -5,27 +5,33 @@ Instalador declarativo de MCPs, herramientas host y servicios Docker para Claude
 ## Instalación
 
 ```bash
+# 1. Instala el binario desde la última release (v0.1.8 al 2026-07-08).
 curl -fsSL https://raw.githubusercontent.com/Tutitoos/mcp-tools/main/install.sh | bash
 
+# 2. El binario vive en ~/.local/bin por defecto. Si no está en tu $PATH,
+#    añádelo antes del siguiente paso (el instalador avisa con un "warn"
+#    si tu PATH no lo incluye):
+export PATH="$HOME/.local/bin:$PATH"
+
+# 3. Clona el repo y abre el multi-select TUI.
 git clone https://github.com/Tutitoos/mcp-tools ~/mcp-tools
 cd ~/mcp-tools
 mcp-tools install
 ```
 
-`mcp-tools install` corre `env` (genera `.env` + `.env.mem0` + directorios de datos), abre un multi-select TUI con la lista de componentes disponibles y — al confirmar — instala cada tool en orden topológico. La selección se guarda en `state.json`; próximas ejecuciones sin flags reusan el mismo set. Añade `--dry` para preview, `--noselect` para reusar el state sin abrir el TUI, o `--reconfigure` para forzar el TUI.
+Alternativas y overrides del paso 1:
 
-Alternativas para bajar el binario:
+- `MCP_TOOLS_VERSION=v0.1.7 curl -fsSL .../install.sh | bash` fija una versión concreta.
+- `MCP_TOOLS_BIN=/usr/local/bin curl -fsSL .../install.sh | bash` instala en otro dir (requiere permisos).
+- `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@v0.1.8` desde source (Go 1.24+).
+- `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@latest` desde source, última release.
 
-- `MCP_TOOLS_VERSION=v0.1.0 curl -fsSL https://raw.githubusercontent.com/Tutitoos/mcp-tools/main/install.sh | bash` fija una versión concreta.
-- `MCP_TOOLS_BIN=/usr/local/bin` instala en otro dir (requiere permisos).
-- `go install github.com/Tutitoos/mcp-tools/cmd/mcp-tools@latest` desde source (Go 1.24+).
-
-### Requisitos
-
-- Docker + `docker compose` v2.
-- `~/.local/bin` en `$PATH` (donde vive el binario y `mem0-launcher`).
-- `git` en PATH (para `update --self`).
-- Nvidia GPU + driver instalado si vas a marcar `nvidia-toolkit` (opcional). En hosts sin GPU la fila no aparece en el TUI.
+Si `mcp-tools install` falla con `bash: mcp-tools: command not found` justo
+después del paso 1, tu shell no tiene `~/.local/bin` en `$PATH`. El paso 2
+lo arregla para la sesión actual; para hacerlo permanente añade la línea
+`export` a tu `~/.bashrc` / `~/.zshrc`. El instalador imprime en pantalla
+el comando exacto sugerido y, desde v0.1.8, el "Siguiente paso" usa el
+path absoluto (`$BIN_DIR/mcp-tools install`) para ser copy-paste safe.
 
 ## Plataformas soportadas
 
