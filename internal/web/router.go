@@ -44,40 +44,40 @@ import (
 // to the embedded SPA (index.html for routes, asset file otherwise).
 func NewRouter() http.Handler {
 	r := chi.NewRouter()
-	// Middleware stack: request logger + recoverer. Auth (bearer token)
-	// is enforced per-route via handleAuth when ~/.mcp-tools-web.token
-	// exists; the default bind is 0.0.0.0 so the panel is reachable
-	// from the LAN, gated by the bearer token rather than a loopback
-	// IP filter.
+	// Middleware stack: request logger + recoverer. The API is open
+	// by design -- bind to 127.0.0.1 (or rely on firewall) to restrict
+	// access. The bearer-token gate was removed: too much friction for
+	// a self-hosted home tool.
 	r.Use(requestLogger)
 	r.Use(recoverer)
-	// Public, unauthenticated health probe — useful for systemd + curl.
+
+	// Public, unauthenticated health probe.
 	r.Get("/api/version", handleVersion)
 
-	// Read-only snapshots (token optional; see handleAuth).
-	r.Get("/api/tools", handleAuth(false, handleTools))
-	r.Get("/api/status", handleAuth(false, handleStatus))
-	r.Get("/api/services", handleAuth(false, handleServices))
-	r.Get("/api/models", handleAuth(false, handleModels))
-	r.Get("/api/jobs/{jobID}/events", handleAuth(false, handleJobEvents))
+	// Read-only snapshots.
+	r.Get("/api/tools", handleTools)
+	r.Get("/api/status", handleStatus)
+	r.Get("/api/services", handleServices)
+	r.Get("/api/models", handleModels)
+	r.Get("/api/jobs/{jobID}/events", handleJobEvents)
 
-	// State-changing handlers (token required when token file is set).
-	r.Post("/api/tools/{key}/install", handleAuth(true, handleToolAction("install")))
-	r.Post("/api/tools/{key}/upgrade", handleAuth(true, handleToolAction("upgrade")))
-	r.Post("/api/tools/{key}/uninstall", handleAuth(true, handleToolAction("uninstall")))
-	r.Post("/api/configure", handleAuth(true, handleConfigure))
-	r.Post("/api/env", handleAuth(true, handleEnv))
-	r.Post("/api/env-mem0", handleAuth(true, handleEnvMem0))
-	r.Post("/api/select-model", handleAuth(true, handleSelectModel))
-	r.Post("/api/models/pull", handleAuth(true, handleModelPull))
-	r.Post("/api/models/rm", handleAuth(true, handleModelRm))
-	r.Post("/api/services/{name}/up", handleAuth(true, handleServiceAction("up")))
-	r.Post("/api/services/{name}/stop", handleAuth(true, handleServiceAction("stop")))
-	r.Post("/api/services/{name}/restart", handleAuth(true, handleServiceAction("restart")))
-	r.Get("/api/logs/{service}", handleAuth(true, handleLogsStream))
-	r.Post("/api/skills/sync", handleAuth(true, handleSync("skills")))
-	r.Post("/api/rules/sync", handleAuth(true, handleSync("rules")))
-	r.Post("/api/mcp-config/sync", handleAuth(true, handleSync("mcp-config")))
+	// State-changing handlers.
+	r.Post("/api/tools/{key}/install", handleToolAction("install"))
+	r.Post("/api/tools/{key}/upgrade", handleToolAction("upgrade"))
+	r.Post("/api/tools/{key}/uninstall", handleToolAction("uninstall"))
+	r.Post("/api/configure", handleConfigure)
+	r.Post("/api/env", handleEnv)
+	r.Post("/api/env-mem0", handleEnvMem0)
+	r.Post("/api/select-model", handleSelectModel)
+	r.Post("/api/models/pull", handleModelPull)
+	r.Post("/api/models/rm", handleModelRm)
+	r.Post("/api/services/{name}/up", handleServiceAction("up"))
+	r.Post("/api/services/{name}/stop", handleServiceAction("stop"))
+	r.Post("/api/services/{name}/restart", handleServiceAction("restart"))
+	r.Get("/api/logs/{service}", handleLogsStream)
+	r.Post("/api/skills/sync", handleSync("skills"))
+	r.Post("/api/rules/sync", handleSync("rules"))
+	r.Post("/api/mcp-config/sync", handleSync("mcp-config"))
 
 	// SPA fallback: anything not /api/* serves embedded assets or index.html.
 	r.NotFound(spaHandler(SPAAssets))

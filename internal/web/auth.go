@@ -2,14 +2,9 @@ package web
 
 import (
 	"bufio"
-	"crypto/subtle"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 // recoverer wraps panic-protected handlers in the style of chi's middleware
@@ -34,71 +29,6 @@ func requestLogger(next http.Handler) http.Handler {
 	})
 }
 
-// tokenPath is the on-disk location of the bearer token. `mcp-tools install`
-// generates the token and writes the file with 0o600. A missing file means
-// "dev mode": no Authorization header is required.
-//
-// Note on bind addresses: the API binds to whatever the systemd unit or
-// `--bind` flag specifies. The default bind is 0.0.0.0 (see
-// internal/cli.DefaultBind) so the panel is reachable from the LAN;
-// the bearer token is the security gate, NOT a loopback check.
-func tokenPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".mcp-tools-web.token"), nil
-}
-
-// readToken returns the configured bearer token, or "" if no token file is
-// present (dev mode). The token is trimmed of whitespace to tolerate shells
-// that append a trailing newline.
-func readToken() (string, error) {
-	p, err := tokenPath()
-	if err != nil {
-		return "", err
-	}
-	data, err := os.ReadFile(p)
-	if errors.Is(err, os.ErrNotExist) {
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
-}
-
-// handleAuth wraps a handler with bearer-token verification when a token
-// file exists. `required` is currently informational — the presence of a
-// token file is what flips the check on/off.
-func handleAuth(_ bool, h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := readToken()
-		if err != nil {
-			http.Error(w, "internal error: token read", http.StatusInternalServerError)
-			return
-		}
-		if token == "" {
-			// No token configured → dev mode, no auth required.
-			h(w, r)
-			return
-		}
-		auth := r.Header.Get("Authorization")
-		const prefix = "Bearer "
-		if !strings.HasPrefix(auth, prefix) {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="mcp-tools"`)
-			http.Error(w, "unauthorized: missing bearer token", http.StatusUnauthorized)
-			return
-		}
-		got := strings.TrimPrefix(auth, prefix)
-		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
-			http.Error(w, "unauthorized: token mismatch", http.StatusUnauthorized)
-			return
-		}
-		h(w, r)
-	}
-}
-
 // writeJSON serialises v as JSON with the supplied status. Centralised so
 // handlers don't accidentally set wrong content types or forget encoding.
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -106,9 +36,8 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	enc := jsonEncoder(w)
 	_ = enc.Encode(v)
+	_ = enc.w.Flush()
 }
-
-// writeError responds with a {"error":"..."} JSON payload.
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
@@ -122,9 +51,6 @@ func jsonEncoder(w http.ResponseWriter) *encoder {
 type encoder struct{ w *bufio.Writer }
 
 func (e *encoder) Encode(v any) error {
-	defer e.w.Flush()
-	// Cheap JSON encoder to avoid pulling encoding/json into hot paths
-	// when callers want streaming; the underlying writer is still buffered.
 	return encodeJSON(e.w, v)
 }
 
@@ -134,5 +60,5 @@ func encodeJSON(w *bufio.Writer, v any) error {
 	return jsonEncode(w, v)
 }
 
-// suppress unused-import warning when callers don't pull bufio directly.
+// suppress unused-import warning when callers don't pull fmt directly.
 var _ = fmt.Sprintf

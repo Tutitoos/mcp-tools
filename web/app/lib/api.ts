@@ -1,33 +1,6 @@
-// Typed fetch wrapper for the mcp-tools web API.
-//
-// Reads the bearer token from localStorage (set on the /setup route) and
-// attaches `Authorization: Bearer <token>` when present. Throws an
-// `ApiError` with the response body on non-2xx so callers can surface
-// server-side error messages in toasts/alerts.
-//
-// 401 handling: when the server rejects the request as unauthorized, we
-// clear any stored token (so a stale/invalid one doesn't keep failing)
-// and dispatch a `mcp-tools:unauthorized` window event. The /setup
-// route listens for that event and shows a re-auth CTA. The SPA never
-// retries 401s because they are terminal -- retrying just spams the
-// network and floods the console.
-
-const TOKEN_KEY = "mcp-tools-token";
-
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token: string) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearToken() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(TOKEN_KEY);
-}
+// Typed fetch wrapper for the mcp-tools web API. The API is
+// unauthenticated by design -- bind to 127.0.0.1 (or rely on firewall)
+// to restrict access.
 
 export class ApiError extends Error {
   status: number;
@@ -37,14 +10,6 @@ export class ApiError extends Error {
     this.status = status;
     this.body = body;
   }
-}
-
-// Centralized 401 handler. Fires a window event so the SPA can react
-// (typically: redirect to /setup) without coupling the API client to
-// React Router.
-function notifyUnauthorized() {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("mcp-tools:unauthorized"));
 }
 
 type Init = Omit<RequestInit, "body"> & { body?: unknown };
@@ -61,10 +26,6 @@ export async function api<T>(path: string, init: Init = {}): Promise<T> {
       body = JSON.stringify(init.body);
     }
   }
-  const token = getToken();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
   const res = await fetch(path, { ...init, headers, body });
   const text = await res.text();
   let parsed: unknown = text;
@@ -74,13 +35,6 @@ export async function api<T>(path: string, init: Init = {}): Promise<T> {
     } catch {
       // keep text
     }
-  }
-  if (res.status === 401) {
-    // Stale/invalid token -- clear and notify so the SPA can route the
-    // user to /setup. Don't pollute the console with raw 401 errors.
-    clearToken();
-    notifyUnauthorized();
-    throw new ApiError(401, "unauthorized", parsed);
   }
   if (!res.ok) {
     const message =
@@ -95,10 +49,6 @@ export async function api<T>(path: string, init: Init = {}): Promise<T> {
 export async function apiStream(path: string): Promise<Response> {
   const headers = new Headers();
   headers.set("Accept", "text/event-stream");
-  const token = getToken();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
   return fetch(path, { headers });
 }
 

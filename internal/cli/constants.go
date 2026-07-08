@@ -11,10 +11,7 @@ const DefaultPort = 8888
 
 // DefaultBind is the listen address used when no flag or env var
 // specifies one. 0.0.0.0 (all interfaces) is the project default so the
-// panel is reachable from other devices on the LAN. The bearer token
-// (~/.mcp-tools-web.token) is the security gate — every request must
-// include `Authorization: Bearer <token>` once the token file exists.
-//
-// Use 127.0.0.1 explicitly via `--bind 127.0.0.1` (install) or
-// `--bind 127.0.0.1` (serve) to opt back into loopback-only mode.
+// panel is reachable from other devices on the LAN. The API is
+// unauthenticated by design -- restrict access via firewall or
+// `--bind 127.0.0.1` for loopback-only.
 const DefaultBind = "0.0.0.0"

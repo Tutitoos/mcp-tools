@@ -258,6 +258,9 @@ func enqueueOllamaAction(w http.ResponseWriter, r *http.Request, verb string) {
 // handleServices returns `docker compose ps --format json`.
 func handleServices(w http.ResponseWriter, _ *http.Request) {
 	svcs, _ := listComposeServices()
+	if svcs == nil {
+		svcs = []map[string]string{}
+	}
 	writeJSON(w, http.StatusOK, svcs)
 }
 

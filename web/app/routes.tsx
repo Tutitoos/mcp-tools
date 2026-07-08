@@ -17,7 +17,6 @@ import Models from "./routes/models";
 import Services from "./routes/services";
 import Logs from "./routes/logs";
 import Settings from "./routes/settings";
-import Setup from "./routes/setup";
 import NotFound from "./routes/not-found";
 
 export const routes: RouteObject[] = [
@@ -32,7 +31,6 @@ export const routes: RouteObject[] = [
       { path: "services", element: <Services /> },
       { path: "logs", element: <Logs /> },
       { path: "settings", element: <Settings /> },
-      { path: "setup", element: <Setup /> },
     ],
   },
   { path: "*", element: <NotFound /> },
