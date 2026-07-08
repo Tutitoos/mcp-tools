@@ -3,6 +3,9 @@
 // the React tree is built entirely in the browser.
 
 import { createBrowserRouter } from "react-router";
+import { ErrorBoundary } from "./root";
+import { routes } from "./routes";
+
 
 
 
