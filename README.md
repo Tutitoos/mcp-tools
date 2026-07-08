@@ -35,14 +35,55 @@ path absoluto (`$BIN_DIR/mcp-tools install`) para ser copy-paste safe.
 
 ### Requisitos del host
 
-- Docker + `docker compose` v2.
-- `~/.local/bin` en `$PATH` (donde vive el binario y `mem0-launcher`).
-- `git` en PATH (para `update --self`).
-- **Toolchain C** (`cc` / `build-essential` en Debian/Ubuntu, `gcc` + `make` en Fedora/RHEL, Xcode Command Line Tools en macOS). `rtk` y `tokensave` se compilan desde source con `cargo install` y sus build-scripts invocan `cc` para `ring`, `rusqlite`, etc.; sin compilador C la instalación falla con `error: linker 'cc' not found`. En Debian/Ubuntu:
-  ```bash
-  sudo apt-get update && sudo apt-get install -y build-essential pkg-config libssl-dev
-  ```
-- Nvidia GPU + driver instalado si vas a marcar `nvidia-toolkit` (opcional). En hosts sin GPU la fila no aparece en el TUI.
+Para que `mcp-tools install` (paso 3) aplique la selección completa del TUI,
+el host debe tener disponibles antes de correr el instalador:
+
+| Componente | Por qué | Quién lo requiere |
+| --- | --- | --- |
+| **Docker** + `docker compose` v2 | Orquestar `mcp_tools_ollama`, `mcp_tools_mem0_qdrant`. Si falta, TUI corre pero la instalación de servicios Docker falla. | `ollama`, `qdrant` |
+| **curl** + **git** + **tar** + **sha256sum** | Descargar tarballs (install.sh), `codegraph` y `codebase-memory-mcp` install scripts, rustup, etc. | install.sh, `codegraph`, `codebase-memory` |
+| **Toolchain C** + `pkg-config` + `libssl-dev` + `libsqlite3-dev` | `cargo install` compila `ring` (TLS, depende de openssl via pkg-config) y `rusqlite` (SQLite con FTS5). Sin `cc` el build falla con `error: linker 'cc' not found`. | `rtk`, `tokensave` |
+| **Node ≥ 20** | `claude-mem` corre vía `npx --yes claude-mem@latest`. | `claude-mem` |
+| **sudo** + acceso al package manager | Instala `nvidia-container-toolkit` (apt/dnf, llave GPG, systemctl). | `nvidia-toolkit` (opt-in) |
+| **Nvidia GPU + driver propietario** | Pasar GPU al container de ollama. Sin GPU, la fila no aparece en el TUI. | `nvidia-toolkit` (opt-in) |
+
+`mcp-tools` auto-instala lo que puede: `cargo` (rustup vía `curl \| sh`) y `uv`
+(script oficial) se traen en background si faltan. Lo demás (Docker,
+toolchain C, Node, sudo) son requisitos del host que el installer no
+gestiona — asegúrate de tenerlos antes del paso 3.
+
+#### One-liners por distro
+
+Debian / Ubuntu:
+```bash
+sudo apt-get update && sudo apt-get install -y \
+  build-essential pkg-config libssl-dev libsqlite3-dev \
+  curl git sudo ca-certificates
+
+# Extras por separado:
+# Docker — https://docs.docker.com/engine/install/ (post-install: sudo usermod -aG docker $USER)
+# Node >= 20 — NodeSource (https://github.com/nodesource/distributions) o nvm
+```
+
+Fedora / RHEL / Rocky / Alma:
+```bash
+sudo dnf install -y \
+  gcc make pkgconf-pkg-config openssl-devel sqlite-devel \
+  curl git sudo
+
+# Extras por separado:
+# Docker — sudo dnf install -y docker docker-compose-plugin (y sudo systemctl enable --now docker)
+# Node >= 20 — Fedora Modules o NodeSource
+```
+
+macOS (Intel / Apple Silicon):
+```bash
+xcode-select --install   # provee cc, git, sha256sum, make, pkg-config (via CLT)
+brew install curl sqlite openssl pkg-config
+
+# Docker — Docker Desktop for Mac
+# Node >= 20 — brew install node o nvm
+```
 
 ## Plataformas soportadas
 
