@@ -16,31 +16,36 @@ PNPM := $(HOME)/.nvm/versions/node/$(shell node -v 2>/dev/null | sed 's/^v//' | 
 endif
 
 # Copy (not symlink) web/build into the webassets package directory so the
-# //go:embed directive (which cannot follow symlinks) can see the built
-# SPA bundle. Idempotent: removes the prior copy first. Cheap: the bundle
-# is ~1 MB and `cp -rL` dereferences symlinks so the copy is plain files.
-webassets/build:
-	@rm -rf webassets/build
-	@mkdir -p webassets/build
-	@cp -rL web/build/. webassets/build/
-	@echo "webassets: copied web/build -> webassets/build"
-.PHONY: build build-web dev dev-web install test release clean web-bootstrap
+webassets/build: web/build/client/index.html
+	@rm -rf $@
+	@mkdir -p $@
+	@cp -rL web/build/. $@/
+	@echo "webassets: copied web/build -> $@"
 
-build: webassets/build web-bootstrap
-	$(GO) build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/mcp-tools
-
-build-web:
+# Real SPA build. Touches `.keep` so `web-bootstrap` knows to skip.
+web/build/client/index.html:
 	cd web && $(PNPM) install --frozen-lockfile=false && $(PNPM) run build
+	@touch web/build/client/.keep
+.PHONY: build-web
+build-web: web/build/client/index.html
+	cd web && $(PNPM) install --frozen-lockfile=false && $(PNPM) run build
+	@touch web/build/client/.keep
 
-# Ensures `web/build/client/` exists with at least one file so the
-# `//go:embed all:web/build/client` directive in webassets.go compiles even
-# when the SPA hasn't been built (e.g. CI Go-only jobs).
+# Placeholder for Go-only CI jobs (no SPA). Creates the bare minimum
+# under web/build/client/ so `//go:embed all:build/client` compiles.
+# Touches `.keep` so subsequent `make build` invocations skip this.
+.PHONY: web-bootstrap
 web-bootstrap:
 	@mkdir -p web/build/client
 	@if [ ! -f web/build/client/.keep ]; then \
 		echo '<!doctype html><html><body>mcp-tools web admin panel (build web/ first)</body></html>' > web/build/client/index.html; \
 		touch web/build/client/.keep; \
 	fi
+
+.PHONY: build dev dev-web install test release clean
+
+build: webassets/build
+	$(GO) build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/mcp-tools
 
 dev-web:
 	cd web && $(PNPM) run dev

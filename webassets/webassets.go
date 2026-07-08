@@ -1,9 +1,9 @@
 // Package webassets embeds the built SPA bundle produced by `make build-web`.
 //
-// `//go:embed` cannot traverse upward from the package directory, so the
-// Makefile target `build-web` creates a symlink `webassets/build` that
-// points at `../web/build` before the Go embed directive is compiled.
-// During CI this happens in the same shell pipeline that runs `go build`.
+// `//go:embed` cannot follow symlinks and cannot traverse upward from the
+// package directory, so the Makefile target `webassets/build` copies
+// `web/build/` into `webassets/build/` (removing any prior copy first) so
+// the embed directive picks up the latest SPA bundle.
 package webassets
 
 import "embed"
