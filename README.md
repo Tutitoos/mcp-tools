@@ -60,9 +60,13 @@ sudo apt-get update && sudo apt-get install -y \
   build-essential pkg-config libssl-dev libsqlite3-dev \
   curl git sudo ca-certificates
 
-# Extras por separado:
-# Docker — https://docs.docker.com/engine/install/ (post-install: sudo usermod -aG docker $USER)
-# Node >= 20 — NodeSource (https://github.com/nodesource/distributions) o nvm
+# Node ≥ 20 (sólo si vas a usar claude-mem):
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+# Alternativa portable: nvm (https://github.com/nvm-sh/nvm)
+
+# Docker (sólo si vas a usar ollama + qdrant):
+# https://docs.docker.com/engine/install/ — post-install: sudo usermod -aG docker $USER
 ```
 
 Fedora / RHEL / Rocky / Alma:
@@ -71,18 +75,21 @@ sudo dnf install -y \
   gcc make pkgconf-pkg-config openssl-devel sqlite-devel \
   curl git sudo
 
-# Extras por separado:
-# Docker — sudo dnf install -y docker docker-compose-plugin (y sudo systemctl enable --now docker)
-# Node >= 20 — Fedora Modules o NodeSource
+# Node ≥ 20:
+# Fedora Modules: sudo dnf module install -y nodejs:20
+# Alternativa: NodeSource (https://github.com/nodesource/distributions) o nvm
+
+# Docker:
+# sudo dnf install -y docker docker-compose-plugin
+# sudo systemctl enable --now docker
 ```
 
 macOS (Intel / Apple Silicon):
 ```bash
 xcode-select --install   # provee cc, git, sha256sum, make, pkg-config (via CLT)
-brew install curl sqlite openssl pkg-config
+brew install curl sqlite openssl pkg-config node
 
 # Docker — Docker Desktop for Mac
-# Node >= 20 — brew install node o nvm
 ```
 
 ## Plataformas soportadas
