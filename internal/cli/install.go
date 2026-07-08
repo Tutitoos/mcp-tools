@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -244,7 +243,12 @@ func availableTools() []tools.Tool {
 	return out
 }
 
-// preChecked seeds the multi-select from state + DefaultOn + already-installed.
+// preChecked seeds the multi-select. Stored state (after a successful install
+// or via --noselect) wins over auto-detection. On a fresh install every
+// available tool is pre-checked so the user gets the option to install any of
+// them in the TUI — including the ones we couldn't detect as installed (Status
+// returned false or errored) and the opt-in ones with DefaultOn=false. The
+// user unchecks in the TUI to opt out.
 func preChecked(st state.State, avail []tools.Tool) map[string]bool {
 	pre := map[string]bool{}
 	if len(st.Selected) > 0 {
@@ -253,36 +257,8 @@ func preChecked(st state.State, avail []tools.Tool) map[string]bool {
 		}
 		return pre
 	}
-	type statusResult struct {
-		key       string
-		installed bool
-	}
-	results := make(chan statusResult, len(avail))
-	sem := make(chan struct{}, 5)
-	var wg sync.WaitGroup
 	for _, t := range avail {
-		if t.DefaultOn {
-			pre[t.Key] = true
-			continue
-		}
-		if t.Status == nil {
-			continue
-		}
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(t tools.Tool) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			s, err := t.Status()
-			if err == nil && s.Installed {
-				results <- statusResult{key: t.Key, installed: true}
-			}
-		}(t)
-	}
-	wg.Wait()
-	close(results)
-	for r := range results {
-		pre[r.key] = r.installed
+		pre[t.Key] = true
 	}
 	return pre
 }

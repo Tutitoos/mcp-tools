@@ -14,7 +14,7 @@ import (
 
 var mcpConfigCmd = &cobra.Command{
 	Use:   "mcp-config",
-	Short: "Re-registra los MCPs en Claude Code, OpenCode y OMP",
+	Short: "Re-registra los MCPs en Claude Code, OpenCode, OMP, Codex y Gemini",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		st, err := state.Load()
 		if err != nil {
@@ -37,7 +37,7 @@ func RunMcpConfig(dry bool, st state.State, out io.Writer) error {
 	}
 	fmt.Fprintln(out, "── configure MCP clients")
 	if dry {
-		fmt.Fprintf(out, "  SKIP (dry) — would register %d servers in Claude Code / OpenCode / OMP\n", len(mcp.Servers(st)))
+		fmt.Fprintf(out, "  SKIP (dry) — would register %d servers in Claude Code / OpenCode / OMP / Codex / Gemini\n", len(mcp.Servers(st)))
 		return nil
 	}
 	log := func(s string) { fmt.Fprintln(out, s) }
@@ -68,6 +68,20 @@ func RunMcpConfig(dry bool, st state.State, out io.Writer) error {
 			hint:   "revisa ~/.omp/agent/mcp.json",
 		})
 	}
+	if err := mcp.ConfigureCodex(st, log); err != nil {
+		failures = append(failures, clientErr{
+			client: "codex",
+			err:    err,
+			hint:   "revisa ~/.codex/config.toml",
+		})
+	}
+	if err := mcp.ConfigureGemini(st, log); err != nil {
+		failures = append(failures, clientErr{
+			client: "gemini",
+			err:    err,
+			hint:   "revisa ~/.gemini/settings.json",
+		})
+	}
 	if len(failures) == 0 {
 		return nil
 	}
@@ -75,7 +89,7 @@ func RunMcpConfig(dry bool, st state.State, out io.Writer) error {
 	// clients automatically: rolling back would destructively mutate the
 	// other configs and the user must decide.
 	var b strings.Builder
-	fmt.Fprintf(&b, "mcp-config parcial — %d/%d clientes fallaron:\n", len(failures), 3)
+	fmt.Fprintf(&b, "mcp-config parcial — %d/%d clientes fallaron:\n", len(failures), 5)
 	for _, f := range failures {
 		fmt.Fprintf(&b, "  %s: %v — %s\n", f.client, f.err, f.hint)
 	}

@@ -77,6 +77,10 @@ func Registry() []Tool {
 		codegraphTool(),
 		serenaTool(),
 		tokensaveTool(),
+		claudeTool(),
+		codexTool(),
+		ompTool(),
+		geminiTool(),
 	}
 }
 
