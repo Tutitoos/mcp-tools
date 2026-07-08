@@ -6,53 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 )
-
-// localOnly is middleware that rejects non-loopback / non-unix connections
-// with HTTP 403. The systemd unit (and any developer) binds the server to
-// 127.0.0.1 by default; the loopback check is the last line of defence
-// against accidentally exposing the API.
-//
-// Unix-socket listeners set localOnlySkip to true so the middleware is a
-// no-op for socket-bound servers. The flag is stored as an atomic int32
-// on the package for tests that swap listeners at runtime.
-var localOnlySkip atomic.Bool
-
-// SetLocalOnlySkip toggles the loopback check. Pass true for unix-socket
-// listeners; false for TCP.
-func SetLocalOnlySkip(skip bool) { localOnlySkip.Store(skip) }
-
-func localOnly(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if localOnlySkip.Load() {
-			next.ServeHTTP(w, r)
-			return
-		}
-		host, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			// unix sockets: RemoteAddr is "@" or "/var/run/..."; treat as ok.
-			if strings.HasPrefix(r.RemoteAddr, "@") || strings.HasPrefix(r.RemoteAddr, "/") {
-				next.ServeHTTP(w, r)
-				return
-			}
-			http.Error(w, "forbidden: bad remote addr", http.StatusForbidden)
-			return
-		}
-		ip := net.ParseIP(host)
-		if ip == nil || !ip.IsLoopback() {
-			slog.Warn("web: rejecting non-loopback request", "remote", r.RemoteAddr, "path", r.URL.Path)
-			http.Error(w, "forbidden: loopback only", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
 
 // recoverer wraps panic-protected handlers in the style of chi's middleware
 // but without depending on the chi-specific logger.
@@ -79,6 +37,11 @@ func requestLogger(next http.Handler) http.Handler {
 // tokenPath is the on-disk location of the bearer token. `mcp-tools install`
 // generates the token and writes the file with 0o600. A missing file means
 // "dev mode": no Authorization header is required.
+//
+// Note on bind addresses: the API binds to whatever the systemd unit or
+// `--bind` flag specifies. The default bind is 0.0.0.0 (see
+// internal/cli.DefaultBind) so the panel is reachable from the LAN;
+// the bearer token is the security gate, NOT a loopback check.
 func tokenPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {

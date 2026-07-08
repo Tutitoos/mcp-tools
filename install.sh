@@ -159,4 +159,4 @@ cat <<MSG
 Siguiente paso:
   $BIN_DIR/mcp-tools install   # elegirá el puerto del panel y habilitará el servicio systemd
 
-Luego abre http://127.0.0.1:<puerto>/ en tu navegador.
+Luego abre http://<bind>:<puerto>/ (default 0.0.0.0:8888) en tu navegador.

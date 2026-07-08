@@ -63,15 +63,16 @@ func TestServeOnLoopback(t *testing.T) {
 	}
 }
 
-// TestListenRefusesNonLoopback confirms the localOnly middleware rejects
-// non-loopback addresses via the router (no listener bind needed).
-func TestListenRefusesNonLoopback(t *testing.T) {
+// TestServeAcceptsNonLoopback confirms a non-loopback RemoteAddr is no
+// longer rejected at the IP layer. With no token file present, the
+// request reaches /api/version and returns 200.
+func TestServeAcceptsNonLoopback(t *testing.T) {
 	router := NewRouter()
 	req := httptest.NewRequestWithContext(context.Background(), "GET", "/api/version", nil)
 	req.RemoteAddr = "8.8.8.8:1234"
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Errorf("non-loopback status = %d, want 403", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("non-loopback status = %d, want 200", rec.Code)
 	}
 }

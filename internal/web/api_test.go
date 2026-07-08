@@ -82,15 +82,18 @@ func TestAPIStatusEndpoint(t *testing.T) {
 	}
 }
 
-// TestRouterRejectsNonLoopback confirms the localOnly middleware rejects
-// non-loopback requests before any handler runs.
-func TestRouterRejectsNonLoopback(t *testing.T) {
+// TestRouterAcceptsNonLoopback confirms the router no longer rejects
+// non-loopback requests at the IP layer. The default bind is 0.0.0.0
+// (all interfaces); the security gate is the bearer token, not the
+// source IP. Without a token file, dev mode allows the request
+// through; with one, the auth middleware handles 401s.
+func TestRouterAcceptsNonLoopback(t *testing.T) {
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/tools", nil)
+	req := httptest.NewRequest("GET", "/api/version", nil)
 	req.RemoteAddr = "8.8.8.8:80"
 	NewRouter().ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, want 403; body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Errorf("non-loopback status = %d, want 200 (no token file = dev mode)", rec.Code)
 	}
 }
 

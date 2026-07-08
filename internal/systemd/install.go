@@ -75,7 +75,7 @@ func SetPort(mode Mode, port int, bind, binaryPath, envFile string) (string, err
 	if bind == "" {
 		bind = CurrentBind(mode)
 		if bind == "" {
-			bind = "127.0.0.1"
+			bind = "0.0.0.0"
 		}
 	}
 	cfg := UnitConfig{

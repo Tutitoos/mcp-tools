@@ -91,15 +91,16 @@ func CurrentPort(mode Mode) int {
 }
 
 // CurrentBind returns the `--bind` value from the existing unit, or
-// "127.0.0.1" when the unit file is missing or unparseable.
+// "0.0.0.0" (all interfaces — the project default) when the unit file
+// is missing or unparseable.
 func CurrentBind(mode Mode) string {
 	unitPath, err := UnitPath(mode)
 	if err != nil {
-		return "127.0.0.1"
+		return "0.0.0.0"
 	}
 	data, err := readFile(unitPath)
 	if err != nil {
-		return "127.0.0.1"
+		return "0.0.0.0"
 	}
 	return parseBindFromUnit(string(data))
 }

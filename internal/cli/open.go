@@ -15,7 +15,7 @@ var openWebModeOverride string
 var openCmd = &cobra.Command{
 	Use:   "open web",
 	Short: "Abre el navegador en el panel web (alias de `mcp-tools web`).",
-	Long:  "Lee el puerto del unit systemd (si está activo) y abre http://127.0.0.1:<port>/.",
+	Long:  "Lee el puerto del unit systemd (si está activo) y abre http://<bind>:<port>/ (default 0.0.0.0:8888).",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runOpen,
 }

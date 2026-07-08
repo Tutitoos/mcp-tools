@@ -26,13 +26,13 @@ var (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Arranca la API + el panel web embebido.",
-	Long:  "Bind por defecto: 127.0.0.1:8888. Flags --port/--bind/--unix-socket. Maneja SIGINT/SIGTERM con 10s de gracia.",
+	Long:  "Bind por defecto: 0.0.0.0:8888. Flags --port/--bind/--unix-socket. Maneja SIGINT/SIGTERM con 10s de gracia.",
 	RunE:  runServe,
 }
 
 func init() {
 	serveCmd.Flags().IntVar(&servePort, "port", DefaultPort, "puerto TCP")
-	serveCmd.Flags().StringVar(&serveBind, "bind", "127.0.0.1", "dirección TCP")
+	serveCmd.Flags().StringVar(&serveBind, "bind", DefaultBind, "dirección TCP")
 	serveCmd.Flags().StringVar(&serveUnixSock, "unix-socket", "", "path al unix socket (alternativa a --port/--bind)")
 	rootCmd.AddCommand(serveCmd)
 }
@@ -91,7 +91,7 @@ func bindListener() (string, net.Listener, error) {
 		if err != nil {
 			return "", nil, fmt.Errorf("listen unix %s: %w", serveUnixSock, err)
 		}
-		web.SetLocalOnlySkip(true)
+
 		return "unix://" + serveUnixSock, ln, nil
 	}
 	addr := net.JoinHostPort(serveBind, strconv.Itoa(servePort))

@@ -44,13 +44,13 @@ import (
 // to the embedded SPA (index.html for routes, asset file otherwise).
 func NewRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(recoverer)
+	// Middleware stack: request logger + recoverer. Auth (bearer token)
+	// is enforced per-route via handleAuth when ~/.mcp-tools-web.token
+	// exists; the default bind is 0.0.0.0 so the panel is reachable
+	// from the LAN, gated by the bearer token rather than a loopback
+	// IP filter.
 	r.Use(requestLogger)
-
-	// All /api/* routes require loopback; the unix-socket listener sets
-	// localOnlySkip = true via Server.SkipLocalOnly() before Listen.
-	r.Use(localOnly)
-
+	r.Use(recoverer)
 	// Public, unauthenticated health probe — useful for systemd + curl.
 	r.Get("/api/version", handleVersion)
 

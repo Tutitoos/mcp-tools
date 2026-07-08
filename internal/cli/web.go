@@ -15,7 +15,7 @@ import (
 
 // mcp-tools web -- gestión del panel web.
 //
-// Sin flags: abre el navegador en http://127.0.0.1:<port>/ (mismo
+// Sin flags: abre el navegador en http://<bind>:<port>/ (mismo
 // comportamiento que `mcp-tools open web`).
 //
 // Flags:
@@ -36,7 +36,7 @@ var (
 var webCmd = &cobra.Command{
 	Use:   "web",
 	Short: "Gestiona el panel web (browser, enable, disable, port, status).",
-	Long: "Sin flags: abre el navegador en http://127.0.0.1:<port>/. " +
+	Long: "Sin flags: abre el navegador en http://<bind>:<port>/ (default 0.0.0.0:8888). " +
 		"--enable / --disable controlan el servicio systemd. " +
 		"--set-port N reconfigura el puerto y reinicia. " +
 		"--status muestra el estado y el journal.",
@@ -96,7 +96,7 @@ func runWebOpen(mode systemd.Mode) error {
 	}
 	bind := systemd.CurrentBind(mode)
 	if bind == "" {
-		bind = "127.0.0.1"
+		bind = DefaultBind
 	}
 	url := webURL(bind, port)
 	if err := openBrowser(url); err != nil {
@@ -168,7 +168,7 @@ func runWebStatus(mode systemd.Mode) error {
 		port = DefaultPort
 	}
 	if bind == "" {
-		bind = "127.0.0.1"
+		bind = DefaultBind
 	}
 	fmt.Fprintf(os.Stdout, "systemd mode: %s\n", mode)
 	fmt.Fprintf(os.Stdout, "unit:        %s\n", unitPathOrEmpty(mode))
