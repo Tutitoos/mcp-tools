@@ -243,20 +243,14 @@ func availableTools() []tools.Tool {
 	return out
 }
 
-// preChecked seeds the multi-select. Stored state (after a successful install
-// or via --noselect) wins over auto-detection. On a fresh install every
-// available tool is pre-checked so the user gets the option to install any of
-// them in the TUI — including the ones we couldn't detect as installed (Status
-// returned false or errored) and the opt-in ones with DefaultOn=false. The
-// user unchecks in the TUI to opt out.
-func preChecked(st state.State, avail []tools.Tool) map[string]bool {
-	pre := map[string]bool{}
-	if len(st.Selected) > 0 {
-		for _, k := range st.Selected {
-			pre[k] = true
-		}
-		return pre
-	}
+// preChecked seeds the multi-select. Every available tool is pre-checked so
+// the user gets the option to install any of them — including the ones we
+// couldn't detect as installed (Status returned false or errored) and any
+// tools added to the registry since the user's last install (visible on
+// --reconfigure even when state.Selected is populated). The user unchecks
+// in the TUI to opt out.
+func preChecked(_ state.State, avail []tools.Tool) map[string]bool {
+	pre := make(map[string]bool, len(avail))
 	for _, t := range avail {
 		pre[t.Key] = true
 	}
