@@ -1,9 +1,16 @@
 // Typed fetch wrapper for the mcp-tools web API.
 //
 // Reads the bearer token from localStorage (set on the /setup route) and
-// attaches `Authorization: Bearer <token>` when present. Throws an `ApiError`
-// with the response body on non-2xx so callers can surface server-side error
-// messages in toasts/alerts.
+// attaches `Authorization: Bearer <token>` when present. Throws an
+// `ApiError` with the response body on non-2xx so callers can surface
+// server-side error messages in toasts/alerts.
+//
+// 401 handling: when the server rejects the request as unauthorized, we
+// clear any stored token (so a stale/invalid one doesn't keep failing)
+// and dispatch a `mcp-tools:unauthorized` window event. The /setup
+// route listens for that event and shows a re-auth CTA. The SPA never
+// retries 401s because they are terminal -- retrying just spams the
+// network and floods the console.
 
 const TOKEN_KEY = "mcp-tools-token";
 
@@ -30,6 +37,14 @@ export class ApiError extends Error {
     this.status = status;
     this.body = body;
   }
+}
+
+// Centralized 401 handler. Fires a window event so the SPA can react
+// (typically: redirect to /setup) without coupling the API client to
+// React Router.
+function notifyUnauthorized() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("mcp-tools:unauthorized"));
 }
 
 type Init = Omit<RequestInit, "body"> & { body?: unknown };
@@ -59,6 +74,13 @@ export async function api<T>(path: string, init: Init = {}): Promise<T> {
     } catch {
       // keep text
     }
+  }
+  if (res.status === 401) {
+    // Stale/invalid token -- clear and notify so the SPA can route the
+    // user to /setup. Don't pollute the console with raw 401 errors.
+    clearToken();
+    notifyUnauthorized();
+    throw new ApiError(401, "unauthorized", parsed);
   }
   if (!res.ok) {
     const message =
@@ -102,10 +124,10 @@ export type StatusPayload = {
     selected: string[];
     versions: Record<string, string>;
     updated_at: string;
-  };
+  } | null;
   env: Record<string, string>;
   env_mem0: Record<string, string>;
-  compose_services: { name: string; state: string }[];
+  compose_services: { name: string; state: string }[] | null;
   docker_running: boolean;
 };
 

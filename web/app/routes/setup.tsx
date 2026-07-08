@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
-import { KeyRound } from "lucide-react";
-import { setToken } from "~/lib/api";
+import { KeyRound, LogIn } from "lucide-react";
+import { getToken, setToken } from "~/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -11,8 +11,19 @@ import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
 export default function SetupRoute() {
   const nav = useNavigate();
-  const [token, setLocal] = useState("");
+  const [token, setLocal] = useState(getToken() ?? "");
   const [err, setErr] = useState<string | null>(null);
+  const [required, setRequired] = useState(!getToken());
+
+  // If the API client fires mcp-tools:unauthorized while the user is on
+  // any other route, route them here so they can re-authenticate.
+  useEffect(() => {
+    function onUnauth() {
+      setRequired(true);
+    }
+    window.addEventListener("mcp-tools:unauthorized", onUnauth);
+    return () => window.removeEventListener("mcp-tools:unauthorized", onUnauth);
+  }, []);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,6 +33,7 @@ export default function SetupRoute() {
       return;
     }
     setToken(t);
+    setRequired(false);
     nav("/", { replace: true });
   }
 
@@ -36,12 +48,15 @@ export default function SetupRoute() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5" />
-              Configuración inicial
+              {required ? <LogIn className="h-5 w-5" /> : <KeyRound className="h-5 w-5" />}
+              {required ? "Iniciar sesión" : "Configuración inicial"}
             </CardTitle>
             <CardDescription>
-              Pega el token que imprimió <code>mcp-tools install</code>. Se guarda en
-              este navegador (localStorage).
+              {required
+                ? "El panel requiere autenticación. Pega el token para continuar."
+                : "Pega el token que imprimió "}
+              {!required && <code>mcp-tools install</code>}
+              {!required && ". Se guarda en este navegador (localStorage)."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -63,7 +78,7 @@ export default function SetupRoute() {
                 </Alert>
               )}
               <Button type="submit" className="w-full">
-                Guardar y entrar
+                {required ? "Entrar" : "Guardar y entrar"}
               </Button>
             </form>
           </CardContent>

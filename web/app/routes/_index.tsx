@@ -148,7 +148,7 @@ export default function Dashboard() {
               value={0}
               icon={Sparkles}
               hint={
-                data.state.updated_at
+                data.state?.updated_at
                   ? new Date(data.state.updated_at).toLocaleString("es-ES")
                   : "—"
               }
