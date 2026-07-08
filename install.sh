@@ -32,17 +32,22 @@ case "$os" in
   *) err "OS no soportado: $os (soportados: linux, darwin)" ;;
 esac
 
-# Ensure Go is available for `make install` (rebuild from source). Skipped if
-# a matching version is already on PATH; warns on mismatch instead of upgrading
-# to avoid clobbering a toolchain the user manages themselves.
-ensure_go() {
-  if command -v go >/dev/null 2>&1; then
-    current="$(go version | awk '{print $3}' | sed 's/^go//')"
+# Ensure the project's Go version is installed at $HOME/.local/go/bin/go,
+# unconditionally. Two reasons:
+#   1. `make install` falls back to that path when `go` isn't on PATH (e.g.
+#      containers/root with a stripped PATH that still has /usr/bin/go).
+#   2. Idempotent — re-running install.sh doesn't re-download if the local
+#      Go already matches the project's version.
+# Skip on a version match anywhere (`command -v go`); install locally if the
+# local copy is missing or wrong. We don't touch /usr/bin/go — that's the
+# user's existing toolchain (apt, gvm, asdf).
+ensure_go_local() {
+  local target="$HOME/.local/go/bin/go"
+  if [ -x "$target" ]; then
+    current="$("$target" version | awk '{print $3}' | sed 's/^go//')"
     if [ "$current" = "$REQUIRED_GO_VERSION" ]; then
       return 0
     fi
-    warn "go $current encontrado; el proyecto usa $REQUIRED_GO_VERSION — sigo con la versión instalada"
-    return 0
   fi
 
   local go_arch go_tarball go_url go_tmp
@@ -58,18 +63,18 @@ ensure_go() {
   go_tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp" "$go_tmp"' EXIT
 
-  log "go no encontrado — instalando $REQUIRED_GO_VERSION en \$HOME/.local/go"
+  log "instalando go $REQUIRED_GO_VERSION en \$HOME/.local/go"
   curl -fsSL "$go_url" -o "$go_tmp/$go_tarball" \
     || err "no pude descargar Go desde $go_url"
   mkdir -p "$HOME/.local"
   tar -C "$HOME/.local" -xzf "$go_tmp/$go_tarball" \
     || err "no pude extraer Go en \$HOME/.local"
   log "go $REQUIRED_GO_VERSION instalado en \$HOME/.local/go"
-  warn "añade a tu shell rc (~/.bashrc o ~/.zshrc):"
+  warn "añade a tu shell rc (~/.bashrc o ~/.zshrc) para usarlo fuera de make:"
   # shellcheck disable=SC2016
   printf '\n    export PATH="$HOME/.local/go/bin:$PATH"\n\n' >&2
 }
-ensure_go
+ensure_go_local
 
 if [ "$VERSION" = "latest" ]; then
   log "resolviendo última release en GitHub..."
