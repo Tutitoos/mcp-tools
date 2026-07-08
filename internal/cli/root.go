@@ -10,9 +10,11 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:           "mcp-tools",
-	Short:         "Stack self-hosted de MCP servers en Docker",
-	Long:          "mcp-tools orquesta el stack Docker de servidores MCP y su registro en Claude Code, OpenCode y OMP.",
+	Use:   "mcp-tools",
+	Short: "Panel de administración web auto-hospedado para tu stack MCP.",
+	Long: "mcp-tools es un panel de administración web auto-hospedado para tu stack MCP. " +
+		"`mcp-tools install` arranca el servicio systemd; `mcp-tools open web` lo abre en tu navegador; " +
+		"`mcp-tools update` actualiza el binario; `mcp-tools version` muestra versión.",
 	Version:       fmt.Sprintf("%s (%s, %s)", version.Version, version.Commit, version.Date),
 	SilenceUsage:  true,
 	SilenceErrors: true,

@@ -10,10 +10,44 @@ ifeq ($(GO),)
 GO := $(HOME)/.local/go/bin/go
 endif
 
-.PHONY: build install test release clean
+PNPM := $(shell command -v pnpm 2>/dev/null)
+ifeq ($(PNPM),)
+PNPM := $(HOME)/.nvm/versions/node/$(shell node -v 2>/dev/null | sed 's/^v//' | cut -d. -f1 | xargs -I{} echo {} || echo "")/bin/pnpm
+endif
 
-build:
+# Copy (not symlink) web/build into the webassets package directory so the
+# //go:embed directive (which cannot follow symlinks) can see the built
+# SPA bundle. Idempotent: removes the prior copy first. Cheap: the bundle
+# is ~1 MB and `cp -rL` dereferences symlinks so the copy is plain files.
+webassets/build:
+	@rm -rf webassets/build
+	@mkdir -p webassets/build
+	@cp -rL web/build/. webassets/build/
+	@echo "webassets: copied web/build -> webassets/build"
+.PHONY: build build-web dev dev-web install test release clean web-bootstrap
+
+build: webassets/build web-bootstrap
 	$(GO) build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/mcp-tools
+
+build-web:
+	cd web && $(PNPM) install --frozen-lockfile=false && $(PNPM) run build
+
+# Ensures `web/build/client/` exists with at least one file so the
+# `//go:embed all:web/build/client` directive in webassets.go compiles even
+# when the SPA hasn't been built (e.g. CI Go-only jobs).
+web-bootstrap:
+	@mkdir -p web/build/client
+	@if [ ! -f web/build/client/.keep ]; then \
+		echo '<!doctype html><html><body>mcp-tools web admin panel (build web/ first)</body></html>' > web/build/client/index.html; \
+		touch web/build/client/.keep; \
+	fi
+
+dev-web:
+	cd web && $(PNPM) run dev
+
+dev: web-bootstrap
+	$(GO) run ./cmd/mcp-tools serve --port 8080 & \
+	cd web && $(PNPM) run dev
 
 install: build
 	install -m 0755 bin/$(BINARY) $${MCP_TOOLS_BIN:-$$HOME/.local/bin}/$(BINARY)
@@ -26,3 +60,5 @@ release:
 
 clean:
 	rm -rf bin/
+	rm -rf web/build
+	rm -rf web/node_modules

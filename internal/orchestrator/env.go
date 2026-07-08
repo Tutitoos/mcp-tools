@@ -1,0 +1,162 @@
+package orchestrator
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"syscall"
+
+	"github.com/Tutitoos/mcp-tools/internal/config"
+)
+
+// RunEnv is the orchestrator's port of the legacy cli.RunEnv. It generates
+// / refreshes the per-host `.env` and `.env.mem0` and ensures the data
+// directories exist. Idempotent unless `force` is true.
+func RunEnv(dry, force bool, out io.Writer) error {
+	if out == nil {
+		out = io.Discard
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	repoDir := config.RepoRoot()
+	dataDir := filepath.Join(home, "mcp-tools-data")
+	envPath := filepath.Join(repoDir, ".env")
+
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	contents := map[string]string{
+		"HOST_HOME":      home,
+		"HOST_UID":       fmt.Sprintf("%d", syscall.Getuid()),
+		"HOST_GID":       fmt.Sprintf("%d", syscall.Getgid()),
+		"MCP_TOOLS_ROOT": repoDir,
+		"MCP_TOOLS_DATA": dataDir,
+		"MCP_TOOLS_BIND": "127.0.0.1",
+		"MEM0_USER_ID":   u.Username,
+	}
+	fmt.Fprintln(out, "── env")
+
+	if _, err := os.Stat(envPath); err == nil && !force {
+		fmt.Fprintf(out, "  OK %s ya existe, se conserva%s\n", envPath, dryPrefix(dry))
+	} else {
+		if dry {
+			fmt.Fprintf(out, "  OK escribiría %s con 7 variables (dry)\n", envPath)
+		} else {
+			if err := config.WriteEnv(envPath, contents); err != nil {
+				return fmt.Errorf("escribir .env: %w", err)
+			}
+			if err := os.Chmod(envPath, 0o600); err != nil {
+				return fmt.Errorf("chmod .env: %w", err)
+			}
+			fmt.Fprintf(out, "  OK generado %s\n", envPath)
+		}
+	}
+
+	mem0EnvPath := filepath.Join(repoDir, ".env.mem0")
+	if _, err := os.Stat(mem0EnvPath); err == nil && !force {
+		fmt.Fprintf(out, "  OK %s ya existe, se conserva%s\n", mem0EnvPath, dryPrefix(dry))
+	} else {
+		mem0EnvBody := fmt.Sprintf(`MEM0_PROVIDER=ollama
+MEM0_LLM_MODEL=qwen2.5:7b
+
+MEM0_EMBED_PROVIDER=ollama
+MEM0_EMBED_MODEL=bge-m3
+MEM0_OLLAMA_URL=http://127.0.0.1:11434/
+
+MEM0_QDRANT_URL=http://127.0.0.1:6333/
+MEM0_COLLECTION=mem0_%s
+MEM0_ENABLE_GRAPH=false
+
+MEM0_HISTORY_DB_PATH=$HOME/mcp-tools-data/mem0/history/history.db
+MEM0_OLLAMA_THINK=false
+`, u.Username)
+		if dry {
+			fmt.Fprintf(out, "  OK escribiría %s con defaults (dry)\n", mem0EnvPath)
+		} else {
+			if err := os.WriteFile(mem0EnvPath, []byte(mem0EnvBody), 0o600); err != nil {
+				return fmt.Errorf("escribir .env.mem0: %w", err)
+			}
+			if err := os.Chmod(mem0EnvPath, 0o600); err != nil {
+				return fmt.Errorf("chmod .env.mem0: %w", err)
+			}
+			fmt.Fprintf(out, "  OK generado %s\n", mem0EnvPath)
+		}
+	}
+
+	dirs := []string{
+		filepath.Join(dataDir, "mem0/history"),
+		filepath.Join(dataDir, "mem0/uv-cache"),
+		filepath.Join(dataDir, "mem0/config"),
+		filepath.Join(dataDir, "ollama"),
+	}
+	for _, d := range dirs {
+		if dry {
+			continue
+		}
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			return fmt.Errorf("mkdir %s: %w", d, err)
+		}
+	}
+
+	if dry {
+		fmt.Fprintf(out, "  OK data en %s (dry — no se crean directorios)\n", dataDir)
+	} else {
+		fmt.Fprintf(out, "  OK data en %s\n", dataDir)
+	}
+	return nil
+}
+
+// Bootstrap is the shared prereq step every orchestrator verb runs before
+// touching state or Docker. Verifies docker is in PATH and (re)generates
+// the .env files via RunEnv.
+func Bootstrap(dry bool, log LogFn) error {
+	if err := EnsureDocker(dry, log); err != nil {
+		return err
+	}
+	out := writerFromLog(log)
+	return RunEnv(dry, false, out)
+}
+
+// EnsureDocker checks the host has `docker` in PATH and that the compose
+// plugin is callable.
+func EnsureDocker(dry bool, log LogFn) error {
+	if dry {
+		log("$ command -v docker")
+		log("$ docker compose version")
+		return nil
+	}
+	if _, err := exec.LookPath("docker"); err != nil {
+		return fmt.Errorf("docker no está en PATH")
+	}
+	return exec.Command("docker", "compose", "version").Run()
+}
+
+func dryPrefix(dry bool) string {
+	if dry {
+		return " (dry)"
+	}
+	return ""
+}
+
+// writerFromLog turns an incremental LogFn into an io.Writer by writing
+// line-by-line. Used by legacy helpers that take an io.Writer.
+func writerFromLog(log LogFn) io.Writer {
+	if log == nil {
+		return io.Discard
+	}
+	return logWriter{log: log}
+}
+
+type logWriter struct{ log LogFn }
+
+func (w logWriter) Write(p []byte) (int, error) {
+	w.log(string(p))
+	return len(p), nil
+}

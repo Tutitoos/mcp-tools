@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, refactor/web-admin]
   pull_request:
 
 jobs:
@@ -14,6 +14,24 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.4'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: 'web/pnpm-lock.yaml'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10
+
+      - name: Build web SPA
+        run: |
+          cd web
+          pnpm install --frozen-lockfile=false
+          pnpm run build
+          cd ..
+          # Mirror web/build into webassets/ so the embed directive sees the bundle.
+          make webassets/build
 
       - name: Go mod tidy check
         run: |
@@ -28,8 +46,26 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: pnpm audit (prod)
+        working-directory: web
+        run: pnpm audit --prod || true
+
       - name: Test
         run: go test ./...
+
+      - name: Build binary
+        run: go build -ldflags "-X github.com/Tutitoos/mcp-tools/internal/version.Version=ci" -o bin/mcp-tools ./cmd/mcp-tools
+
+      - name: Smoke test (version + boot)
+        run: |
+          ./bin/mcp-tools --version
+          ./bin/mcp-tools serve --port 18080 --bind 127.0.0.1 &
+          PID=$!
+          sleep 2
+          curl -sf http://127.0.0.1:18080/api/version
+          curl -sf http://127.0.0.1:18080/ | head -1
+          kill $PID 2>/dev/null || true
+          wait 2>/dev/null
 
       - name: Shellcheck
         run: |
