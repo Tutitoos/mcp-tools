@@ -31,13 +31,17 @@ func handleTools(w http.ResponseWriter, _ *http.Request) {
 	reg := tools.Registry()
 	rows := make([]map[string]any, 0, len(reg))
 	for _, t := range reg {
+		deps := t.Deps
+		if deps == nil {
+			deps = []string{}
+		}
 		row := map[string]any{
 			"key":        t.Key,
 			"label":      t.Label,
 			"summary":    t.Summary,
 			"deploy":     t.Deploy.String(),
 			"default_on": t.DefaultOn,
-			"deps":       t.Deps,
+			"deps":       deps,
 			"selected":   st.Has(t.Key),
 		}
 		if t.Status != nil {

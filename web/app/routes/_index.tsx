@@ -86,12 +86,11 @@ export default function Dashboard() {
     refetchInterval: 5_000,
   });
 
-  const installed = data
-    ? data.compose_services.filter((s) => s.state === "running").length
-    : 0;
+  const compose = data?.compose_services ?? [];
+  const installed = compose.filter((s) => s.state === "running").length;
   const registry = 16;
-  const selected = data?.state.selected.length ?? 0;
-  const services = data?.compose_services.length ?? 0;
+  const selected = data?.state?.selected?.length ?? 0;
+  const services = compose.length;
 
   return (
     <div className="space-y-8">
@@ -171,11 +170,11 @@ export default function Dashboard() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : data.compose_services.length === 0 ? (
+          ) : compose.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aún no hay servicios docker.</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {data.compose_services.map((svc) => (
+              {compose.map((svc) => (
                 <div
                   key={svc.name}
                   className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2"

@@ -94,8 +94,9 @@ function UnitStatusPill() {
       </Badge>
     );
   }
-  const running = data.compose_services.filter((s) => s.state === "running").length;
-  const total = data.compose_services.length;
+  const services = data.compose_services ?? [];
+  const running = services.filter((s) => s.state === "running").length;
+  const total = services.length;
   const variant =
     data.docker_running && running > 0
       ? "success"

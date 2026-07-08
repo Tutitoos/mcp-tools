@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Cog, Loader2, Play, RotateCcw, Square, ScrollText } from "lucide-react";
 import { api, type ServiceView, type JobResponse } from "~/lib/api";
-import { useJobStream, useEventSource } from "~/lib/sse";
+import { useEventSource } from "~/lib/sse";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";

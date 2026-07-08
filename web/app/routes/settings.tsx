@@ -50,10 +50,6 @@ function EnvTable({
   for (const k of keys) initial[k] = data?.[k] ?? "";
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [busy, setBusy] = useState(false);
-  // re-sync when data reloads
-  if (data && !busy && JSON.stringify(values) !== JSON.stringify(initial) && Object.values(values).every((v) => v === "" || data[k])) {
-    // safe to leave as user-typed
-  }
 
   async function submit() {
     setBusy(true);

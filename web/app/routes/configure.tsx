@@ -111,7 +111,7 @@ export default function ConfigureRoute() {
                     <p className="text-xs text-muted-foreground">{t.summary}</p>
                   </div>
                 </div>
-                {t.deps.length > 0 && (
+                {(t.deps?.length ?? 0) > 0 && (
                   <span className="text-xs text-muted-foreground">
                     deps: {t.deps.join(", ")}
                   </span>

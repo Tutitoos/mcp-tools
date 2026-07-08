@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiStream } from "~/lib/api";
 
 export type JobLine = {
@@ -29,7 +29,6 @@ export function useJobStream(jobId: string | null) {
     error: null,
     open: false,
   });
-  const closeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!jobId) return;
