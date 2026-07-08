@@ -33,11 +33,20 @@ lo arregla para la sesión actual; para hacerlo permanente añade la línea
 el comando exacto sugerido y, desde v0.1.8, el "Siguiente paso" usa el
 path absoluto (`$BIN_DIR/mcp-tools install`) para ser copy-paste safe.
 
+### Requisitos del host
+
+- Docker + `docker compose` v2.
+- `~/.local/bin` en `$PATH` (donde vive el binario y `mem0-launcher`).
+- `git` en PATH (para `update --self`).
+- **Toolchain C** (`cc` / `build-essential` en Debian/Ubuntu, `gcc` + `make` en Fedora/RHEL, Xcode Command Line Tools en macOS). `rtk` y `tokensave` se compilan desde source con `cargo install` y sus build-scripts invocan `cc` para `ring`, `rusqlite`, etc.; sin compilador C la instalación falla con `error: linker 'cc' not found`. En Debian/Ubuntu:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y build-essential pkg-config libssl-dev
+  ```
+- Nvidia GPU + driver instalado si vas a marcar `nvidia-toolkit` (opcional). En hosts sin GPU la fila no aparece en el TUI.
+
 ## Plataformas soportadas
 
-Soportado: Linux (x86_64 / aarch64) y macOS (Intel / Apple Silicon). Windows no está soportado — `install.sh` rechaza cualquier OS distinto de `linux`/`darwin`.
-
-Diferencias entre plataformas:
+Soportado:
 
 | Tool | Linux | macOS |
 | --- | --- | --- |
@@ -225,7 +234,5 @@ mcp-tools/
 
 - **`missing .env`** en un wrapper → `mcp-tools env`.
 - **`mcp_tools_mem0` no arranca** → `ls ~/.local/bin/mem0-launcher` y `mem0-mcp-selfhosted --version`; si falta uno, `mcp-tools mem0 install`.
-- **`Failed to connect to url`** en el cliente MCP tras `/mcp list` → revisa configs residuales en `~/.claude/plugins/marketplaces/`, `~/.codex/config.toml`, o entradas viejas sin prefijo `mcp_tools_` en el cliente.
-- **Ollama sin GPU aunque tengo `nvidia-toolkit` seleccionado** → verifica que `nvidia-smi -L` pasa, luego `mcp-tools restart mcp_tools_ollama`.
-- **`state.json` corrupto** → bórralo y corre `mcp-tools install` (te abrirá el TUI de cero).
 - **`compose up` falla con `MCP_TOOLS_BIND: variable is not set`** → corre `mcp-tools env` para regenerar `.env` con la key.
+- **`error: linker 'cc' not found` al instalar `rtk` o `tokensave`** → falta el toolchain C. Debian/Ubuntu: `sudo apt-get install -y build-essential pkg-config libssl-dev`. Fedora/RHEL: `sudo dnf install -y gcc make openssl-devel`. macOS: `xcode-select --install`.
