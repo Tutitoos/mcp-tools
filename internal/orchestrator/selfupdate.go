@@ -18,7 +18,7 @@ func RunSelfUpdate(dry bool, log LogFn) error {
 	if log == nil {
 		log = func(string) {}
 	}
-	root := repoRoot()
+	root := config.RepoRoot()
 	if dry {
 		log(fmt.Sprintf("$ git -C %s fetch --tags origin main", root))
 		log(fmt.Sprintf("$ git -C %s pull --ff-only origin main", root))

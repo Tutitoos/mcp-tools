@@ -6,13 +6,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
 // ConfigureOMP merges the ServerSpec list into ~/.omp/agent/mcp.json under `.mcpServers`.
 // Preserves other keys (disabledServers, etc.). SKIP silently if the parent dir is missing.
 func ConfigureOMP(st state.State, log func(string)) error {
-	home, _ := os.UserHomeDir()
+	home, err := config.HomeDir()
+	if err != nil {
+		return fmt.Errorf("omp mcp: %w", err)
+	}
 	file := filepath.Join(home, ".omp/agent/mcp.json")
 	parent := filepath.Dir(file)
 	if _, err := os.Stat(parent); err != nil {

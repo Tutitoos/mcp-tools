@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
@@ -28,7 +29,10 @@ func ConfigureCodex(st state.State, log func(string)) error {
 // rewriteCodexConfig performs the actual config.toml rewrite. Split out from
 // ConfigureCodex so it's testable without requiring the `codex` CLI on PATH.
 func rewriteCodexConfig(st state.State, log func(string)) error {
-	home, _ := os.UserHomeDir()
+	home, err := config.HomeDir()
+	if err != nil {
+		return fmt.Errorf("codex mcp: %w", err)
+	}
 	file := filepath.Join(home, ".codex", "config.toml")
 	parent := filepath.Dir(file)
 	if _, err := os.Stat(parent); err != nil {

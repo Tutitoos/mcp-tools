@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
@@ -20,7 +21,10 @@ func ConfigureGemini(st state.State, log func(string)) error {
 		log("  SKIP Gemini (gemini CLI not found)")
 		return nil
 	}
-	home, _ := os.UserHomeDir()
+	home, err := config.HomeDir()
+	if err != nil {
+		return fmt.Errorf("gemini mcp: %w", err)
+	}
 	file := filepath.Join(home, ".gemini", "settings.json")
 	parent := filepath.Dir(file)
 	if _, err := os.Stat(parent); err != nil {
@@ -53,7 +57,7 @@ func ConfigureGemini(st state.State, log func(string)) error {
 		section[s.Name] = map[string]any{
 			"command": s.Wrapper,
 			"args":    argsToAny(s.Args),
-			"env":     map[string]any{"HOME": os.Getenv("HOME")},
+			"env":     map[string]any{"HOME": home},
 			"enabled": true,
 		}
 	}

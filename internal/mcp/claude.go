@@ -3,10 +3,10 @@ package mcp
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
@@ -17,7 +17,10 @@ func ConfigureClaude(st state.State, log func(string)) error {
 		log("  SKIP Claude Code (claude CLI not found)")
 		return nil
 	}
-	home, _ := os.UserHomeDir()
+	home, err := config.HomeDir()
+	if err != nil {
+		return fmt.Errorf("claude mcp: %w", err)
+	}
 
 	wanted := map[string]bool{}
 	for _, s := range Servers(st) {

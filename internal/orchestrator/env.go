@@ -18,7 +18,7 @@ func RunEnv(dry, force bool, out io.Writer) error {
 	if out == nil {
 		out = io.Discard
 	}
-	home, err := os.UserHomeDir()
+	home, err := config.HomeDir()
 	if err != nil {
 		return err
 	}

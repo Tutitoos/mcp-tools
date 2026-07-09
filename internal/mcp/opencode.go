@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
 
@@ -13,7 +14,10 @@ import (
 // under `.mcp`. Preserves every other key. SKIP silently if the parent dir is missing
 // (OpenCode not installed).
 func ConfigureOpenCode(st state.State, log func(string)) error {
-	home, _ := os.UserHomeDir()
+	home, err := config.HomeDir()
+	if err != nil {
+		return fmt.Errorf("opencode mcp: %w", err)
+	}
 	file := filepath.Join(home, ".config/opencode/opencode.json")
 	parent := filepath.Dir(file)
 	if _, err := os.Stat(parent); err != nil {

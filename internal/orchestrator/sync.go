@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/mcp"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
@@ -67,11 +68,11 @@ func RunSkills(dry bool, out io.Writer) error {
 	if out == nil {
 		out = io.Discard
 	}
-	home, err := os.UserHomeDir()
+	home, err := config.HomeDir()
 	if err != nil {
 		return err
 	}
-	src := filepath.Join(repoRoot(), "skills")
+	src := filepath.Join(config.RepoRoot(), "skills")
 	targets := []string{
 		filepath.Join(home, ".claude/skills"),
 		filepath.Join(home, ".config/opencode/skills"),
@@ -144,11 +145,11 @@ func RunRules(dry bool, out io.Writer) error {
 	if out == nil {
 		out = io.Discard
 	}
-	home, err := os.UserHomeDir()
+	home, err := config.HomeDir()
 	if err != nil {
 		return err
 	}
-	rulesSrc := filepath.Join(repoRoot(), "RULES.md")
+	rulesSrc := filepath.Join(config.RepoRoot(), "RULES.md")
 	if _, err := os.Stat(rulesSrc); err != nil {
 		return fmt.Errorf("RULES.md no existe en %s", rulesSrc)
 	}
@@ -245,15 +246,3 @@ const (
 
 // skillNames mirrors the legacy internal/cli.skillsNames constant.
 var skillNames = []string{"codebase-memory", "mem0", "serena", "tokensave"}
-
-// repoRoot returns MCP_TOOLS_ROOT or $HOME/mcp-tools.
-func repoRoot() string {
-	if r := os.Getenv("MCP_TOOLS_ROOT"); r != "" {
-		return r
-	}
-	home, _ := os.UserHomeDir()
-	if home == "" {
-		return ""
-	}
-	return filepath.Join(home, "mcp-tools")
-}

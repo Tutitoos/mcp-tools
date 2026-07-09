@@ -1,16 +1,40 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 )
 
-// homeDir returns $HOME (falls back to os.UserHomeDir if $HOME unset).
-func homeDir() string {
+// HomeDir returns the invoking user's home directory. It prefers $HOME (so
+// an explicit override wins), but falls back to os/user.Current().HomeDir —
+// a direct /etc/passwd lookup — when $HOME isn't set in the process
+// environment. This matters for the mcp-tools-web systemd unit: in system
+// mode (no explicit User=), systemd does NOT populate $HOME by default, so
+// os.UserHomeDir() alone fails with "$HOME is not defined" even though the
+// process has a perfectly valid home directory (e.g. root's /root).
+func HomeDir() (string, error) {
 	if h := os.Getenv("HOME"); h != "" {
-		return h
+		return h, nil
 	}
-	h, err := os.UserHomeDir()
+	u, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("no se pudo resolver el home del usuario (ni $HOME ni os/user): %w", err)
+	}
+	if u.HomeDir == "" {
+		return "", errors.New("home de usuario vacío — establece $HOME antes de correr install")
+	}
+	return u.HomeDir, nil
+}
+
+// homeDir is the no-error convenience wrapper used by the path helpers
+// below; they have historically returned "" on failure rather than
+// propagating an error, and callers such as RepoRoot/DataDir predate
+// HomeDir's explicit error. Keeping that contract here.
+func homeDir() string {
+	h, err := HomeDir()
 	if err != nil {
 		return ""
 	}

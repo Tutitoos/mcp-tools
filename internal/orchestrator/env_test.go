@@ -33,3 +33,20 @@ func TestBootstrapEnv(t *testing.T) {
 		t.Errorf("expected RunEnv's \"── env\" marker in log, got:\n%s", joined)
 	}
 }
+
+// TestBootstrapEnvWithoutHomeEnv is a regression guard for the
+// mcp-tools-web systemd unit bug: in system mode (no explicit User=),
+// systemd does NOT populate $HOME by default, so RunEnv's home resolution
+// must not depend solely on os.UserHomeDir() (which fails with "$HOME is
+// not defined" in that case) even though the process has a perfectly
+// valid home directory (e.g. root's /root). See config.HomeDir.
+func TestBootstrapEnvWithoutHomeEnv(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	var lines []string
+	log := func(l string) { lines = append(lines, l) }
+
+	if err := BootstrapEnv(true, log); err != nil {
+		t.Fatalf("BootstrapEnv with $HOME unset: %v", err)
+	}
+}

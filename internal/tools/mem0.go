@@ -1,12 +1,13 @@
 package tools
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/Tutitoos/mcp-tools/internal/config"
 )
 
 func mem0Tool() Tool {
@@ -37,7 +38,7 @@ func installMem0(dry bool, log func(string)) error {
 	}
 	if dry {
 		log(fmt.Sprintf(`$ uv tool install --from %s mem0-mcp-selfhosted`, mem0GitURL))
-		log(fmt.Sprintf("$ ln -snf %s/scripts/wrappers/mem0-launcher %s/.local/bin/mem0-launcher", mustRepoRoot(), home))
+		log(fmt.Sprintf("$ ln -snf %s/scripts/wrappers/mem0-launcher %s/.local/bin/mem0-launcher", config.RepoRoot(), home))
 		return nil
 	}
 	cmd := exec.Command(uvBin(home), "tool", "install", "--from", mem0GitURL, "mem0-mcp-selfhosted")
@@ -131,7 +132,7 @@ func statusMem0() (StatusPayload, error) {
 // installMem0Launcher symlinks the repo wrapper into ~/.local/bin. The
 // wrapper sources .env.mem0 and execs mem0-mcp-selfhosted.
 func installMem0Launcher(home string) error {
-	src := filepath.Join(mustRepoRoot(), "scripts", "wrappers", "mem0-launcher")
+	src := filepath.Join(config.RepoRoot(), "scripts", "wrappers", "mem0-launcher")
 	if _, err := os.Stat(src); err != nil {
 		return fmt.Errorf("wrapper mem0-launcher no encontrado en repo: %w", err)
 	}
@@ -155,18 +156,3 @@ func resolveUV(home string) string {
 	}
 	return uvBin(home)
 }
-
-// mustRepoRoot returns config.RepoRoot() indirected via env to avoid an import
-// cycle when this file is compiled early.
-func mustRepoRoot() string {
-	if r := os.Getenv("MCP_TOOLS_ROOT"); r != "" {
-		return r
-	}
-	if h, err := os.UserHomeDir(); err == nil {
-		return filepath.Join(h, "mcp-tools")
-	}
-	return ""
-}
-
-// safety net for imports the linter might complain about if the file is trimmed later.
-var _ = errors.New

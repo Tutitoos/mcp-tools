@@ -9,20 +9,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/Tutitoos/mcp-tools/internal/config"
 )
 
-// hostHome returns $HOME or an error if empty (defensive against systemd units
-// with an empty environment).
-func hostHome() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	if home == "" {
-		return "", errors.New("HOME vacío — establece $HOME antes de correr install")
-	}
-	return home, nil
-}
+// hostHome returns the invoking user's home directory. See
+// config.HomeDir for why this can't just be os.UserHomeDir(): the
+// mcp-tools-web systemd unit runs in system mode (no explicit User=), so
+// systemd does NOT populate $HOME by default even though the process has a
+// perfectly valid home directory (e.g. root's /root).
+func hostHome() (string, error) { return config.HomeDir() }
 
 func cargoBin(home string) string { return filepath.Join(home, ".cargo", "bin", "cargo") }
 func rtkBin(home string) string   { return filepath.Join(home, ".cargo", "bin", "rtk") }
