@@ -27,6 +27,21 @@ jobs:
         with:
           go-version: '1.24.4'
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10
+
+      - name: Build web SPA
+        run: |
+          cd web
+          pnpm install --frozen-lockfile=false
+          pnpm run build
+          cd ..
+          make webassets/build
+
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: latest

@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 func nvidiaToolkitTool() Tool {
@@ -38,6 +40,13 @@ func installNvidiaToolkit(dry bool, log func(string)) error {
 	}
 	if !supportedNvidiaDistro(distroID) {
 		return fmt.Errorf("distro %q no soportada para nvidia-container-toolkit", distroID)
+	}
+	// Sudo needs a TTY (or SUDO_ASKPASS) to prompt for the password. When
+	// invoked from the web admin panel the goroutine inherits the daemon's
+	// stdin, which has no TTY, so the chained `sh -c ... | sudo ...` step
+	// fails with a cryptic "exit status 1". Surface a clear error instead.
+	if !dry && os.Getenv("SUDO_ASKPASS") == "" && !isTerminal(os.Stdin) {
+		return fmt.Errorf("nvidia-toolkit install requires sudo authentication, but no TTY is attached (this happens when invoked from the web admin panel). Run `mcp-tools install` from a terminal session, or set SUDO_ASKPASS to a helper that supplies the password")
 	}
 	// The apt path (Debian/Ubuntu). RHEL/Fedora/Rocky/AlmaLinux would use dnf; we
 	// only branch when we know the concrete host — no untested paths.
@@ -79,6 +88,13 @@ func uninstallNvidiaToolkit(dry bool, log func(string)) error {
 	}
 	if !supportedNvidiaDistro(distroID) {
 		return fmt.Errorf("distro %q no soportada para nvidia-container-toolkit", distroID)
+	}
+	// Sudo needs a TTY (or SUDO_ASKPASS) to prompt for the password. When
+	// invoked from the web admin panel the goroutine inherits the daemon's
+	// stdin, which has no TTY, so the chained `sudo ...` step fails with
+	// a cryptic "exit status 1". Surface a clear error instead.
+	if !dry && os.Getenv("SUDO_ASKPASS") == "" && !isTerminal(os.Stdin) {
+		return fmt.Errorf("nvidia-toolkit uninstall requires sudo authentication, but no TTY is attached (this happens when invoked from the web admin panel). Run `mcp-tools install` from a terminal session, or set SUDO_ASKPASS to a helper that supplies the password")
 	}
 	steps := [][]string{
 		{"sudo", "nvidia-ctk", "runtime", "configure", "--runtime=docker", "--unset"},
@@ -154,4 +170,11 @@ func captureCombined(cmd *exec.Cmd) (string, error) {
 	cmd.Stderr = &buf
 	err := cmd.Run()
 	return strings.TrimSpace(buf.String()), err
+}
+
+// isTerminal reports whether f is attached to a terminal. Used to
+// short-circuit sudo-requiring installers when the web panel calls
+// them in a goroutine with no controlling TTY.
+func isTerminal(f *os.File) bool {
+	return term.IsTerminal(int(f.Fd()))
 }

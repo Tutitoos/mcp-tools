@@ -157,7 +157,7 @@ esac
 cat <<MSG
 
 Siguiente paso:
-  git clone https://github.com/${REPO} \${HOME}/mcp-tools
-  cd \${HOME}/mcp-tools
-  $BIN_DIR/mcp-tools install
+  $BIN_DIR/mcp-tools install   # elegirá el puerto del panel y habilitará el servicio systemd
+
+Luego abre http://<bind>:<puerto>/ (default 0.0.0.0:8888) en tu navegador.
 MSG

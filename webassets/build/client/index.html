@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es" suppressHydrationWarning>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Web admin panel auto-hospedado para el stack MCP"
+    />
+    <title>mcp-tools · admin panel</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("mcp-tools-theme");
+          if (t === "light") document.documentElement.classList.remove("dark");
+          else document.documentElement.classList.add("dark");
+        } catch (e) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/entry.client-BcRrlcUS.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DLGiWG86.css">
+  </head>
+  <body>
+    <div id="root"><!--SSR--></div>
+  </body>
+</html>

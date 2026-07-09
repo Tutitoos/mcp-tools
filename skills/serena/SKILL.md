@@ -99,13 +99,10 @@ serena start-mcp-server --context agent --project-from-cwd
 
 ## Important client tool naming
 
-Do not invent internal tool names like:
-
-```txt
-mcp__mcp_tools_serena_find_symbol
-```
-
-Use the MCP tools as exposed by the active client (Claude Code / OpenCode use the bare `<tool_name>`; OMP namespaces them as `mcp__mcp_tools_serena_<tool>`).
+Usa el nombre exacto que exponga tu cliente MCP activo — no lo adivines:
+- Claude Code / OpenCode: nombre bare (`find_symbol`, `activate_project`, …).
+- OMP: namespaced (`mcp__mcp_tools_serena_find_symbol`, `mcp__mcp_tools_serena_activate_project`, …).
+- Si tu cliente aún no lo expone: `search_tool_bm25` con la capacidad como query lo activa.
 
 If the client does not expose a specific serena tool, activate it via `search_tool_bm25` with a query like `serena find symbol` — OMP's tool discovery layer will surface it.
 

@@ -33,3 +33,8 @@ venv/
 .tokensave
 .codegraph/
 .serena/
+
+# web SPA build artifacts
+web/build/
+web/node_modules/
+web/.vite/

@@ -9,19 +9,26 @@ Este fichero es cargado globalmente por Claude Code, OpenCode y OMP. Define qué
 
 ## Known bugs — read first
 
-## ⚠️ mem0: `search_memories` y `get_memories` rotos upstream (verificado 2026-07-06)
+### mem0: init frágil y filtros rotos upstream
 
-Las dos operaciones listadas abajo pasan `user_id` al top level; la lib mem0 nueva exige `filters={user_id: ...}`. NO uses estas operaciones; usa los workarounds indicados.
+**Síntoma observado (verificado 2026-07-09)**: tras qdrant o ollama arrancar antes de que mem0-mcp-selfhosted complete su init, TODAS las operaciones devuelven `RuntimeError: Memory not initialized. Infrastructure may be unavailable.` — no sólo `search_memories`. Un reinicio limpio del proceso (`pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill; /mcp reconnect mcp_tools_mem0`) recupera el estado normal.
 
-| Operación | Estado | Workaround |
+**Segundo bug (upstream, verificado 2026-07-06)**: en el estado sano, `search_memories(query)` y `get_memories(user_id)` fallan porque la lib mem0 nueva exige `filters={user_id: ...}` y el MCP pasa `user_id` al top level.
+
+| Operación | Estado sano | Estado degradado |
 | --- | --- | --- |
-| `mcp_tools_mem0` → `search_memories(query)` | ❌ roto | `add_memory` con `event: ADD` para guardar; `get_memory` por UUID para recuperar |
-| `mcp_tools_mem0` → `get_memories(user_id)` | ❌ roto | `list_entities` + UUIDs conocidos |
-| `mcp_tools_mem0` → `add_memory(...)` | ✅ funciona | usar tal cual, aceptar riesgo de duplicado |
-| `mcp_tools_mem0` → `get_memory(uuid)` | ✅ funciona | usar tal cual |
-| `mcp_tools_mem0` → `list_entities()` | ✅ funciona | usar tal cual |
+| `mcp_tools_mem0` → `search_memories(query)` | ❌ upstream bug (filtro `user_id`) | ❌ `Memory not initialized` |
+| `mcp_tools_mem0` → `get_memories(user_id)` | ❌ upstream bug (filtro `user_id`) | ❌ `Memory not initialized` |
+| `mcp_tools_mem0` → `add_memory(text=...)` | ✅ funciona | ❌ `Memory not initialized` |
+| `mcp_tools_mem0` → `get_memory(uuid)` | ✅ funciona | ❌ `Memory not initialized` |
+| `mcp_tools_mem0` → `list_entities()` | ✅ funciona | ❌ `Memory not initialized` |
 
-**Regla**: nunca borres memorias sin confirmación explícita del user.
+**Workaround por operación**:
+- Guardar → `add_memory(text=..., user_id=...)` (sin duplicate-check porque el gate `search_memories` está roto — asume riesgo).
+- Recuperar por UUID conocido → `get_memory(uuid)`.
+- Listar todo → `list_entities()` + iterar UUIDs con `get_memory`.
+
+**Si TODO devuelve `Memory not initialized`**: reinicia el proceso mem0 (comando arriba) antes de escalar más. Este estado degradado suele aparecer tras `mcp-tools restart` u `docker compose restart mcp_tools_mem0_qdrant` sin dar a mem0 tiempo de re-inicializarse.
 
 ## How to decide which tool to use (default: serena for code)
 
@@ -31,7 +38,7 @@ Decision tree (apply in order, first match wins):
 
 0. **Code operation on a NAMED symbol** (function, class, method, struct, type, constant, field) — even "show me how X works", "muéstrame el cuerpo", "dónde se usa X" → **`mcp_tools_serena`**. Call `activate_project` first if you haven't. Default fallback to native `Read` for these is PROHIBITED (see hard rules below).
 1. **Memoria persistente cross-session** (recordar, recuperar, guardar decisiones/preferencias/hechos, "qué habíamos hablado", "el usuario prefiere")
-   → **`mcp_tools_mem0`**. Empieza SIEMPRE por `search_memories` (bug conocido — ver "Known bugs — read first" arriba). Nunca uses `echo >> notes.md`, scratchpad del agente, ni memoria de contexto para persistir.
+   → **`mcp_tools_mem0`**. Intenta `search_memories` primero; si devuelve error de filtro `user_id` o `Memory not initialized`, cae al workaround: `list_entities` + `get_memory(uuid)`. Detalles en "Known bugs" arriba. Nunca uses `echo >> notes.md`, scratchpad del agente, ni memoria de contexto para persistir.
 
 2. **Pregunta natural-language sobre CÓMO funciona una zona del código** (proyecto con `tokensave init`) — "cómo funciona X", "explora el flujo Y", "encuentra el código que hace Z"
    → **`tokensave` (`tokensave_context`)**. Devuelve entry points + call paths verbatim en 1 call. Si el proyecto NO está init'd → cae al paso 3.
@@ -119,9 +126,9 @@ Para toda tarea que caiga en (0), (1), (2), (3) o (4) del árbol:
 - **Claude Code / OpenCode**: `<tool_name>` directo (según cada MCP). Tokensave usa naming nativo bare (`tokensave_context`, no `mcp_tools_tokensave_context`).
 - **OMP**: nombres namespaced, p.ej.:
   - `mcp__mcp_tools_codebase_memory_get_architecture`
-  - `mcp__mcp_tools_mem0_search_memories`
+  - `mcp__mcp_tools_mem_search_memories` (OMP recorta `mem0` → `mem` en el prefijo — verificado sesión 2026-07-09)
   - `mcp__mcp_tools_serena_find_symbol`
-  - `mcp__tokensave_context` (bare `tokensave` server, no `mcp_tools_` prefix)
+  - `mcp__tokensave_context` (bare `tokensave` server, sin `mcp_tools_` prefix)
 
 Si en OMP no aparecen visibles, usa `search_tool_bm25` con la capacidad como query — activará el tool discovery. Queries ejemplo:
 - codebase-memory arquitectura: `codebase memory architecture repository graph`
@@ -135,7 +142,7 @@ Si en OMP no aparecen visibles, usa `search_tool_bm25` con la capacidad como que
 
 1. **`codebase-memory` y `mem0` corren como binarios HOST**, no en Docker. Usa el nombre del wrapper (`codebase-memory-mcp`, `mem0-launcher`) — nunca invoques los binarios crudos con flags manuales para tareas normales.
 2. **`serena` corre como binario HOST** (`~/.local/bin/serena`, instalado por `uv tool`). NUNCA llames a un símbolo por serena sin `activate_project` previa en la misma sesión.
-3. **`tokensave` corre como binario HOST** (`~/.cargo/bin/tokensave`). NUNCA llames a `tokensave serve` en un cwd sin `.tokensave/` — el server falla al arrancar. Si el user pide exploración en un proyecto no indexado, avísale y ofrece correr `tokensave init` (side effect: reautodetecta agents; re-registra en `~/.pi/`, Codex, VS Code, Copilot).
+3. **`tokensave` corre como binario HOST** (`~/.cargo/bin/tokensave`). NUNCA llames a `tokensave serve` en un cwd sin `.tokensave/` — el server falla al arrancar. Si el user pide exploración en un proyecto no indexado, avísale y ofrece correr `tokensave init` (side effect: `tokensave init` re-detecta e (re-)registra su MCP en TODOS los agentes que encuentra — Claude Code, OpenCode, Codex, VS Code, Copilot, y el CLI `pi` de pi.dev — NO en OMP-Oh-My-Pi. Ver `skill://tokensave` §"Blast radius" antes de correrlo en un repo delicado).
 4. **No bypasees el MCP con shell/docker exec** (`docker exec mcp-tools-...`, `python -c ...`) salvo debug explícito de la infra Docker.
 5. **Nunca sintetices input** más grande para "probar" un MCP.
 6. **Rutas absolutas** para `codebase_memory`, `serena.activate_project` y `tokensave --path` (nunca `~`, resuelve `$HOME` antes).
@@ -155,8 +162,8 @@ Si en OMP no aparecen visibles, usa `search_tool_bm25` con la capacidad como que
 1. **`/mcp list`** para ver el estado por cliente.
 2. **`/mcp reload`** o **`/mcp reconnect <server>`**.
 3. Si sigue fallando: **cierra completamente el cliente y relánzalo** (`/mcp reload` no purga entradas removidas de la config).
-4. Container caído (mem0-qdrant, ollama): `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d`.
-5. Ver logs Docker: `docker logs mcp-tools-<name> --tail 50`.
+4. Contenedor caído (`mcp_tools_mem0_qdrant`, `mcp_tools_ollama` — service keys de compose): `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d`.
+5. Ver logs de un servicio: `mcp-tools logs <service-key>` (usa `docker compose logs` internamente, sin prefijo `stdout ` / `stderr `). Ejemplo: `mcp-tools logs mcp_tools_mem0_qdrant`. Si quieres el nombre del contenedor real (con guiones) para `docker inspect` o `docker exec`, es `mcp-tools-mem0-qdrant`, `mcp-tools-ollama`.
 6. `tokensave` marca "not connected" en Claude/OpenCode → el cwd no tiene `.tokensave/`. Corre `tokensave init` en un proyecto (una vez basta para que serve arranque desde cualquier cwd).
 7. `serena` marca "not connected" tras los pasos 0.1–0.4 → `~/.local/bin/serena` no está en PATH o `activate_project` no se ha llamado. Llama `activate_project("/absolute/path")` antes de cualquier otra tool de serena.
 
