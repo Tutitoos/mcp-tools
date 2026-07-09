@@ -27,6 +27,18 @@ var unitExists = func(path string) bool {
 	return err == nil
 }
 
+// systemctlAvailable is a swappable indirection (mirrors unitExists) so
+// tests can simulate a host with/without systemctl on PATH without
+// depending on the actual test-runner environment — CI containers
+// commonly run without systemd (and therefore without a systemctl
+// binary) entirely, which made the unmocked exec.LookPath("systemctl")
+// check short-circuit DetectMode to ModeNone before the unitExists fakes
+// below it ever ran, regardless of what they returned.
+var systemctlAvailable = func() bool {
+	_, err := exec.LookPath("systemctl")
+	return err == nil
+}
+
 // DetectMode first checks whether a unit file is ALREADY installed on
 // disk, preferring ModeSystem then ModeUser — an existing install is
 // authoritative over "which systemd manager happens to be reachable
@@ -48,7 +60,7 @@ func DetectMode(override Mode) (Mode, error) {
 	if override == ModeUser || override == ModeSystem {
 		return override, nil
 	}
-	if _, err := exec.LookPath("systemctl"); err != nil {
+	if !systemctlAvailable() {
 		return ModeNone, nil
 	}
 	if systemPath, err := UnitPath(ModeSystem); err == nil && unitExists(systemPath) {
