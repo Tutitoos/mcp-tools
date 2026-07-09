@@ -55,14 +55,22 @@ func uninstallClaudeMem(dry bool, log func(string)) error {
 		log("$ npx --yes claude-mem@latest uninstall")
 		return nil
 	}
+	// npx fetches its own copy of claude-mem to run `uninstall`, so this
+	// works to strip stray MCP configs/hooks/CLAUDE.md rules even if the
+	// local ~/.local/bin/claude-mem binary was already removed by hand —
+	// unlike the cargo/uv-installed tools, PATH presence isn't the source
+	// of truth here, so it is deliberately NOT gated on which("claude-mem").
 	// TODO(security): mirror H28 — see docs/REVIEW-rd2.md.
 	cmd := exec.Command("npx", "--yes", "claude-mem@latest", "uninstall")
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	// Best-effort — user may already have removed the plugin.
-	_ = cmd.Run()
+	// Best-effort — user may already have removed the plugin — but surface
+	// a genuine failure instead of discarding it outright.
+	if err := cmd.Run(); err != nil {
+		log(fmt.Sprintf("WARN npx claude-mem uninstall: %v", err))
+	}
 	return nil
 }
 
