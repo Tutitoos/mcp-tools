@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/version"
 )
 
@@ -22,6 +23,9 @@ var rootCmd = &cobra.Command{
 
 // Execute runs the root command; exits with 1 on any error.
 func Execute() {
+	if err := config.EnsureRuntimePath(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not augment PATH: %v\n", err)
+	}
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
