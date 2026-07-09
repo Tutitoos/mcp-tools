@@ -4,7 +4,7 @@ Generado a partir de una lectura completa del árbol fuente (commit de trabajo d
 
 ## Veredicto
 
-Linux + macOS soportados con las excepciones listadas abajo. Ninguna instalación host-only requiere Docker tras el fix G1 (con una excepción residual documentada más abajo: el endpoint `/configure` sigue exigiendo Docker incluso para diffs que sólo añaden tools host-only — ver "Gaps cerrados en esta ronda", G1). NVIDIA GPU y systemd son Linux-only por diseño, no por omisión.
+Linux + macOS soportados con las excepciones listadas abajo. Ninguna instalación host-only requiere Docker tras el fix G1 (`Install`, `InstallSingle` y `Configure` usan `BootstrapEnv`; sólo qdrant/ollama sondean Docker, y sólo cuando el verbo realmente los toca). NVIDIA GPU y systemd son Linux-only por diseño, no por omisión.
 
 ## Matriz por componente
 
@@ -42,9 +42,10 @@ Linux + macOS soportados con las excepciones listadas abajo. Ninguna instalació
 
 ## Gaps cerrados en esta ronda
 
-- **G1 — `Bootstrap` exigía Docker para cualquier instalación.** Cerrado parcialmente: `Install` (`internal/orchestrator/orchestrator.go`) e `InstallSingle` ahora llaman a `BootstrapEnv` (sin probe de Docker); `qdrantTool().Install/Upgrade/Uninstall` y `ollamaTool().Install/Upgrade/Uninstall` llaman a `docker.EnsureAvailable` internamente, así que el mensaje de error sigue siendo claro (`docker no está en PATH`) en lugar de un `exec: "docker": executable file not found` opaco.
-  - **Residual conocido, no cerrado en esta ronda:** `Configure` (`internal/orchestrator/orchestrator.go`, usado por la pestaña "Configurar" del panel web) sigue llamando al `Bootstrap` completo (con `EnsureDocker`). Un usuario que añade sólo una tool host-only (p. ej. `serena`) vía `/configure` en un host sin Docker seguirá viendo el error de Docker, aunque la tool elegida no lo necesite. Se dejó así deliberadamente: el plan de esta ronda trata `Configure` como "endpoint que llama a Bootstrap directamente" y prescribe conservar su comportamiento actual. Si se quiere cerrar del todo, el siguiente paso es repetir el mismo cambio (`Bootstrap` → `BootstrapEnv`) en `Configure`.
-  - Verificación: `go build ./...` (sin ciclo de imports — `EnsureAvailable` se movió a `internal/docker`, paquete hoja que tanto `internal/orchestrator` como `internal/tools` ya importaban, para evitar el ciclo `tools → orchestrator → tools`); `go test ./internal/orchestrator/... ./internal/tools/...`.
+- **G1 — `Bootstrap` exigía Docker para cualquier instalación.** Cerrado por completo (revisión 2): `Install`, `InstallSingle` y `Configure` (`internal/orchestrator/orchestrator.go`) llaman ahora a `BootstrapEnv` (sin probe de Docker); `qdrantTool().Install/Upgrade/Uninstall` y `ollamaTool().Install/Upgrade/Uninstall` llaman a `docker.EnsureAvailable` internamente, así que el mensaje de error sigue siendo claro (`docker no está en PATH`) en lugar de un `exec: "docker": executable file not found` opaco, para cualquier verbo que realmente toque un componente `DeployDocker`.
+  - **Historial:** el primer pase de esta ronda dejó `Configure` deliberadamente en `Bootstrap` completo, documentado aquí como residual. La matriz de CI de G3 lo expuso de inmediato: `TestConfigureNoChangeIsNoop` (dry=false, sin diff real) fallaba en el runner `macos-latest` con `docker no está en PATH`, porque `Configure` sondeaba Docker incluso en el camino "sin cambios" que no instala ni desinstala nada. Se cerró moviendo `Configure` a `BootstrapEnv`, igual que `Install`/`InstallSingle`.
+  - `orchestrator.Bootstrap` y `orchestrator.EnsureDocker` quedaron sin ningún caller de producción (confirmado con `find_referencing_symbols`) y se eliminaron; `docker.EnsureAvailable` sigue viva vía qdrant/ollama.
+  - Verificación: `go build ./...`; `go test ./internal/orchestrator/... ./internal/tools/...`; `go test ./internal/orchestrator/... -run TestConfigureNoChangeIsNoop -v` (regresión específica).
   - Commit/PR: `TBD`.
 - **G2 — `nvidia-toolkit` soportaba a medias Fedora/RHEL.** Cerrado: `supportedNvidiaDistro` (`internal/tools/nvidia_toolkit.go`) ahora sólo acepta `debian`/`ubuntu`; el mensaje de error nombra el conjunto soportado. README actualizado (fila de la matriz de plataformas + no había líneas nvidia-específicas que quitar del bloque Fedora/RHEL de one-liners, confirmado por lectura directa de esa sección).
   - Verificación: `go test ./internal/tools/ -run TestSupportedNvidiaDistro`.

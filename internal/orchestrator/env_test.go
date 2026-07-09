@@ -5,49 +5,31 @@ import (
 	"testing"
 )
 
-// TestBootstrapEnv verifies the G1 fix's core contract: BootstrapEnv (the
-// prereq path Install/InstallSingle now use) never probes for Docker, so a
-// host-only tool install succeeds on a host without Docker. Bootstrap (still
-// used by Configure/Upgrade/Uninstall, which may touch Docker-deployed
-// tools) keeps the Docker probe. Run with dry=true so RunEnv never touches
-// the filesystem (see RunEnv's `if dry { ... continue/return without
-// writing }` branches) — this test only inspects the logged lines.
+// TestBootstrapEnv verifies the G1 fix's core contract: BootstrapEnv (now
+// the sole prereq path for Install/InstallSingle/Configure) never probes
+// for Docker, so a verb that never touches a DeployDocker tool (qdrant,
+// ollama) succeeds on a host without Docker — including Configure's
+// "no changes" no-op, which used to fail via the old Bootstrap→EnsureDocker
+// call even though it performs no real work. Docker-deployed tools still
+// get a clear error via their own Install/Upgrade/Uninstall closures
+// (docker.EnsureAvailable in internal/tools/{qdrant,ollama}.go).
+//
+// Run with dry=true so RunEnv never touches the filesystem (see RunEnv's
+// `if dry { ... continue/return without writing }` branches) — this test
+// only inspects the logged lines.
 func TestBootstrapEnv(t *testing.T) {
-	tests := []struct {
-		name       string
-		run        func(log LogFn) error
-		wantDocker bool // must the log mention a docker probe?
-	}{
-		{
-			name:       "BootstrapEnv skips the Docker probe",
-			run:        func(log LogFn) error { return BootstrapEnv(true, log) },
-			wantDocker: false,
-		},
-		{
-			name:       "Bootstrap still probes Docker",
-			run:        func(log LogFn) error { return Bootstrap(true, log) },
-			wantDocker: true,
-		},
+	var lines []string
+	log := func(l string) { lines = append(lines, l) }
+
+	if err := BootstrapEnv(true, log); err != nil {
+		t.Fatalf("BootstrapEnv: %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var lines []string
-			log := func(l string) { lines = append(lines, l) }
-
-			if err := tt.run(log); err != nil {
-				t.Fatalf("%s: %v", tt.name, err)
-			}
-
-			joined := strings.Join(lines, "\n")
-			hasDocker := strings.Contains(joined, "docker")
-			if hasDocker != tt.wantDocker {
-				t.Errorf("docker probe present = %v, want %v. Log:\n%s", hasDocker, tt.wantDocker, joined)
-			}
-			// Both paths must still (re)generate the env files via RunEnv.
-			if !strings.Contains(joined, "── env") {
-				t.Errorf("expected RunEnv's \"── env\" marker in log, got:\n%s", joined)
-			}
-		})
+	joined := strings.Join(lines, "\n")
+	if strings.Contains(joined, "docker") {
+		t.Errorf("BootstrapEnv must never probe for Docker, got log:\n%s", joined)
+	}
+	if !strings.Contains(joined, "── env") {
+		t.Errorf("expected RunEnv's \"── env\" marker in log, got:\n%s", joined)
 	}
 }

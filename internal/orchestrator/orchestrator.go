@@ -103,7 +103,12 @@ func Configure(ctx context.Context, prev state.State, next []string, dry bool, l
 		log = func(string) {}
 	}
 
-	if err := Bootstrap(dry, log); err != nil {
+	// Env-only bootstrap (no Docker probe) — matches Install/InstallSingle.
+	// qdrant/ollama's own Install/Upgrade/Uninstall closures gate Docker
+	// via docker.EnsureAvailable, so a diff that never touches a
+	// DeployDocker tool (including the "no changes" no-op below) never
+	// needs Docker on the host.
+	if err := BootstrapEnv(dry, log); err != nil {
 		return prev, err
 	}
 

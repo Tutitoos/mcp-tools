@@ -214,7 +214,7 @@ El panel registra los servers seleccionados en Claude Code, OpenCode y OMP autom
 
 ## Configuración
 
-- `.env` (root del repo): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MCP_TOOLS_BIND`, `MEM0_USER_ID`. 7 vars en total. Se genera/actualiza automáticamente en cada `install` o acción del panel (`internal/orchestrator.RunEnv`, corre dentro de `Bootstrap()`); edítalo a mano desde `/settings` si necesitas cambiar un valor puntual (p. ej. `MCP_TOOLS_BIND`).
+- `.env` (root del repo): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MCP_TOOLS_BIND`, `MEM0_USER_ID`. 7 vars en total. Se genera/actualiza automáticamente en cada `install` o acción del panel (`internal/orchestrator.RunEnv`, corre dentro de `BootstrapEnv()`); edítalo a mano desde `/settings` si necesitas cambiar un valor puntual (p. ej. `MCP_TOOLS_BIND`).
 - `.env.mem0` (root del repo, autogenerado con defaults; se conserva si ya existe para respetar el modelo elegido desde `/models`). Editable también desde `/settings`.
 - Datos persistentes: todo bajo `~/mcp-tools-data/{mem0,ollama}/` — por convención rígida. RTK, headroom, codebase-memory, claude-mem, codegraph viven en `~/.cargo/bin` o `~/.local/bin` / `~/.local/share`.
 
@@ -294,7 +294,7 @@ mcp-tools/
 ├── internal/
 │   ├── cli/                # subcomandos cobra (install, web, serve, open, stop, restart, update, status-web)
 │   ├── web/                # router HTTP, SSR, job bus (SSE), handlers /api/*
-│   ├── orchestrator/       # Configure/Bootstrap — diffing de selección, RunEnv/RunSkills/RunRules/RunMcpConfig
+│   ├── orchestrator/       # Configure/BootstrapEnv — diffing de selección, RunEnv/RunSkills/RunRules/RunMcpConfig
 │   ├── plugins/            # descubrimiento + lockfile de plugins del workspace (backs /api/plugins)
 │   ├── config/             # .env / paths / RepoRoot / DataDir
 │   ├── docker/             # wrapper de docker compose (con overlays GPU)
