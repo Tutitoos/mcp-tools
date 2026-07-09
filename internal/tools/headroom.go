@@ -83,11 +83,16 @@ func uninstallHeadroom(dry bool, log func(string)) error {
 		log("$ uv tool uninstall headroom-ai")
 		return nil
 	}
+	if which("headroom") == "" {
+		log("  headroom no está instalado — nada que desinstalar")
+		return nil
+	}
 	cmd := exec.Command(resolveUV(home), "tool", "uninstall", "headroom-ai")
 	cmd.Env = withLocalBinPath(os.Environ(), home)
 	cmd.Env = append(cmd.Env, "HOME="+home)
-	// Best-effort — uv errors if already gone.
-	_ = runCombined(cmd, "uv tool uninstall headroom-ai")
+	if err := runCombined(cmd, "uv tool uninstall headroom-ai"); err != nil {
+		log(fmt.Sprintf("WARN uv tool uninstall headroom-ai: %v", err))
+	}
 	return nil
 }
 

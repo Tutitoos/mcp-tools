@@ -86,12 +86,20 @@ func uninstallMem0(dry bool, log func(string)) error {
 		log("$ rm -f " + launcher)
 		return nil
 	}
+	installed := which("mem0-mcp-selfhosted") != "" || fileExists(launcher)
+	if !installed {
+		log("  mem0 no está instalado — nada que desinstalar")
+		return nil
+	}
 	if _, err := exec.LookPath("uv"); err == nil || fileExists(uvBin(home)) {
 		cmd := exec.Command(resolveUV(home), "tool", "uninstall", "mem0-mcp-selfhosted")
 		cmd.Env = withLocalBinPath(os.Environ(), home)
 		cmd.Env = append(cmd.Env, "HOME="+home)
-		// Best-effort; uv exits non-zero if the package was already removed.
-		_ = runCombined(cmd, "uv tool uninstall mem0-mcp-selfhosted")
+		if err := runCombined(cmd, "uv tool uninstall mem0-mcp-selfhosted"); err != nil {
+			log(fmt.Sprintf("WARN uv tool uninstall mem0-mcp-selfhosted: %v", err))
+		}
+	} else {
+		log("WARN mem0 instalado pero uv no está disponible para desinstalarlo — bórralo a mano")
 	}
 	_ = os.Remove(launcher)
 	return nil

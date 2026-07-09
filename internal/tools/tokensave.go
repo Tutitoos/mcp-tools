@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -70,20 +71,38 @@ func uninstallTokensave(dry bool, log func(string)) error {
 		log("$ cargo uninstall tokensave  # remove el binario")
 		return nil
 	}
+	bin := which("tokensave")
+	directBin := filepath.Join(home, ".cargo/bin/tokensave")
+	installed := bin != "" || fileExists(directBin)
+	if !installed {
+		log("  tokensave no está instalado — nada que desinstalar")
+		return nil
+	}
+	if bin == "" {
+		bin = directBin
+	}
 	// tokensave uninstall PRIMERO (mientras binario existe) para limpiar registros
 	// en ~/.claude.json, ~/.config/opencode/*, ~/.omp/*, etc.
 	// Después cargo uninstall borra el binario. Invertir dejaría configs colgando.
-	// Best-effort: si tokensave uninstall no existe upstream, seguimos con cargo.
-	if bin := which("tokensave"); bin != "" {
-		cmd := exec.Command(bin, "uninstall")
-		cmd.Env = withCargoPath(os.Environ(), home)
-		cmd.Env = append(cmd.Env, "HOME="+home)
-		_ = runCombined(cmd, "tokensave uninstall")
+	// Best-effort: si tokensave uninstall falla, seguimos con cargo (pero avisamos).
+	cmd := exec.Command(bin, "uninstall")
+	cmd.Env = withCargoPath(os.Environ(), home)
+	cmd.Env = append(cmd.Env, "HOME="+home)
+	if err := runCombined(cmd, "tokensave uninstall"); err != nil {
+		log(fmt.Sprintf("WARN tokensave uninstall: %v (continuando con cargo uninstall)", err))
 	}
-	if bin, err := exec.LookPath("cargo"); err == nil {
-		_ = exec.Command(bin, "uninstall", tokensaveCrate).Run()
+	var cargoCmd *exec.Cmd
+	if cbin, err := exec.LookPath("cargo"); err == nil {
+		cargoCmd = exec.Command(cbin, "uninstall", tokensaveCrate)
 	} else if _, err := os.Stat(cargoBin(home)); err == nil {
-		_ = exec.Command(cargoBin(home), "uninstall", tokensaveCrate).Run()
+		cargoCmd = exec.Command(cargoBin(home), "uninstall", tokensaveCrate)
+	}
+	if cargoCmd != nil {
+		if err := runCombined(cargoCmd, "cargo uninstall tokensave"); err != nil {
+			log(fmt.Sprintf("WARN cargo uninstall tokensave: %v", err))
+		}
+	} else {
+		log("WARN tokensave binario presente pero cargo no está disponible para desinstalarlo — bórralo a mano: " + directBin)
 	}
 	log("NOTE: si `tokensave uninstall` no cubrió algún cliente, revisa manualmente ~/.claude.json, ~/.config/opencode/opencode.json y ~/.omp/agent/mcp.json por entradas `tokensave` residuales")
 	return nil

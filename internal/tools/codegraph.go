@@ -88,11 +88,14 @@ func uninstallCodegraph(dry bool, log func(string)) error {
 	}
 	bin := which("codegraph")
 	if bin == "" {
+		log("  codegraph no está instalado — nada que desinstalar")
 		return nil
 	}
 	cmd := exec.Command(bin, "uninstall", "--yes")
 	cmd.Env = os.Environ()
-	_ = runCombined(cmd, "codegraph uninstall --yes")
+	if err := runCombined(cmd, "codegraph uninstall --yes"); err != nil {
+		log(fmt.Sprintf("WARN codegraph uninstall --yes: %v", err))
+	}
 	return nil
 }
 
