@@ -46,10 +46,13 @@ export async function api<T>(path: string, init: Init = {}): Promise<T> {
   return parsed as T;
 }
 
-export async function apiStream(path: string): Promise<Response> {
+export async function apiStream(
+  path: string,
+  init: { signal?: AbortSignal } = {},
+): Promise<Response> {
   const headers = new Headers();
   headers.set("Accept", "text/event-stream");
-  return fetch(path, { headers });
+  return fetch(path, { headers, signal: init.signal });
 }
 
 // ─── Typed view models ──────────────────────────────────────────────────
@@ -91,4 +94,24 @@ export type VersionResponse = {
   version: string;
   commit: string;
   date: string;
+};
+
+export type PluginView = {
+  name: string;
+  version: string;
+  description: string;
+  path: string;
+  extensions: string[];
+  linked: boolean;
+  enabled: boolean;
+};
+
+export type JobSummary = {
+  id: string;
+  label: string;
+  status: "running" | "ok" | "error";
+  started_at: string; // ISO 8601 (time.Time JSON default)
+  finished_at?: string;
+  error?: string;
+  lines: number;
 };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Save, RefreshCcw, Settings as SettingsIcon } from "lucide-react";
@@ -46,9 +46,13 @@ function EnvTable({
   data: Record<string, string> | undefined;
   onSubmit: (values: Record<string, string>) => Promise<unknown>;
 }) {
-  const initial: Record<string, string> = {};
-  for (const k of keys) initial[k] = data?.[k] ?? "";
-  const [values, setValues] = useState<Record<string, string>>(initial);
+  const [values, setValues] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!data) return;
+    const next: Record<string, string> = {};
+    for (const k of keys) next[k] = data[k] ?? "";
+    setValues(next);
+  }, [data, keys]);
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -89,8 +93,8 @@ export default function SettingsRoute() {
   const { data } = useQuery<StatusPayload>({
     queryKey: ["status"],
     queryFn: () => api<StatusPayload>("/api/status"),
+    refetchInterval: 5_000,
   });
-
   const syncMut = useMutation({
     mutationFn: (path: string) => api<JobResponse>(path, { method: "POST" }),
     onSuccess: (res, path) => {
@@ -101,17 +105,8 @@ export default function SettingsRoute() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Edita los archivos .env y lanza los sincronizadores.
-          </p>
-        </div>
-      </div>
-
       <Tabs defaultValue="env">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="env">.env</TabsTrigger>
           <TabsTrigger value="mem0">.env.mem0</TabsTrigger>
         </TabsList>
@@ -196,6 +191,3 @@ export default function SettingsRoute() {
     </div>
   );
 }
-
-// keep Pair type re-exported for tree-shake friendliness
-export type { Pair };

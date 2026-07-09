@@ -3,7 +3,7 @@ set -euo pipefail
 
 ENV_MEM0="${MCP_TOOLS_ROOT:-$HOME/mcp-tools}/.env.mem0"
 if [ ! -f "$ENV_MEM0" ]; then
-  echo "ERROR: $ENV_MEM0 no existe (corre 'mcp-tools env')" >&2
+  echo "ERROR: $ENV_MEM0 no existe (corre 'mcp-tools install' o abre el panel web)" >&2
   exit 1
 fi
 

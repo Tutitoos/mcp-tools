@@ -193,7 +193,7 @@ MEM0_OLLAMA_URL=http://127.0.0.1:11434/
 MEM0_QDRANT_URL=http://127.0.0.1:6333/
 MEM0_COLLECTION=mem0_<username>
 MEM0_ENABLE_GRAPH=false
-MEM0_HISTORY_DB_PATH=$HOME/mcp-tools-data/mem0/history/history.db
+MEM0_HISTORY_DB_PATH=/home/USER/mcp-tools-data/mem0/history/history.db
 ```
 
 `MEM0_USER_ID` vive en `.env` no aquí. `MEM0_COLLECTION` se aísla por usuario para permitir varios devs en la misma qdrant. `mem0-launcher` sourcea `.env.mem0` en cada llamada, así que editarlo tiene efecto sin reinicios.
@@ -250,6 +250,12 @@ Modelos qwen3/deepseek-r1 requieren `MEM0_OLLAMA_THINK=false` (default) para evi
 | `mcp-tools tokens` / `tokens set <n>` | Lee/edita `compaction.thresholdTokens` de OMP (requiere `omp` en PATH). |
 
 Para configuración avanzada por componente y la migración desde el pipeline viejo, ver [docs/ADVANCED.md](docs/ADVANCED.md).
+
+## Web admin panel
+
+`mcp-tools serve --bind 0.0.0.0 --port 8888` levanta el panel React Router v7 que consume el mismo `/api/*` que la CLI. Las rutas son `/`, `/tools`, `/configure`, `/models`, `/services`, `/logs`, `/settings`.
+
+**Mobile layout**: open the hamburger at the top-left to switch sections on phones. The header collapses the wordmark below the sm breakpoint; the nav becomes a Sheet drawer at `<md`.
 
 ## Estructura del repo
 

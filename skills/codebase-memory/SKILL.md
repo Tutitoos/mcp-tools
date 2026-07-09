@@ -98,13 +98,10 @@ Do not replace MCP tool calls with raw shell commands during normal code analysi
 
 ## Important client tool naming
 
-Do not invent internal tool names like:
-
-```txt
-mcp__mcp_tools_codebase_memory_get_architecture
-```
-
-Use the MCP tools as exposed by the active client.
+Usa el nombre exacto que exponga tu cliente MCP activo — no lo adivines:
+- Claude Code / OpenCode: nombre bare (`get_architecture`, `index_repository`, …).
+- OMP: namespaced (`mcp__mcp_tools_codebase_memory_get_architecture`, `mcp__mcp_tools_codebase_memory_index_repository`, …).
+- Si tu cliente aún no lo expone: `search_tool_bm25` con la capacidad como query lo activa.
 
 If direct MCP tool calling fails because the client does not expose a specific tool, the fallback is to inspect the upstream `codebase-memory-mcp --help` output — mcp-tools ships no bespoke CLI wrapper.
 

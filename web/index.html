@@ -3,11 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Web admin panel auto-hospedado para el stack MCP" />
+    <meta
+      name="description"
+      content="Web admin panel auto-hospedado para el stack MCP"
+    />
     <title>mcp-tools · admin panel</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("mcp-tools-theme");
+          if (t === "light") document.documentElement.classList.remove("dark");
+          else document.documentElement.classList.add("dark");
+        } catch (e) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--SSR--></div>
     <script type="module" src="/app/entry.client.tsx"></script>
   </body>
 </html>

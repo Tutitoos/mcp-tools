@@ -1,8 +1,9 @@
 package web
 
 import (
-
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/Tutitoos/mcp-tools/webassets"
 )
@@ -14,7 +15,13 @@ var SPAAssets = webassets.WebAssets
 
 // NewServer builds an http.Server whose handler is the chi router. The
 // caller owns listener lifecycle (open + close) and calls srv.Serve(ln).
+// Initialises the SSR engine; if node is missing or the bundle wasn't
+// built, the server boots in SPA-only mode (InitSSR logs the reason and
+// returns nil engine).
 func NewServer() *http.Server {
+	if err := InitSSR(SPAAssets); err != nil {
+		fmt.Fprintf(os.Stderr, "ssr: disabled (%v); serving SPA fallback\n", err)
+	}
 	return &http.Server{
 		Handler:           NewRouter(),
 		ReadHeaderTimeout: 5 * 1_000_000_000, // 5s

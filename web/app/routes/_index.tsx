@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
 import { Activity, Box, Container, Sparkles } from "lucide-react";
-import { api, type StatusPayload } from "~/lib/api";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
+import { api, type StatusPayload, type ToolView } from "~/lib/api";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 
 function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
@@ -32,22 +37,14 @@ function StatCard({
   value,
   icon: Icon,
   hint,
-  accent,
 }: {
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
   hint: string;
-  accent: string;
 }) {
   return (
-    <Card className="relative overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-30"
-        style={{
-          background: `radial-gradient(60% 80% at 0% 0%, ${accent} 0%, transparent 60%)`,
-        }}
-      />
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
@@ -86,32 +83,27 @@ export default function Dashboard() {
     refetchInterval: 5_000,
   });
 
+  // Shared cache key with /tools and /configure — first visit to either
+  // route warms the cache; this component reuses it without an extra
+  // network request.
+  const { data: tools } = useQuery<ToolView[]>({
+    queryKey: ["tools"],
+    queryFn: () => api<ToolView[]>("/api/tools"),
+    refetchInterval: 5_000,
+  });
+
   const compose = data?.compose_services ?? [];
   const installed = compose.filter((s) => s.state === "running").length;
-  const registry = 16;
+  const registry = tools?.length ?? 0;
   const selected = data?.state?.selected?.length ?? 0;
-  const services = compose.length;
+  let updatedAt = "—";
+  if (data?.state?.updated_at) {
+    const d = new Date(data.state.updated_at);
+    if (!isNaN(d.getTime())) updatedAt = d.toLocaleString("es-ES");
+  }
 
   return (
     <div className="space-y-8">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="space-y-2"
-      >
-        <Badge variant="outline" className="gap-2">
-          <Sparkles className="h-3 w-3" />
-          Panel de control
-        </Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Hola{data?.env_mem0?.MEM0_USER_ID ? `, ${data.env_mem0.MEM0_USER_ID}` : ""}
-        </h1>
-        <p className="text-muted-foreground">
-          Tu stack MCP en un vistazo. Las cifras se actualizan cada 5 segundos.
-        </p>
-      </motion.div>
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading || !data ? (
           <>
@@ -127,68 +119,36 @@ export default function Dashboard() {
               value={selected}
               icon={Box}
               hint="Componentes activos del state.json"
-              accent="#a855f7"
             />
             <StatCard
               label="Servicios corriendo"
               value={installed}
               icon={Container}
-              hint={`${services} servicios docker totales`}
-              accent="#38bdf8"
+              hint={`${compose.length} servicios docker totales`}
             />
             <StatCard
               label="En el registro"
               value={registry}
               icon={Activity}
               hint="Componentes disponibles para instalar"
-              accent="#ec4899"
             />
-            <StatCard
-              label="Última actualización"
-              value={0}
-              icon={Sparkles}
-              hint={
-                data.state?.updated_at
-                  ? new Date(data.state.updated_at).toLocaleString("es-ES")
-                  : "—"
-              }
-              accent="#fbbf24"
-            />
+            <Card className="relative overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Última actualización
+                </CardTitle>
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="font-mono text-lg tracking-tight">{updatedAt}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Última escritura en state.json
+                </p>
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Servicios docker</CardTitle>
-          <CardDescription>Estado en vivo de los contenedores definidos en dockers/compose.yaml.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading || !data ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : compose.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aún no hay servicios docker.</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {compose.map((svc) => (
-                <div
-                  key={svc.name}
-                  className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2"
-                >
-                  <span className="font-mono text-sm">{svc.name}</span>
-                  <Badge variant={svc.state === "running" ? "success" : "secondary"}>
-                    {svc.state}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

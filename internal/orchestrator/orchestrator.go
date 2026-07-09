@@ -91,8 +91,10 @@ func Install(ctx context.Context, st state.State, dry bool, log LogFn) (state.St
 }
 
 // Configure is the diff-based add/remove workflow used by both the CLI
-// `mcp-tools configure` and the web panel's "Configurar" tab.
-func Configure(ctx context.Context, prev state.State, dry bool, log LogFn) (state.State, error) {
+// `mcp-tools configure` and the web panel's "Configurar" tab. `next` is the
+// target selection (post-edit); the diff against `prev.Selected` decides
+// what gets installed/uninstalled.
+func Configure(ctx context.Context, prev state.State, next []string, dry bool, log LogFn) (state.State, error) {
 	if err := ctx.Err(); err != nil {
 		return prev, err
 	}
@@ -104,14 +106,16 @@ func Configure(ctx context.Context, prev state.State, dry bool, log LogFn) (stat
 		return prev, err
 	}
 
-	newSelected := prev.Selected // legacy CLI behavior: if no diff, persist as-is.
+	newSelected := append([]string(nil), next...)
+	for _, k := range newSelected {
+		if _, err := tools.Get(k); err != nil {
+			return prev, fmt.Errorf("%q no está en el registry", k)
+		}
+	}
 
 	toAdd, toRemove := diffKeys(newSelected, prev.Selected), diffKeys(prev.Selected, newSelected)
 	if len(toAdd) == 0 && len(toRemove) == 0 {
 		log("── sin cambios")
-		if !dry {
-			return prev, nil
-		}
 		return prev, nil
 	}
 

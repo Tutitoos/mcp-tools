@@ -6,19 +6,29 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
+	"github.com/Tutitoos/mcp-tools/internal/docker"
 	"github.com/Tutitoos/mcp-tools/internal/orchestrator"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 	"github.com/Tutitoos/mcp-tools/internal/tools"
 )
+
+// svcNameRe restricts docker-compose service keys accepted by
+// handleLogsStream to safe characters — rejects shell metacharacters,
+// spaces, and path traversal before the value reaches exec.Command.
+var svcNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // handleTools returns the full registry annotated with each tool's
 // installation status and whether it's in the persisted selection.
@@ -101,29 +111,26 @@ func handleToolAction(verb string) http.HandlerFunc {
 			Force bool `json:"force"`
 		}
 		if r.Body != nil && r.ContentLength != 0 {
-			_ = json.NewDecoder(r.Body).Decode(&body)
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid json: "+err.Error())
+				return
+			}
 		}
 		job := jobs.start(verb + " " + key)
-		go func() {
-			defer jobs.finish(job.ID)
-			log := func(line string) { job.publish("stdout", line) }
-		ctx := job.Ctx()
-			var err error
+		log := func(line string) { job.publish("stdout", line) }
+		safeGo(job, func(ctx context.Context) error {
 			switch verb {
 			case "install":
-				_, err = orchestrator.InstallSingle(ctx, key, log)
+				_, err := orchestrator.InstallSingle(ctx, key, log)
+				return err
 			case "upgrade":
-				err = orchestrator.UpgradeSingle(ctx, key, log)
+				return orchestrator.UpgradeSingle(ctx, key, log)
 			case "uninstall":
-				err = orchestrator.Uninstall(ctx, key, body.Force, false, log)
+				return orchestrator.Uninstall(ctx, key, body.Force, false, log)
 			default:
-				err = fmt.Errorf("unknown verb %q", verb)
+				return fmt.Errorf("unknown verb %q", verb)
 			}
-			if err != nil {
-				log("ERROR " + err.Error())
-				job.setError(err)
-			}
-		}()
+		})
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "job_id": job.ID})
 	}
 }
@@ -144,15 +151,11 @@ func handleConfigure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	job := jobs.start("configure")
-	go func() {
-		defer jobs.finish(job.ID)
-			log := func(line string) { job.publish("stdout", line) }
-		ctx := job.Ctx()
-		if _, err := orchestrator.Configure(ctx, prev, false, log); err != nil {
-			log("ERROR " + err.Error())
-			job.setError(err)
-		}
-	}()
+	log := func(line string) { job.publish("stdout", line) }
+	safeGo(job, func(ctx context.Context) error {
+		_, err := orchestrator.Configure(ctx, prev, body.Selected, false, log)
+		return err
+	})
 	writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "job_id": job.ID})
 }
 
@@ -173,6 +176,12 @@ func updateEnvHandler(path string, w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
+	}
+	for k, v := range body.Values {
+		if strings.ContainsAny(v, "\n\r") {
+			slog.Warn("web: stripped embedded newline from env value", "key", k)
+			body.Values[k] = strings.NewReplacer("\n", "", "\r", "").Replace(v)
+		}
 	}
 	if err := config.UpdateEnv(path, body.Values); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -207,10 +216,10 @@ func handleSelectModel(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Pull {
 		job := jobs.start("ollama pull " + body.Tag)
-		go func() {
-			defer jobs.finish(job.ID)
+		safeGo(job, func(_ context.Context) error {
 			streamOllamaPull(job, body.Tag)
-		}()
+			return nil
+		})
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "job_id": job.ID})
 		return
 	}
@@ -218,11 +227,18 @@ func handleSelectModel(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleModels returns parsed `docker exec mcp-tools-ollama ollama list` rows.
+// Returns [] when the ollama container is down so the SPA can render its
+// empty state instead of crashing on .map. Failure is logged, not surfaced
+// in the response body.
 func handleModels(w http.ResponseWriter, _ *http.Request) {
 	rows, err := listOllamaModels()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		slog.Warn("web: ollama list failed", "err", err)
+		writeJSON(w, http.StatusOK, []map[string]string{})
 		return
+	}
+	if rows == nil {
+		rows = []map[string]string{}
 	}
 	writeJSON(w, http.StatusOK, rows)
 }
@@ -248,10 +264,10 @@ func enqueueOllamaAction(w http.ResponseWriter, r *http.Request, verb string) {
 		return
 	}
 	job := jobs.start("ollama " + verb + " " + body.Tag)
-	go func() {
-		defer jobs.finish(job.ID)
+	safeGo(job, func(_ context.Context) error {
 		streamOllamaExec(job, verb, body.Tag)
-	}()
+		return nil
+	})
 	writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "job_id": job.ID})
 }
 
@@ -273,15 +289,16 @@ func handleServiceAction(verb string) http.HandlerFunc {
 			return
 		}
 		job := jobs.start("docker compose " + verb + " " + name)
-		go func() {
-			defer jobs.finish(job.ID)
+		safeGo(job, func(_ context.Context) error {
 			streamComposeAction(job, verb, name)
-		}()
+			return nil
+		})
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "job_id": job.ID})
 	}
 }
 
-// handleLogsStream streams `docker logs --tail N -f` as SSE frames.
+// handleLogsStream streams `docker compose logs --no-log-prefix --no-color
+// --tail N [-f] <svc>` as SSE frames.
 // query params: tail (int, default 200), follow (0|1, default 1).
 func handleLogsStream(w http.ResponseWriter, r *http.Request) {
 	svc := chi.URLParam(r, "service")
@@ -289,10 +306,19 @@ func handleLogsStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "service required")
 		return
 	}
+	if !svcNameRe.MatchString(svc) {
+		writeError(w, http.StatusBadRequest, "invalid service name")
+		return
+	}
 	tail := 200
 	follow := "1"
 	if t := r.URL.Query().Get("tail"); t != "" {
-		fmt.Sscanf(t, "%d", &tail)
+		n, err := strconv.Atoi(t)
+		if err != nil || n < 10 || n > 5000 {
+			writeError(w, http.StatusBadRequest, "tail must be int 10..5000")
+			return
+		}
+		tail = n
 	}
 	if f := r.URL.Query().Get("follow"); f != "" {
 		follow = f
@@ -306,33 +332,18 @@ func handleLogsStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
-	args := []string{"logs", "--tail", fmt.Sprintf("%d", tail)}
+	args := []string{"logs", "--no-log-prefix", "--no-color", "--tail", strconv.Itoa(tail)}
 	if follow != "0" {
 		args = append(args, "-f")
 	}
 	args = append(args, svc)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "docker", args...)
-	cmd.Env = os.Environ()
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Fprintf(w, "data: docker pipe: %s\n\n", err.Error())
+	cmd := docker.ComposeCmdContext(ctx, []string{"dockers/compose.yaml"}, args...)
+	if err := streamCmdSSE(ctx, w, flusher, cmd); err != nil {
+		fmt.Fprintf(w, "data: docker: %s\n\n", err.Error())
 		flusher.Flush()
-		return
 	}
-	stderr, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(w, "data: docker start: %s\n\n", err.Error())
-		flusher.Flush()
-		return
-	}
-	go func() {
-		defer cancel()
-		streamDockerPipe(w, flusher, stdout, "stdout")
-	}()
-	streamDockerPipe(w, flusher, stderr, "stderr")
-	_ = cmd.Wait()
 }
 
 // handleSync dispatches /api/{skills|rules|mcp-config}/sync to the
@@ -340,39 +351,37 @@ func handleLogsStream(w http.ResponseWriter, r *http.Request) {
 func handleSync(kind string) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		job := jobs.start("sync " + kind)
-		go func() {
-			defer jobs.finish(job.ID)
-			log := func(line string) { job.publish("stdout", line) }
-			ctx := job.Ctx()
-			var err error
+		log := func(line string) { job.publish("stdout", line) }
+		safeGo(job, func(ctx context.Context) error {
 			switch kind {
 			case "skills":
-				err = orchestrator.InstallSkills(ctx, false, log)
+				return orchestrator.InstallSkills(ctx, false, log)
 			case "rules":
-				err = orchestrator.InstallRules(ctx, false, log)
+				return orchestrator.InstallRules(ctx, false, log)
 			case "mcp-config":
-				err = orchestrator.RefreshMcpConfig(ctx, false, log)
+				return orchestrator.RefreshMcpConfig(ctx, false, log)
 			default:
-				err = errors.New("unknown sync kind " + kind)
+				return errors.New("unknown sync kind " + kind)
 			}
-			if err != nil {
-				log("ERROR " + err.Error())
-				job.setError(err)
-			}
-		}()
+		})
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "job_id": job.ID})
 	}
 }
 
-// listComposeServices invokes `docker compose ps --format json`. Each line
-// of stdout is a JSON object; we decode each and return as a flat array.
+// listComposeServices invokes `docker compose ps --format json` and reduces
+// each row to {name, state} — the shape web/app/lib/api.ts's ServiceView
+// expects. `docker compose ps` output has non-string fields (ExitCode is a
+// number), so decoding straight into map[string]string always failed
+// silently here — every row was dropped and this endpoint returned `[]`
+// unconditionally, regardless of what docker was actually running.
+// Discovered while fixing B7 (verifying its "non-empty array" smoke test)
+// — not one of the original B1-B15 findings, but in the same function B7
+// already required editing and it blocked outright verifying B7.
 func listComposeServices() ([]map[string]string, bool) {
-	cmd := exec.Command("docker", "compose", "-f", "dockers/compose.yaml", "--env-file", ".env", "ps", "--format", "json")
-	cmd.Env = os.Environ()
 	if _, err := exec.LookPath("docker"); err != nil {
 		return nil, false
 	}
-	out, err := cmd.Output()
+	out, err := docker.Output("ps", "--format", "json")
 	if err != nil {
 		// Fallback: try with a shorter timeout via docker info to detect docker.
 		if info, ierr := exec.Command("docker", "info").Output(); ierr == nil && len(info) > 0 {
@@ -386,10 +395,14 @@ func listComposeServices() ([]map[string]string, bool) {
 		if line == "" {
 			continue
 		}
-		var row map[string]string
-		if err := json.Unmarshal([]byte(line), &row); err == nil {
-			out2 = append(out2, row)
+		var row struct {
+			Service string `json:"Service"` // compose.yaml service key — what `docker compose <verb> <name>` expects
+			State   string `json:"State"`
 		}
+		if err := json.Unmarshal([]byte(line), &row); err != nil {
+			continue
+		}
+		out2 = append(out2, map[string]string{"name": row.Service, "state": row.State})
 	}
 	return out2, true
 }
@@ -421,9 +434,41 @@ func listOllamaModels() ([]map[string]string, error) {
 	return rows, nil
 }
 
-// streamDockerPipe reads lines from r and writes them as SSE `data:` frames
-// to w, flushing after each. Used by handleLogsStream.
-func streamDockerPipe(w http.ResponseWriter, flusher http.Flusher, r io.Reader, stream string) {
+// streamCmdSSE starts cmd and streams its stdout+stderr concurrently as SSE
+// "data: <stream> <line>\n\n" frames to w. Both pipes are read by their own
+// goroutine — reading them concurrently rather than draining stdout to EOF
+// before touching stderr avoids a child stalling on a full stderr pipe
+// buffer (see streamCmdToJob) — and every frame is serialised by writeMu,
+// since w/flusher aren't safe for concurrent use (B8: the previous code had
+// one goroutine writing stdout while the caller wrote stderr, with no lock
+// between them — a guaranteed data race under -race).
+func streamCmdSSE(ctx context.Context, w http.ResponseWriter, flusher http.Flusher, cmd *exec.Cmd) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start: %w", err)
+	}
+	var writeMu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); streamPipeSSE(w, flusher, &writeMu, stdout, "stdout") }()
+	go func() { defer wg.Done(); streamPipeSSE(w, flusher, &writeMu, stderr, "stderr") }()
+	wg.Wait()
+	return cmd.Wait()
+}
+
+// streamPipeSSE reads lines from r and writes each as an SSE `data:` frame
+// to w, serialised by mu. Used by streamCmdSSE.
+func streamPipeSSE(w http.ResponseWriter, flusher http.Flusher, mu *sync.Mutex, r io.Reader, stream string) {
 	buf := make([]byte, 4096)
 	var carry []byte
 	for {
@@ -437,18 +482,48 @@ func streamDockerPipe(w http.ResponseWriter, flusher http.Flusher, r io.Reader, 
 				}
 				line := string(carry[:idx])
 				carry = carry[idx+1:]
+				mu.Lock()
 				fmt.Fprintf(w, "data: %s %s\n\n", stream, line)
 				flusher.Flush()
+				mu.Unlock()
 			}
 		}
 		if err != nil {
 			if len(carry) > 0 {
+				mu.Lock()
 				fmt.Fprintf(w, "data: %s %s\n\n", stream, string(carry))
 				flusher.Flush()
+				mu.Unlock()
 			}
 			return
 		}
 	}
+}
+
+// streamCmdToJob starts cmd and streams its stdout+stderr concurrently to
+// job.publish (already goroutine-safe — see Job.publish). Reading both
+// pipes concurrently, rather than draining stdout to EOF before touching
+// stderr, avoids the classic pipe deadlock: a child that fills its stderr
+// pipe buffer while only stdout is being read blocks forever on the write,
+// so stdout never reaches EOF either (B9).
+func streamCmdToJob(job *Job, cmd *exec.Cmd) error {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); streamProcessLines(job, stdout, "stdout") }()
+	go func() { defer wg.Done(); streamProcessLines(job, stderr, "stderr") }()
+	wg.Wait()
+	return cmd.Wait()
 }
 
 // streamOllamaPull runs `docker exec mcp-tools-ollama ollama pull <tag>`
@@ -458,16 +533,8 @@ func streamOllamaPull(job *Job, tag string) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "docker", "exec", "mcp-tools-ollama", "ollama", "pull", tag)
 	cmd.Env = os.Environ()
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		job.publish("stderr", "ollama pull start: "+err.Error())
-		job.setError(err)
-		return
-	}
-	streamProcessLines(job, stdout, "stdout")
-	streamProcessLines(job, stderr, "stderr")
-	if err := cmd.Wait(); err != nil {
+	if err := streamCmdToJob(job, cmd); err != nil {
+		job.publish("stderr", "ollama pull: "+err.Error())
 		job.setError(err)
 	}
 }
@@ -478,40 +545,18 @@ func streamOllamaExec(job *Job, verb, tag string) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "docker", "exec", "mcp-tools-ollama", "ollama", verb, tag)
 	cmd.Env = os.Environ()
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		job.publish("stderr", "ollama "+verb+" start: "+err.Error())
-		job.setError(err)
-		return
-	}
-	streamProcessLines(job, stdout, "stdout")
-	streamProcessLines(job, stderr, "stderr")
-	if err := cmd.Wait(); err != nil {
+	if err := streamCmdToJob(job, cmd); err != nil {
+		job.publish("stderr", "ollama "+verb+": "+err.Error())
 		job.setError(err)
 	}
 }
 
 // streamComposeAction runs `docker compose <verb> <service>`.
 func streamComposeAction(job *Job, verb, name string) {
-	args := []string{"compose", "-f", "dockers/compose.yaml", "--env-file", ".env", verb}
-	if verb == "restart" {
-		args = append(args, name)
-	} else {
-		args = append(args, verb, name)
-	}
-	cmd := exec.Command("docker", args...)
-	cmd.Env = os.Environ()
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		job.publish("stderr", "compose "+verb+" start: "+err.Error())
-		job.setError(err)
-		return
-	}
-	streamProcessLines(job, stdout, "stdout")
-	streamProcessLines(job, stderr, "stderr")
-	if err := cmd.Wait(); err != nil {
+	cmd := docker.ComposeWithFiles([]string{"dockers/compose.yaml"}, verb, name)
+	cmd.Stdout, cmd.Stderr = nil, nil
+	if err := streamCmdToJob(job, cmd); err != nil {
+		job.publish("stderr", "compose "+verb+": "+err.Error())
 		job.setError(err)
 	}
 }

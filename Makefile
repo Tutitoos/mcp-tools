@@ -22,14 +22,20 @@ webassets/build: web/build/client/index.html
 	@cp -rL web/build/. $@/
 	@echo "webassets: copied web/build -> $@"
 
-# Real SPA build. Touches `.keep` so `web-bootstrap` knows to skip.
-web/build/client/index.html:
-	cd web && $(PNPM) install --frozen-lockfile=false && $(PNPM) run build
+# Real SPA build (client + server bundles). Touches `.keep` so
+# `web-bootstrap` knows to skip. The Vite config splits by `isSsrBuild`
+# so the same `pnpm run build` invocation produces both bundles when
+# invoked with `--ssr`; we run it twice (once for the client, once
+# for the server) because a single `vite build` cannot produce two
+# outputs.
+web/build/client/index.html web/build/server/index.js:
+	cd web && $(PNPM) install --frozen-lockfile=false && \
+	  $(PNPM) run build && \
+	  $(PNPM) exec vite build --ssr
 	@touch web/build/client/.keep
 .PHONY: build-web
-build-web: web/build/client/index.html
-	cd web && $(PNPM) install --frozen-lockfile=false && $(PNPM) run build
-	@touch web/build/client/.keep
+build-web: web/build/client/index.html web/build/server/index.js
+	@echo "build-web: client + SSR bundles ready"
 
 # Placeholder for Go-only CI jobs (no SPA). Creates the bare minimum
 # under web/build/client/ so `//go:embed all:build/client` compiles.
@@ -56,6 +62,7 @@ dev: web-bootstrap
 
 install: build
 	install -m 0755 bin/$(BINARY) $${MCP_TOOLS_BIN:-$$HOME/.local/bin}/$(BINARY)
+	@$${MCP_TOOLS_BIN:-$$HOME/.local/bin}/$(BINARY) web --restart || true
 
 test:
 	$(GO) test ./...

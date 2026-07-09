@@ -49,3 +49,14 @@ func ComposeFile() string { return filepath.Join(RepoRoot(), "dockers/compose.ya
 
 // WrapperDir returns $HOME/.local/bin.
 func WrapperDir() string { return filepath.Join(homeDir(), ".local/bin") }
+
+// PluginsDir returns <RepoRoot>/plugins, the workspace directory holding
+// locally-developed OMP plugin packages (one subdir per package with its
+// own package.json).
+func PluginsDir() string { return filepath.Join(RepoRoot(), "plugins") }
+
+// OmpPluginsLockfile returns $HOME/.omp/plugins/omp-plugins.lock.json — the
+// runtime state file OMP writes when a plugin is linked/installed/enabled.
+func OmpPluginsLockfile() string {
+	return filepath.Join(homeDir(), ".omp", "plugins", "omp-plugins.lock.json")
+}

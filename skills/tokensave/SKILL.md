@@ -106,13 +106,10 @@ Optional flag: `--path <project-root>` to run against a specific project regardl
 
 ## Important client tool naming
 
-Do not invent internal tool names like:
-
-```txt
-mcp__tokensave_context
-```
-
-Use the MCP tools as exposed by the active client (Claude Code / OpenCode use the bare `tokensave_<tool>`; OMP namespaces them as `mcp__tokensave_<tool>`).
+Usa el nombre exacto que exponga tu cliente MCP activo — no lo adivines:
+- Claude Code / OpenCode: nombre bare (`tokensave_context`, `tokensave_search`, …).
+- OMP: namespaced pero SIN el prefijo `mcp_tools_` (`mcp__tokensave_context`, `mcp__tokensave_search`, …) — a diferencia de los demás MCP de mcp-tools, tokensave corre como server bare `tokensave`, no `mcp_tools_tokensave`.
+- Si tu cliente aún no lo expone: `search_tool_bm25` con la capacidad como query lo activa.
 
 If the client does not expose a specific tokensave tool, activate it via `search_tool_bm25` with a query like `tokensave context code exploration` — OMP's tool discovery layer will surface it.
 

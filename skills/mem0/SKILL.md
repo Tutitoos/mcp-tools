@@ -22,6 +22,15 @@ Use `mcp_tools_mem0` whenever the user asks the agent to remember, recall, save,
 
 This MCP provides persistent cross-session memory: facts about the user, decisions taken, preferences, project context, prior conversations. Backed by Qdrant (vector search) and Ollama (embeddings) — both are Docker services managed by `mcp-tools up`.
 
+## Known state (verifica antes de usar)
+
+Ver `~/mcp-tools/RULES.md` §"Known bugs — read first" para el detalle exhaustivo. Resumen:
+
+- `search_memories(query)` y `get_memories(user_id)`: **roto** upstream — la lib nueva de mem0 exige `filters={user_id: ...}` y el MCP pasa `user_id` al top level. Devuelven `Memory not initialized` o error de validación.
+- Estado degradado ocasional: `Memory not initialized` en TODAS las ops → reinicia `mem0-mcp-selfhosted` (`pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill`, luego `/mcp reconnect mcp_tools_mem0`).
+- Confiables: `add_memory`, `get_memory(uuid)`, `list_entities`.
+- Destructivas: `delete_memory`, `delete_entities`, `delete_all_memories` — NUNCA sin confirmación explícita del user.
+
 ## Fast path
 
 For simple mem0 tasks, do not read this full skill file again unless the user explicitly asks.
@@ -34,7 +43,7 @@ Fast workflows:
 - Save a new fact / preference / decision: call `search_memories` first to dedupe, then `add_memory`.
 - List memories with filters: call `get_memories`.
 - Get a specific memory by ID: call `get_memory`.
-- Find relationships between entities: call `search_graph`.
+- Find relationships between entities: call `mcp_search_graph`.
 - Modify an existing memory: call `update_memory`.
 - List who/what has stored memories: call `list_entities`.
 
@@ -90,27 +99,30 @@ Do not replace MCP tool calls with raw shell commands during normal memory tasks
 
 ## Important client tool naming
 
-Do not invent internal tool names like:
-
-```txt
-mcp__mcp_tools_mem0_search_memories
-```
-
-Use the MCP tools as exposed by the active client (Claude Code / OpenCode use the bare `<tool_name>`; OMP namespaces them as `mcp__mcp_tools_mem0_<tool>`).
+Usa el nombre exacto que exponga tu cliente MCP activo — no lo adivines:
+- Claude Code / OpenCode: nombre bare (`search_memories`, `add_memory`, …).
+- OMP: namespaced (`mcp__mcp_tools_mem_search_memories`, `mcp__mcp_tools_mem_add_memory`, …). Nota: OMP acorta `mem0` → `mem` en el prefijo.
+- Si tu cliente aún no lo expone: `search_tool_bm25` con la capacidad como query lo activa.
 
 If direct MCP tool calling fails because the client does not expose a specific tool, run the launcher directly to drop into a stdio MCP session and inspect its command surface with `--help` — mcp-tools ships no bespoke CLI subcommand.
 
 ## Available tools
 
-Tools exposed by `mcp_tools_mem0`:
+Tools exposed by `mcp_tools_mem0` (11 total):
 
-- `search_memories` — semantic search across stored memories; returns ranked matches.
-- `add_memory` — store a new fact/preference/decision. Only after `search_memories` confirms no duplicate.
-- `get_memories` — list memories with filters (entity, tag, date range).
-- `get_memory` — fetch a single memory by ID.
-- `search_graph` — find relationships between entities in the memory graph.
-- `update_memory` — modify an existing memory (edit content, tags, or metadata).
-- `list_entities` — list entities (users, projects) that have stored memories.
+| Intención | Tool | Nota |
+| --- | --- | --- |
+| Buscar por texto natural | `search_memories(query)` | ❌ roto upstream — ver Known state |
+| Listar todo para un usuario | `get_memories(user_id)` | ❌ roto upstream — usa `list_entities` + `get_memory` |
+| Guardar un hecho nuevo | `add_memory(text, user_id)` | ✅ tras `search_memories` degradado, asume riesgo de duplicado |
+| Recuperar por UUID | `get_memory(memory_id)` | ✅ funciona |
+| Modificar un hecho existente | `update_memory(memory_id, text)` | ✅ funciona |
+| Listar usuarios/agentes con memorias | `list_entities()` | ✅ funciona |
+| Ver relaciones en el grafo | `mcp_search_graph(query)` | ✅ funciona |
+| Ver relaciones de una entidad | `mcp_get_entity(name)` | ✅ funciona |
+| **Borrar** una memoria | `delete_memory(memory_id)` | ⚠️ destructivo — sólo con confirmación explícita |
+| **Borrar** todas las memorias de un scope | `delete_all_memories(user_id/agent_id/run_id)` | ⚠️ destructivo — MUY peligroso, sólo con confirmación explícita |
+| **Borrar** entidad completa | `delete_entities(user_id/agent_id/run_id)` | ⚠️ destructivo — cascada, sólo con confirmación explícita |
 
 ## Default workflow
 

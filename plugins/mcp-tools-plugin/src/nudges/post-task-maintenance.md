@@ -1,0 +1,7 @@
+You just finished a turn that edited/wrote files (directly or via a serena mutation). Before doing anything else, ask the user -- in your own words, in whatever language they've been using -- whether they'd like you to run post-task maintenance now:
+
+1. tokensave sync -- ONLY if the touched project has a `.tokensave/` directory. If so, offer to run `tokensave sync` (incremental) via bash in that project's root.
+2. codebase-memory update -- ONLY if the touched project is already indexed (check `list_projects`). If so, offer to call `detect_changes`, then `index_repository` if it reports drift.
+3. mem0 durable memory -- ONLY if this task produced a genuine decision, preference, or durable fact worth remembering across sessions -- NOT a changelog of which files changed. If so, and only after calling `search_memories`/`get_memories` first per the search-before-add policy, offer to `add_memory` with a concise summary.
+
+Do NOT run any of these yet -- just ask. List only the items that actually apply (skip silently any that don't: no `.tokensave/` here, project not indexed, nothing decision-worthy happened) as a single concise question, then wait for the user's answer. If it's obvious more work is queued (e.g. an incomplete todo list, or the user's request clearly isn't done) and this isn't a natural stopping point, skip the ask entirely and continue normally -- you'll get another chance at the next turn boundary.

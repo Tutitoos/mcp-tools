@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Terminal, Trash2 } from "lucide-react";
-import { useEventSource } from "~/lib/sse";
+import { useEventSource, type JobLine } from "~/lib/sse";
 import { api, type ServiceView } from "~/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -13,20 +13,24 @@ export default function LogsRoute() {
   const { data: services } = useQuery<ServiceView[]>({
     queryKey: ["services"],
     queryFn: () => api<ServiceView[]>("/api/services"),
+    refetchInterval: 5_000,
   });
   const [service, setService] = useState<string>("");
   const [follow, setFollow] = useState(true);
   const [tail, setTail] = useState(200);
-  const [lines, setLines] = useState<string[]>([]);
+  const [lines, setLines] = useState<JobLine[]>([]);
   const preRef = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    setLines([]);
+  }, [service]);
 
   const url = service
     ? `/api/logs/${encodeURIComponent(service)}?tail=${tail}&follow=${follow ? 1 : 0}`
     : null;
 
-  useEventSource(url, (line) => {
+  useEventSource(url, (evt) => {
     setLines((prev) => {
-      const next = [...prev, line];
+      const next = [...prev, evt];
       const trimmed = next.length > 2000 ? next.slice(next.length - 2000) : next;
       queueMicrotask(() => {
         if (preRef.current) {
@@ -38,7 +42,7 @@ export default function LogsRoute() {
   });
 
   function download() {
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const blob = new Blob([lines.map((l) => l.text).join("\n")], { type: "text/plain" });
     const u = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = u;
@@ -51,12 +55,6 @@ export default function LogsRoute() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Logs en vivo</h1>
-        <p className="text-sm text-muted-foreground">
-          Stream SSE de <code>docker logs --tail N -f</code>.
-        </p>
-      </div>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -116,7 +114,14 @@ export default function LogsRoute() {
               ? service
                 ? "Esperando salida…"
                 : "Selecciona un servicio para empezar."
-              : lines.join("\n")}
+              : lines.map((l, i) => (
+                  <div
+                    key={i}
+                    className={l.stream === "stderr" ? "text-warning" : "text-foreground/90"}
+                  >
+                    {l.text}
+                  </div>
+                ))}
           </pre>
         </CardContent>
       </Card>

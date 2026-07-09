@@ -1,0 +1,25 @@
+{
+  "name": "mcp-tools-plugin",
+  "version": "0.2.0",
+  "private": true,
+  "description": "OMP extensions for the mcp-tools ecosystem: MCP tool-routing enforcement (serena/tokensave/codebase-memory/mem0) and post-task maintenance nudges.",
+  "type": "module",
+  "repository": { "type": "git", "url": "git+ssh://git@github.com/Luqueee/mcp-tools-plugin.git" },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "devDependencies": {
+    "@oh-my-pi/pi-coding-agent": "*",
+    "@types/bun": "latest",
+    "typescript": "^5.4.0"
+  },
+  "omp": {
+    "name": "mcp-tools-plugin",
+    "description": "Force-routes code intelligence work to connected MCP servers (serena/tokensave/codebase-memory/mem0) instead of native tools, at the code level. Adds a post-task maintenance nudge after mutating turns.",
+    "extensions": [
+      "src/extensions/mcp-routing.ts",
+      "src/extensions/post-task-maintenance-offer.ts"
+    ]
+  }
+}

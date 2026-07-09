@@ -23,6 +23,7 @@ import (
 //	--enable         habilita + arranca el servicio systemd
 //	--disable        para + deshabilita el servicio systemd
 //	--set-port N     reconfigura el puerto y reinicia si está activo
+//	--restart        reinicia el servicio systemd (recarga el binario)
 //	--status         imprime estado del servicio + journal
 //	--mode user|system|auto  (default auto)
 var (
@@ -30,6 +31,7 @@ var (
 	webDisable      bool
 	webSetPort      int
 	webShowStatus   bool
+	webRestart      bool
 	webModeOverride string
 )
 
@@ -39,6 +41,7 @@ var webCmd = &cobra.Command{
 	Long: "Sin flags: abre el navegador en http://<bind>:<port>/ (default 0.0.0.0:8888). " +
 		"--enable / --disable controlan el servicio systemd. " +
 		"--set-port N reconfigura el puerto y reinicia. " +
+		"--restart reinicia el servicio (útil tras make install). " +
 		"--status muestra el estado y el journal.",
 	RunE: runWeb,
 }
@@ -48,6 +51,7 @@ func init() {
 	webCmd.Flags().BoolVar(&webDisable, "disable", false, "stop + deshabilita el servicio systemd")
 	webCmd.Flags().IntVar(&webSetPort, "set-port", 0, "reconfigura el puerto del panel y reinicia si está activo")
 	webCmd.Flags().BoolVar(&webShowStatus, "status", false, "muestra el estado del servicio + últimas líneas del journal")
+	webCmd.Flags().BoolVar(&webRestart, "restart", false, "reinicia el servicio systemd (recarga el binario tras make install)")
 	webCmd.Flags().StringVar(&webModeOverride, "mode", "", "user|system|auto (default auto)")
 	rootCmd.AddCommand(webCmd)
 }
@@ -59,10 +63,11 @@ func init() {
 //	--enable            → systemd.Enable
 //	--disable           → systemd.Disable
 //	--set-port N        → systemd.SetPort + restart-if-active
+//	--restart           → systemd.Restart
 //	--status            → systemd.Status + journal tail
 //
 // Flag combinations are mutually exclusive; combining --enable with
-// --disable, or any of them with --status, is an error.
+// --disable, --restart, or any of them with --status, is an error.
 func runWeb(cmd *cobra.Command, args []string) error {
 	mode, err := systemd.DetectMode(parseModeOverride(webModeOverride))
 	if err != nil {
@@ -80,6 +85,8 @@ func runWeb(cmd *cobra.Command, args []string) error {
 		return runWebEnable(mode)
 	case webDisable:
 		return runWebDisable(mode)
+	case webRestart:
+		return runWebRestart(mode)
 	case webSetPort > 0:
 		return runWebSetPort(mode, webSetPort)
 	default:
@@ -115,6 +122,31 @@ func runWebEnable(mode systemd.Mode) error {
 		return fmt.Errorf("--enable: %w", err)
 	}
 	fmt.Fprintln(os.Stdout, "── mcp-tools-web habilitado y arrancado")
+	return nil
+}
+
+func runWebRestart(mode systemd.Mode) error {
+	if mode == systemd.ModeNone {
+		fmt.Fprintln(os.Stdout, "── mcp-tools-web no está instalado; skip restart")
+		return nil
+	}
+	// DetectMode only reports whether systemd itself is reachable, not
+	// whether THIS unit was ever installed — a host can have a live
+	// user session with no mcp-tools-web.service on disk yet (e.g.
+	// `make install` on a fresh machine, before the first --enable).
+	// Treat a missing unit file the same as ModeNone: skip, don't error.
+	unitPath, err := systemd.UnitPath(mode)
+	if err != nil {
+		return fmt.Errorf("--restart: %w", err)
+	}
+	if _, err := os.Stat(unitPath); os.IsNotExist(err) {
+		fmt.Fprintln(os.Stdout, "── mcp-tools-web no está instalado; skip restart")
+		return nil
+	}
+	if err := systemd.Restart(mode); err != nil {
+		return fmt.Errorf("--restart: %w", err)
+	}
+	fmt.Fprintln(os.Stdout, "── mcp-tools-web reiniciado")
 	return nil
 }
 
@@ -202,6 +234,8 @@ func errNoSystemd(flag string) error {
 // (runWeb) uses the same helper.
 func validateWebFlags() error {
 	switch {
+	case webRestart && (webEnable || webDisable || webSetPort > 0 || webShowStatus):
+		return errMutexRestartOther
 	case webEnable && webDisable:
 		return errMutexEnableDisable
 	case webEnable && webSetPort > 0:
@@ -231,10 +265,11 @@ func webURL(bind string, port int) string {
 // dispatcher returns the same value the tests assert against.
 var (
 	errMutexEnableDisable = errString("--enable y --disable son mutuamente excluyentes")
-	errMutexEnablePort     = errString("--enable y --set-port son mutuamente excluyentes")
-	errMutexDisablePort    = errString("--disable y --set-port son mutuamente excluyentes")
-	errMutexStatusFlags    = errString("--status no se puede combinar con --enable/--disable/--set-port")
-	errInvalidPort         = errString("puerto fuera de rango (1..65535)")
+	errMutexEnablePort    = errString("--enable y --set-port son mutuamente excluyentes")
+	errMutexDisablePort   = errString("--disable y --set-port son mutuamente excluyentes")
+	errMutexStatusFlags   = errString("--status no se puede combinar con --enable/--disable/--set-port")
+	errMutexRestartOther  = errString("--restart no se puede combinar con --enable, --disable, --set-port ni --status")
+	errInvalidPort        = errString("puerto fuera de rango (1..65535)")
 )
 
 type errString string

@@ -17,10 +17,9 @@ func Compose(args ...string) *exec.Cmd {
 	return ComposeWithFiles([]string{"dockers/compose.yaml"}, args...)
 }
 
-// ComposeWithFiles is like Compose but lets the caller specify the compose
-// files (relative to RepoRoot). Used by callers that need overlays (e.g.
-// dockers/ollama-gpu-overlay.yml).
-func ComposeWithFiles(files []string, args ...string) *exec.Cmd {
+// composeArgs builds the `compose -f <files...> --env-file .env <args...>`
+// argument list shared by ComposeWithFiles and ComposeCmdContext.
+func composeArgs(files []string, args []string) []string {
 	full := make([]string, 0, len(args)+2*len(files)+3)
 	full = append(full, "compose")
 	for _, f := range files {
@@ -28,11 +27,30 @@ func ComposeWithFiles(files []string, args ...string) *exec.Cmd {
 	}
 	full = append(full, "--env-file", ".env")
 	full = append(full, args...)
-	cmd := exec.Command("docker", full...)
+	return full
+}
+
+// ComposeWithFiles is like Compose but lets the caller specify the compose
+// files (relative to RepoRoot). Used by callers that need overlays (e.g.
+// dockers/ollama-gpu-overlay.yml).
+func ComposeWithFiles(files []string, args ...string) *exec.Cmd {
+	cmd := exec.Command("docker", composeArgs(files, args)...)
 	cmd.Dir = config.RepoRoot()
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	return cmd
+}
+
+// ComposeCmdContext is like ComposeWithFiles but binds the command to ctx —
+// canceling ctx kills the child process (exec.CommandContext's default
+// Cancel is Process.Kill). Unlike ComposeWithFiles, stdout/stderr are left
+// nil for the caller to attach (e.g. via StdoutPipe/StderrPipe for
+// streaming) instead of being wired to the terminal.
+func ComposeCmdContext(ctx context.Context, files []string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "docker", composeArgs(files, args)...)
+	cmd.Dir = config.RepoRoot()
+	cmd.Env = os.Environ()
 	return cmd
 }
 

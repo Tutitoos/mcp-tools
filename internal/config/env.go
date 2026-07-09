@@ -47,7 +47,7 @@ func UpdateEnv(path string, updates map[string]string) error {
 		re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(k) + `=.*$`)
 		newLine := k + "=" + v
 		if re.MatchString(text) {
-			text = re.ReplaceAllString(text, newLine)
+			text = re.ReplaceAllLiteralString(text, newLine)
 		} else {
 			if !strings.HasSuffix(text, "\n") {
 				text += "\n"

@@ -122,3 +122,18 @@ func TestAPINotFound(t *testing.T) {
 		t.Errorf("status = %d, want 404", rec.Code)
 	}
 }
+
+// TestAPILogsStreamRejectsBadService confirms /api/logs/{service} rejects
+// service keys with shell metacharacters before ever invoking docker.
+func TestAPILogsStreamRejectsBadService(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/logs/foo;rm", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	NewRouter().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "invalid service name") {
+		t.Errorf("body = %q, want it to contain %q", rec.Body.String(), "invalid service name")
+	}
+}

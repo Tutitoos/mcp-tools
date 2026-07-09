@@ -24,7 +24,7 @@ func RunEnv(dry, force bool, out io.Writer) error {
 		return err
 	}
 	repoDir := config.RepoRoot()
-	dataDir := filepath.Join(home, "mcp-tools-data")
+	dataDir := config.DataDir()
 	envPath := filepath.Join(repoDir, ".env")
 
 	u, err := user.Current()
@@ -74,9 +74,9 @@ MEM0_QDRANT_URL=http://127.0.0.1:6333/
 MEM0_COLLECTION=mem0_%s
 MEM0_ENABLE_GRAPH=false
 
-MEM0_HISTORY_DB_PATH=$HOME/mcp-tools-data/mem0/history/history.db
+MEM0_HISTORY_DB_PATH=%s
 MEM0_OLLAMA_THINK=false
-`, u.Username)
+`, u.Username, filepath.Join(dataDir, "mem0/history/history.db"))
 		if dry {
 			fmt.Fprintf(out, "  OK escribiría %s con defaults (dry)\n", mem0EnvPath)
 		} else {

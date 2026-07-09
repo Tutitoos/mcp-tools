@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { apiStream } from "~/lib/api";
 
 export type JobLine = {
@@ -19,7 +19,7 @@ export type JobState = {
 /**
  * Subscribe to a Server-Sent-Events stream from the API.
  * Parses the bare "<stream> <line>\n\n" and "event: done {json}" format
- * produced by internal/web/logstream.go.
+ * produced by internal/web/job.go's handleJobEvents.
  */
 export function useJobStream(jobId: string | null) {
   const [state, setState] = useState<JobState>({
@@ -29,17 +29,45 @@ export function useJobStream(jobId: string | null) {
     error: null,
     open: false,
   });
+  const pending = useRef<JobLine[]>([]);
+  const flushScheduled = useRef(false);
+  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
     if (!jobId) return;
     let cancelled = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     let buf = "";
+    const ac = new AbortController();
+    pending.current = [];
+    flushScheduled.current = false;
+
+    function flushPending() {
+      if (pending.current.length === 0) return;
+      const toFlush = pending.current;
+      pending.current = [];
+      setState((s) => ({ ...s, lines: s.lines.concat(toFlush) }));
+    }
+
+    function queueLine(line: JobLine) {
+      pending.current.push(line);
+      if (!flushScheduled.current) {
+        flushScheduled.current = true;
+        rafId.current = requestAnimationFrame(() => {
+          flushScheduled.current = false;
+          rafId.current = null;
+          flushPending();
+        });
+      }
+    }
 
     (async () => {
       try {
-        const res = await apiStream(`/api/jobs/${jobId}/events`);
+        const res = await apiStream(`/api/jobs/${jobId}/events`, {
+          signal: ac.signal,
+        });
         if (!res.ok || !res.body) {
+          flushPending();
           setState((s) => ({
             ...s,
             done: true,
@@ -63,8 +91,10 @@ export function useJobStream(jobId: string | null) {
             handleFrame(frame);
           }
         }
+        flushPending();
         setState((s) => ({ ...s, open: false }));
       } catch (err) {
+        flushPending();
         setState((s) => ({
           ...s,
           done: true,
@@ -86,6 +116,7 @@ export function useJobStream(jobId: string | null) {
         }
       }
       const data = dataLines.join("\n");
+      if (event === "hello") return; // handshake frame (see internal/web/job.go handleJobEvents) — not a log line
       if (event === "done") {
         let ok = true;
         let error: string | undefined;
@@ -96,6 +127,7 @@ export function useJobStream(jobId: string | null) {
         } catch {
           // ignore malformed
         }
+        flushPending();
         setState((s) => ({
           ...s,
           done: true,
@@ -109,27 +141,28 @@ export function useJobStream(jobId: string | null) {
       if (!data) return;
       const sp = data.indexOf(" ");
       if (sp === -1) {
-        setState((s) => ({
-          ...s,
-          lines: [...s.lines, { stream: "system", text: data }],
-        }));
+        queueLine({ stream: "system", text: data });
       } else {
         const stream = data.slice(0, sp);
         const text = data.slice(sp + 1);
         if (stream === "stdout" || stream === "stderr" || stream === "system") {
-          setState((s) => ({
-            ...s,
-            lines: [...s.lines, { stream, text }],
-          }));
+          queueLine({ stream, text });
         }
       }
     }
 
     return () => {
       cancelled = true;
+      ac.abort();
       if (reader) {
         reader.cancel().catch(() => undefined);
       }
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
+      pending.current = [];
+      flushScheduled.current = false;
     };
   }, [jobId]);
 
@@ -146,17 +179,47 @@ export function useJobStream(jobId: string | null) {
  */
 export function useEventSource(
   url: string | null,
-  onMessage: (line: string) => void,
+  onMessage: (evt: JobLine) => void,
 ) {
+  const cbRef = useRef(onMessage);
+  useEffect(() => {
+    cbRef.current = onMessage;
+  }, [onMessage]);
   useEffect(() => {
     if (!url) return;
     let cancelled = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     let buf = "";
+    const ac = new AbortController();
+    const pending: JobLine[] = [];
+    let flushScheduled = false;
+    let rafId: number | null = null;
+
+    function flushPending() {
+      if (pending.length === 0) return;
+      const toFlush = pending.splice(0, pending.length);
+      for (const line of toFlush) cbRef.current(line);
+    }
+
+    function queueLine(line: JobLine) {
+      pending.push(line);
+      if (!flushScheduled) {
+        flushScheduled = true;
+        rafId = requestAnimationFrame(() => {
+          flushScheduled = false;
+          rafId = null;
+          flushPending();
+        });
+      }
+    }
+
     (async () => {
       try {
-        const res = await apiStream(url);
-        if (!res.ok || !res.body) return;
+        const res = await apiStream(url, { signal: ac.signal });
+        if (!res.ok || !res.body) {
+          cbRef.current({ stream: "system", text: "[error] stream handshake failed" });
+          return;
+        }
         reader = res.body.getReader();
         const dec = new TextDecoder();
         while (!cancelled) {
@@ -168,19 +231,37 @@ export function useEventSource(
             const frame = buf.slice(0, idx);
             buf = buf.slice(idx + 2);
             for (const line of frame.split("\n")) {
-              if (line.startsWith("data:")) {
-                onMessage(line.slice(5).trim());
+              if (!line.startsWith("data:")) continue;
+              const data = line.slice(5).trim();
+              if (!data) continue;
+              const sp = data.indexOf(" ");
+              if (sp === -1) {
+                queueLine({ stream: "system", text: data });
+                continue;
+              }
+              const stream = data.slice(0, sp);
+              const text = data.slice(sp + 1);
+              if (stream === "stdout" || stream === "stderr" || stream === "system") {
+                queueLine({ stream, text });
+              } else {
+                // frame sintético sin canal (p.ej. "data: docker: ..." de handleLogsStream error path)
+                queueLine({ stream: "system", text: data });
               }
             }
           }
         }
+        flushPending();
       } catch {
         // connection torn down — typical when the tab closes
       }
     })();
     return () => {
       cancelled = true;
+      ac.abort();
       if (reader) reader.cancel().catch(() => undefined);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      pending.length = 0;
+      flushScheduled = false;
     };
-  }, [url, onMessage]);
+  }, [url]);
 }

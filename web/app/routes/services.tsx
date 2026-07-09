@@ -2,12 +2,26 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import { Cog, Loader2, Play, RotateCcw, Square, ScrollText } from "lucide-react";
+import {
+  Cog,
+  Loader2,
+  Play,
+  RotateCcw,
+  Square,
+  ScrollText,
+} from "lucide-react";
 import { api, type ServiceView, type JobResponse } from "~/lib/api";
-import { useEventSource } from "~/lib/sse";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card";
+import { useEventSource, type JobLine } from "~/lib/sse";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
+import { SkeletonRow } from "~/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -25,13 +39,18 @@ function LogsDialog({
   open: boolean;
   onOpenChange: (next: boolean) => void;
 }) {
-  const [lines, setLines] = useState<string[]>([]);
-  useEventSource(service ? `/api/logs/${encodeURIComponent(service)}?tail=80&follow=1` : null, (line) => {
-    setLines((prev) => {
-      const next = [...prev, line];
-      return next.length > 500 ? next.slice(next.length - 500) : next;
-    });
-  });
+  const [lines, setLines] = useState<JobLine[]>([]);
+  useEventSource(
+    service
+      ? `/api/logs/${encodeURIComponent(service)}?tail=80&follow=1`
+      : null,
+    (evt) => {
+      setLines((prev) => {
+        const next = [...prev, evt];
+        return next.length > 500 ? next.slice(next.length - 500) : next;
+      });
+    },
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
@@ -39,8 +58,17 @@ function LogsDialog({
           <DialogTitle>logs · {service}</DialogTitle>
           <DialogDescription>Stream en vivo de docker logs</DialogDescription>
         </DialogHeader>
-        <pre className="max-h-[60vh] overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs whitespace-pre-wrap">
-          {lines.join("\n") || "Esperando salida…"}
+        <pre className="max-h-[60vh] overflow-x-auto overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs whitespace-pre-wrap">
+          {lines.length === 0
+            ? "Esperando salida…"
+            : lines.map((l, i) => (
+                <div
+                  key={i}
+                  className={l.stream === "stderr" ? "text-warning" : "text-foreground/90"}
+                >
+                  {l.text}
+                </div>
+              ))}
         </pre>
       </DialogContent>
     </Dialog>
@@ -58,10 +86,20 @@ export default function ServicesRoute() {
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
   const ctrlMut = useMutation({
-    mutationFn: ({ name, verb }: { name: string; verb: "up" | "stop" | "restart" }) =>
-      api<JobResponse>(`/api/services/${encodeURIComponent(name)}/${verb}`, { method: "POST" }),
+    mutationFn: ({
+      name,
+      verb,
+    }: {
+      name: string;
+      verb: "up" | "stop" | "restart";
+    }) =>
+      api<JobResponse>(`/api/services/${encodeURIComponent(name)}/${verb}`, {
+        method: "POST",
+      }),
     onSuccess: (res, vars) => {
-      toast.success(`${vars.verb} ${vars.name}`, { description: `job ${res.job_id}` });
+      toast.success(`${vars.verb} ${vars.name}`, {
+        description: `job ${res.job_id}`,
+      });
       qc.invalidateQueries({ queryKey: ["services"] });
       qc.invalidateQueries({ queryKey: ["status"] });
     },
@@ -74,20 +112,11 @@ export default function ServicesRoute() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Servicios docker</h1>
-          <p className="text-sm text-muted-foreground">
-            Arranca, para o reinicia cada servicio del compose.
-          </p>
-        </div>
-        <Badge variant="outline">
-          <Cog className="mr-1 h-3 w-3" /> {data?.length ?? 0} servicios
-        </Badge>
-      </div>
       {errMsg && (
         <Card className="border-destructive/40">
-          <CardContent className="py-3 text-sm text-destructive">{errMsg}</CardContent>
+          <CardContent className="py-3 text-sm text-destructive">
+            {errMsg}
+          </CardContent>
         </Card>
       )}
       {error && (
@@ -98,63 +127,111 @@ export default function ServicesRoute() {
         </Card>
       )}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Servicios definidos</CardTitle>
-          <CardDescription>
-            {isLoading ? "Cargando…" : "Acciones inmediatas vía docker compose."}
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">Servicios definidos</CardTitle>
+            <CardDescription>
+              Acciones inmediatas vía docker compose.
+            </CardDescription>
+          </div>
+          <Badge variant="outline">
+            <Cog className="mr-1 h-3 w-3" /> {data?.length ?? 0} servicios
+          </Badge>
         </CardHeader>
         <CardContent className="grid gap-2">
-          {data?.map((svc) => (
-            <motion.div
-              layout
-              key={svc.name}
-              className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2"
-            >
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-sm">{svc.name}</span>
-                <Badge variant={svc.state === "running" ? "success" : "secondary"}>
-                  {svc.state}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={ctrlMut.isPending}
-                  onClick={() => ctrlMut.mutate({ name: svc.name, verb: "up" })}
+          {isLoading
+            ? [0, 1, 2].map((i) => <SkeletonRow key={i} />)
+            : data?.map((svc) => (
+                <motion.div
+                  layout
+                  key={svc.name}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2"
                 >
-                  <Play className="h-3 w-3" /> up
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={ctrlMut.isPending}
-                  onClick={() => ctrlMut.mutate({ name: svc.name, verb: "stop" })}
-                >
-                  <Square className="h-3 w-3" /> stop
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={ctrlMut.isPending}
-                  onClick={() => ctrlMut.mutate({ name: svc.name, verb: "restart" })}
-                >
-                  {ctrlMut.isPending && ctrlMut.variables?.name === svc.name ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <RotateCcw className="h-3 w-3" />
-                  )}
-                  restart
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setLogsSvc(svc.name)}>
-                  <ScrollText className="h-3 w-3" /> logs
-                </Button>
-              </div>
-            </motion.div>
-          ))}
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <span className="truncate font-mono text-sm">
+                      {svc.name}
+                    </span>
+                    <Badge
+                      variant={
+                        svc.state === "running" ? "success" : "secondary"
+                      }
+                    >
+                      {svc.state}
+                    </Badge>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-1">
+                    {(() => {
+                      const isPending =
+                        ctrlMut.isPending &&
+                        ctrlMut.variables?.name === svc.name;
+                      return (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isPending}
+                            onClick={() =>
+                              ctrlMut.mutate({ name: svc.name, verb: "up" })
+                            }
+                          >
+                            {isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Play className="h-3 w-3" />
+                            )}{" "}
+                            up
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isPending}
+                            onClick={() =>
+                              ctrlMut.mutate({ name: svc.name, verb: "stop" })
+                            }
+                          >
+                            {isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Square className="h-3 w-3" />
+                            )}{" "}
+                            stop
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isPending}
+                            onClick={() =>
+                              ctrlMut.mutate({
+                                name: svc.name,
+                                verb: "restart",
+                              })
+                            }
+                          >
+                            {isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-3 w-3" />
+                            )}{" "}
+                            restart
+                          </Button>
+                        </>
+                      );
+                    })()}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setLogsSvc(svc.name)}
+                      aria-label={`logs ${svc.name}`}
+                    >
+                      <ScrollText className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
           {data?.length === 0 && (
-            <p className="text-sm text-muted-foreground">Sin servicios en el compose.</p>
+            <p className="text-sm text-muted-foreground">
+              Sin servicios en el compose.
+            </p>
           )}
         </CardContent>
       </Card>

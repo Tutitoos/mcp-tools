@@ -4,10 +4,17 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Layers, Loader2, Save } from "lucide-react";
 import { api, type ToolView, type JobResponse } from "~/lib/api";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Switch } from "~/components/ui/switch";
 import { Badge } from "~/components/ui/badge";
+import { SkeletonRow } from "~/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
 export default function ConfigureRoute() {
@@ -15,6 +22,7 @@ export default function ConfigureRoute() {
   const { data: tools, isLoading } = useQuery<ToolView[]>({
     queryKey: ["tools"],
     queryFn: () => api<ToolView[]>("/api/tools"),
+    refetchInterval: 5_000,
   });
   const [selected, setSelected] = useState<Set<string> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +35,6 @@ export default function ConfigureRoute() {
   }, [tools, selected]);
 
   function toggle(key: string) {
-    setSelected(new Set(chosen));
     const next = new Set(chosen);
     if (next.has(key)) next.delete(key);
     else next.add(key);
@@ -44,6 +51,7 @@ export default function ConfigureRoute() {
       toast.success("Configuración encolada", {
         description: `job ${res.job_id}`,
       });
+      setSelected(null); // reset draft so re-render uses server state
       qc.invalidateQueries({ queryKey: ["tools"] });
       qc.invalidateQueries({ queryKey: ["status"] });
     },
@@ -56,25 +64,17 @@ export default function ConfigureRoute() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Configurar selección</h1>
-          <p className="text-sm text-muted-foreground">
-            Marca o desmarca los componentes. El orquestador respeta las dependencias declaradas.
-          </p>
-        </div>
-        <Button
-          disabled={mutate.isPending || isLoading || !tools}
-          onClick={() => mutate.mutate()}
-        >
-          {mutate.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          Aplicar cambios
-        </Button>
-      </div>
+      <Button
+        disabled={mutate.isPending || isLoading || !tools}
+        onClick={() => mutate.mutate()}
+      >
+        {mutate.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="h-4 w-4" />
+        )}
+        Aplicar cambios
+      </Button>
       {error && (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
@@ -93,7 +93,11 @@ export default function ConfigureRoute() {
         </CardHeader>
         <CardContent className="grid gap-2">
           {isLoading || !tools ? (
-            <div className="text-sm text-muted-foreground">Cargando…</div>
+            <div className="grid gap-2">
+              {[0, 1, 2, 3].map((i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
           ) : (
             tools.map((t) => (
               <motion.div
@@ -102,7 +106,10 @@ export default function ConfigureRoute() {
                 className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2"
               >
                 <div className="flex items-center gap-3">
-                  <Switch checked={chosen.has(t.key)} onCheckedChange={() => toggle(t.key)} />
+                  <Switch
+                    checked={chosen.has(t.key)}
+                    onCheckedChange={() => toggle(t.key)}
+                  />
                   <div>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-mono">{t.key}</span>
