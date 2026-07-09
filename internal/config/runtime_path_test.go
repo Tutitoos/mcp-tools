@@ -111,3 +111,60 @@ func TestEnsureRuntimePathMakesLookPathFindHomeBinBinary(t *testing.T) {
 		t.Fatalf("LookPath = %q, want %q", got, stub)
 	}
 }
+
+// TestEnsureRuntimePathExportsHomeWhenUnset guards the second half of the
+// symptom this function exists to fix: systemd system-mode services don't
+// set $HOME at all (see HomeDir's doc comment), so any child installer
+// subprocess that references "$HOME" itself — not just the daemon's own
+// Go code — silently resolves it to empty and writes to the wrong path
+// (e.g. omp's install.sh computing INSTALL_DIR="$HOME/.local/bin" as
+// "/.local/bin" instead of "/root/.local/bin").
+func TestEnsureRuntimePathExportsHomeWhenUnset(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("PATH", "/usr/bin:/bin")
+
+	if err := EnsureRuntimePath(); err != nil {
+		t.Fatalf("EnsureRuntimePath: %v", err)
+	}
+
+	got := os.Getenv("HOME")
+	if got == "" {
+		t.Fatal("HOME still empty after EnsureRuntimePath")
+	}
+	want, err := HomeDir()
+	if err != nil {
+		t.Fatalf("HomeDir: %v", err)
+	}
+	if got != want {
+		t.Fatalf("HOME = %q, want %q", got, want)
+	}
+}
+
+// TestEnsureRuntimePathPropagatesHomeToChildProcess is the mechanical
+// reproducer for the omp install symptom: a child process spawned with
+// os.Environ() (the pattern every host-deploy Install closure uses) must
+// see a correct $HOME once EnsureRuntimePath has run, even though $HOME
+// was never set by the parent's own launcher (systemd, in production).
+func TestEnsureRuntimePathPropagatesHomeToChildProcess(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("PATH", "/usr/bin:/bin")
+
+	if err := EnsureRuntimePath(); err != nil {
+		t.Fatalf("EnsureRuntimePath: %v", err)
+	}
+
+	want, err := HomeDir()
+	if err != nil {
+		t.Fatalf("HomeDir: %v", err)
+	}
+
+	cmd := exec.Command("sh", "-c", "printf %s \"$HOME\"")
+	cmd.Env = os.Environ()
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("child process: %v", err)
+	}
+	if got := string(out); got != want {
+		t.Fatalf("child $HOME = %q, want %q", got, want)
+	}
+}

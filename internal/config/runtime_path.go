@@ -7,17 +7,28 @@ import (
 )
 
 // EnsureRuntimePath prepends $HOME/.local/bin and $HOME/.cargo/bin to
-// $PATH if they aren't already present. Idempotent. Must be called
-// before any exec.LookPath / exec.Command / os.Environ read that needs
-// to see host-tool installs (codebase-memory-mcp, codegraph, serena,
-// tokensave, etc.) — systemd system-mode services inherit a minimal
-// PATH (/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin)
-// with no user-local bin dirs, so the mcp-tools-web daemon otherwise
-// can't find any tool it installed into the user's home directory.
+// $PATH if they aren't already present, and exports $HOME itself if it
+// isn't already set. Idempotent. Must be called before any
+// exec.LookPath / exec.Command / os.Environ read that needs to see
+// host-tool installs (codebase-memory-mcp, codegraph, serena, tokensave,
+// etc.) — systemd system-mode services inherit a minimal PATH
+// (/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin) AND no
+// $HOME at all, so the mcp-tools-web daemon can't find tools it already
+// installed into the user's home directory, AND any child installer
+// script that references "$HOME" itself (e.g. omp's install.sh doing
+// INSTALL_DIR="${PI_INSTALL_DIR:-$HOME/.local/bin}") silently writes to
+// the wrong place ("/.local/bin" when $HOME is empty) instead of
+// failing loudly.
 func EnsureRuntimePath() error {
 	home, err := HomeDir()
 	if err != nil {
 		return err
+	}
+
+	if os.Getenv("HOME") == "" {
+		if err := os.Setenv("HOME", home); err != nil {
+			return err
+		}
 	}
 
 	want := []string{
