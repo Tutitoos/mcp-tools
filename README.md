@@ -42,7 +42,7 @@ el host debe tener disponibles antes de correr el instalador:
 
 | Componente | Por qué | Quién lo requiere |
 | --- | --- | --- |
-| **Docker** + `docker compose` v2 | Orquestar `mcp_tools_ollama`, `mcp_tools_mem0_qdrant`. Si falta, el panel arranca pero la instalación de servicios Docker falla (el error queda en el log del job). | `ollama`, `qdrant` |
+| **Docker** + `docker compose` v2 | Orquestar `mcp_tools_ollama`, `mcp_tools_mem0_qdrant`. Requerido sólo si vas a instalar `ollama` o `qdrant` (los únicos componentes `DeployDocker`); las demás tools se instalan sin Docker. | `ollama`, `qdrant` |
 | **curl** + **git** + **tar** + **sha256sum** | Descargar tarballs (install.sh), `codegraph` y `codebase-memory-mcp` install scripts, rustup, etc. | install.sh, `codegraph`, `codebase-memory` |
 | **Toolchain C** + `pkg-config` + `libssl-dev` + `libsqlite3-dev` | `cargo install` compila `ring` (TLS, depende de openssl via pkg-config) y `rusqlite` (SQLite con FTS5). Sin `cc` el build falla con `error: linker 'cc' not found`. | `rtk`, `tokensave` |
 | **Node ≥ 20** | `claude-mem` corre vía `npx --yes claude-mem@latest`; el panel también usa `node` para renderizar SSR (`internal/web/ssr.go`) si está disponible (opcional, cae a SPA-only sin él). | `claude-mem`, SSR del panel |
@@ -100,12 +100,14 @@ Soportado:
 
 | Tool | Linux | macOS |
 | --- | --- | --- |
-| codebase-memory, mem0, headroom, serena, tokensave (install/upgrade/status/uninstall desde `/tools`) | ✓ | ✓ |
+| codebase-memory, mem0, headroom, serena, tokensave (install/upgrade/status/uninstall desde `/tools`)¹ | ✓ | ✓ |
 | claude-mem, codegraph, rtk | ✓ | ✓ |
 | ollama, qdrant (Docker) | ✓ | ✓ (Docker Desktop) |
 | Clientes MCP (claude, codex, gemini) — instalador oficial de cada CLI | ✓ | ✓ |
 | `mcp-tools` (systemd `--user`/`--system`) | ✓ (requiere systemd) | ✗ — usa `mcp-tools serve` en foreground como fallback |
-| `nvidia-toolkit` (instalación) | ✓ (Debian/Ubuntu/RHEL/Fedora/CentOS/Rocky/Alma) | ✗ — el job falla con error (no hay NVIDIA en macOS) |
+| `nvidia-toolkit` (instalación) | ✓ (Debian/Ubuntu) | ✗ — el job falla con error (no hay NVIDIA en macOS) |
+
+¹ instalables sin Docker desde `v0.1.9` (fix G1).
 
 macOS sin systemd: `mcp-tools install` detecta la ausencia de systemd y cae a `mcp-tools serve --port <n> --bind <addr>` en foreground (ver `printNoSystemdFallback` en `internal/cli/install.go`), imprimiendo el comando para correrlo vía tu propio supervisor (launchd, tmux, etc.).
 

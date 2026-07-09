@@ -4,12 +4,31 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"time"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
 )
+
+// EnsureAvailable checks the host has `docker` in PATH and that the
+// compose plugin is callable. Lives here (not internal/orchestrator) so
+// both internal/orchestrator (host-wide Bootstrap for Docker-touching
+// verbs) and internal/tools (qdrant/ollama Install/Upgrade/Uninstall
+// closures) can call it without an import cycle — both already depend on
+// internal/docker, neither may depend on the other.
+func EnsureAvailable(dry bool, log func(string)) error {
+	if dry {
+		log("$ command -v docker")
+		log("$ docker compose version")
+		return nil
+	}
+	if _, err := exec.LookPath("docker"); err != nil {
+		return fmt.Errorf("docker no está en PATH")
+	}
+	return exec.Command("docker", "compose", "version").Run()
+}
 
 // Compose builds an exec.Cmd for `docker compose -f dockers/compose.yaml --env-file .env <args...>`.
 // stdout/stderr are wired to the caller's terminal unless the caller overrides them.

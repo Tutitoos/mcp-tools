@@ -40,6 +40,9 @@ func loadStateOrEmpty() state.State {
 }
 
 func installOllama(dry bool, log func(string), st state.State) error {
+	if err := docker.EnsureAvailable(dry, log); err != nil {
+		return err
+	}
 	files := OllamaComposeFiles(st)
 	args := []string{"compose"}
 	for _, f := range files {
@@ -63,6 +66,9 @@ func installOllama(dry bool, log func(string), st state.State) error {
 }
 
 func uninstallOllama(dry bool, log func(string)) error {
+	if err := docker.EnsureAvailable(dry, log); err != nil {
+		return err
+	}
 	args := []string{
 		"compose",
 		"-f", "dockers/compose.yaml",

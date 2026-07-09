@@ -39,7 +39,7 @@ func installNvidiaToolkit(dry bool, log func(string)) error {
 		return err
 	}
 	if !supportedNvidiaDistro(distroID) {
-		return fmt.Errorf("distro %q no soportada para nvidia-container-toolkit", distroID)
+		return fmt.Errorf("distro %q no soportada para nvidia-container-toolkit (soportadas: debian, ubuntu)", distroID)
 	}
 	// Sudo needs a TTY (or SUDO_ASKPASS) to prompt for the password. When
 	// invoked from the web admin panel the goroutine inherits the daemon's
@@ -87,7 +87,7 @@ func uninstallNvidiaToolkit(dry bool, log func(string)) error {
 		return err
 	}
 	if !supportedNvidiaDistro(distroID) {
-		return fmt.Errorf("distro %q no soportada para nvidia-container-toolkit", distroID)
+		return fmt.Errorf("distro %q no soportada para nvidia-container-toolkit (soportadas: debian, ubuntu)", distroID)
 	}
 	// Sudo needs a TTY (or SUDO_ASKPASS) to prompt for the password. When
 	// invoked from the web admin panel the goroutine inherits the daemon's
@@ -157,7 +157,7 @@ func readDistroID() (string, error) {
 
 func supportedNvidiaDistro(id string) bool {
 	switch id {
-	case "debian", "ubuntu", "rhel", "fedora", "centos", "rocky", "almalinux":
+	case "debian", "ubuntu":
 		return true
 	}
 	return false

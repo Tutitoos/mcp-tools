@@ -41,8 +41,9 @@ func Install(ctx context.Context, st state.State, dry bool, log LogFn) (state.St
 		log = func(string) {}
 	}
 
-	// 1. Bootstrap (docker + env) before any state change.
-	if err := Bootstrap(dry, log); err != nil {
+	// 1. Bootstrap env (no Docker probe — only qdrant/ollama need Docker,
+	// and their Install closures check for it themselves).
+	if err := BootstrapEnv(dry, log); err != nil {
 		return st, err
 	}
 
@@ -239,7 +240,7 @@ func InstallSingle(ctx context.Context, key string, log LogFn) (state.State, err
 	if log == nil {
 		log = func(string) {}
 	}
-	if err := Bootstrap(false, log); err != nil {
+	if err := BootstrapEnv(false, log); err != nil {
 		return state.State{}, err
 	}
 	if err := runAll(ctx, "install", []string{key}, false, log); err != nil {

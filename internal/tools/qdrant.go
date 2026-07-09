@@ -25,6 +25,9 @@ func qdrantTool() Tool {
 }
 
 func installQdrant(dry bool, log func(string)) error {
+	if err := docker.EnsureAvailable(dry, log); err != nil {
+		return err
+	}
 	volArgs := []string{"volume", "create", "mcp-qdrant-storage"}
 	if dry {
 		log("$ docker " + strings.Join(volArgs, " "))
@@ -54,6 +57,9 @@ func installQdrant(dry bool, log func(string)) error {
 }
 
 func uninstallQdrant(dry bool, log func(string)) error {
+	if err := docker.EnsureAvailable(dry, log); err != nil {
+		return err
+	}
 	args := []string{
 		"compose",
 		"-f", "dockers/compose.yaml",

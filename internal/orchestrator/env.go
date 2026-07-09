@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"syscall"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
+	"github.com/Tutitoos/mcp-tools/internal/docker"
 )
 
 // RunEnv is the orchestrator's port of the legacy cli.RunEnv. It generates
@@ -113,29 +113,30 @@ MEM0_OLLAMA_THINK=false
 	return nil
 }
 
-// Bootstrap is the shared prereq step every orchestrator verb runs before
-// touching state or Docker. Verifies docker is in PATH and (re)generates
-// the .env files via RunEnv.
-func Bootstrap(dry bool, log LogFn) error {
-	if err := EnsureDocker(dry, log); err != nil {
-		return err
-	}
+// BootstrapEnv is the prereq step for host-only installs: it only
+// (re)generates the .env files via RunEnv, without probing for Docker.
+// Callers that need Docker (qdrant, ollama Install/Upgrade/Uninstall
+// closures) call EnsureDocker themselves.
+func BootstrapEnv(dry bool, log LogFn) error {
 	out := writerFromLog(log)
 	return RunEnv(dry, false, out)
 }
 
+// Bootstrap is the shared prereq step for verbs that may touch Docker
+// (Configure, Upgrade, Uninstall): verifies docker is in PATH and
+// (re)generates the .env files via RunEnv.
+func Bootstrap(dry bool, log LogFn) error {
+	if err := EnsureDocker(dry, log); err != nil {
+		return err
+	}
+	return BootstrapEnv(dry, log)
+}
+
 // EnsureDocker checks the host has `docker` in PATH and that the compose
-// plugin is callable.
+// plugin is callable. Thin wrapper over docker.EnsureAvailable (shared
+// with internal/tools' qdrant/ollama closures — see that function's doc).
 func EnsureDocker(dry bool, log LogFn) error {
-	if dry {
-		log("$ command -v docker")
-		log("$ docker compose version")
-		return nil
-	}
-	if _, err := exec.LookPath("docker"); err != nil {
-		return fmt.Errorf("docker no está en PATH")
-	}
-	return exec.Command("docker", "compose", "version").Run()
+	return docker.EnsureAvailable(dry, log)
 }
 
 func dryPrefix(dry bool) string {
