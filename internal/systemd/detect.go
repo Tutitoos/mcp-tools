@@ -2,6 +2,7 @@ package systemd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -19,9 +20,27 @@ const (
 	ModeNone Mode = "none"
 )
 
-// DetectMode probes `systemctl --user status`. If the user bus is
-// reachable, ModeUser is returned. Otherwise it falls back to probing
-// `systemctl is-system-running`. If neither works, ModeNone.
+// unitExists is a swappable indirection so tests can fake filesystem state
+// without touching the real disk.
+var unitExists = func(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// DetectMode first checks whether a unit file is ALREADY installed on
+// disk, preferring ModeSystem then ModeUser — an existing install is
+// authoritative over "which systemd manager happens to be reachable
+// right now". Without this, a host where the invoking user has BOTH a
+// working `systemctl --user` session (common over SSH via PAM, even for
+// root) AND a system-mode unit already installed would silently prefer
+// ModeUser, find no user-mode unit file, and treat the real running
+// daemon as "not installed" — e.g. `mcp-tools web --restart` (run by
+// `make install`) silently no-ops, leaving the OLD binary running.
+//
+// If neither unit file exists yet (fresh host, first `mcp-tools
+// install`), falls back to probing `systemctl --user status` then
+// `systemctl is-system-running`, preferring user mode (no root
+// required) as the friendlier default.
 //
 // `override` (when non-empty) wins, regardless of probe results. Used by
 // the CLI's --user / --system flags.
@@ -31,6 +50,12 @@ func DetectMode(override Mode) (Mode, error) {
 	}
 	if _, err := exec.LookPath("systemctl"); err != nil {
 		return ModeNone, nil
+	}
+	if systemPath, err := UnitPath(ModeSystem); err == nil && unitExists(systemPath) {
+		return ModeSystem, nil
+	}
+	if userPath, err := UnitPath(ModeUser); err == nil && unitExists(userPath) {
+		return ModeUser, nil
 	}
 	if err := exec.Command("systemctl", "--user", "status").Run(); err == nil {
 		return ModeUser, nil

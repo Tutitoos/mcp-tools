@@ -351,6 +351,9 @@ func RegenerateEnv(ctx context.Context, force bool, dry bool, log LogFn) error {
 // respecting the sudo / tui / interactive partition from internal/cli.
 func runAll(ctx context.Context, verb string, keys []string, dry bool, log LogFn) error {
 	sudoKeys, tuiKeys, interKeys := PartitionByStdio(keys)
+	if err := validatePartitionOrder(keys, sudoKeys, tuiKeys, interKeys); err != nil {
+		return err
+	}
 	if err := runInlineTools(verb, sudoKeys, dry, log); err != nil {
 		return err
 	}

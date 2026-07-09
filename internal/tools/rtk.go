@@ -87,12 +87,30 @@ func uninstallRTK(dry bool, log func(string)) error {
 		log("NOTE: edita ~/.claude/settings.json a mano para quitar 'rtk hook claude' de PreToolUse")
 		return nil
 	}
-	if bin, err := exec.LookPath("cargo"); err == nil {
-		_ = exec.Command(bin, "uninstall", "rtk").Run()
-	} else if _, err := os.Stat(cargoBin(home)); err == nil {
-		_ = exec.Command(cargoBin(home), "uninstall", "rtk").Run()
+	rtkInstalled := which("rtk") != "" || fileExists(rtkBin(home))
+	hookExists := fileExists(ompHook)
+	if !rtkInstalled && !hookExists {
+		log("  rtk no está instalado — nada que desinstalar")
+		return nil
 	}
-	_ = os.Remove(ompHook)
+	if rtkInstalled {
+		var cmd *exec.Cmd
+		if bin, err := exec.LookPath("cargo"); err == nil {
+			cmd = exec.Command(bin, "uninstall", "rtk")
+		} else if _, err := os.Stat(cargoBin(home)); err == nil {
+			cmd = exec.Command(cargoBin(home), "uninstall", "rtk")
+		}
+		if cmd != nil {
+			if err := runCombined(cmd, "cargo uninstall rtk"); err != nil {
+				log(fmt.Sprintf("WARN cargo uninstall rtk: %v (continuando con la limpieza del hook)", err))
+			}
+		} else {
+			log("WARN rtk binario presente pero cargo no está disponible para desinstalarlo — bórralo a mano: " + rtkBin(home))
+		}
+	}
+	if hookExists {
+		_ = os.Remove(ompHook)
+	}
 	log("NOTE: edita ~/.claude/settings.json a mano para quitar 'rtk hook claude' de PreToolUse")
 	return nil
 }

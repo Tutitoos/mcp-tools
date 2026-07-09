@@ -107,3 +107,42 @@ func TestDiffKeys(t *testing.T) {
 		t.Errorf("diffKeys(%v, %v) = %v, want %v", a, b, got, want)
 	}
 }
+
+// TestValidatePartitionOrderCatchesLateDependency guards the latent
+// architectural risk found in this session's bug hunt: PartitionByStdio
+// only preserves order WITHIN a bucket, not across the fixed
+// sudo→tui→inter execution sequence. mem0 genuinely declares
+// Deps: []string{"qdrant", "ollama"} (see mem0.go) — here we construct an
+// artificial bucket split (not what PartitionByStdio produces today,
+// since all three currently land in tui together) with qdrant scheduled
+// AFTER mem0, to prove the guardrail catches that shape if it ever
+// arises from a future tool's Deploy/Interactive combination.
+func TestValidatePartitionOrderCatchesLateDependency(t *testing.T) {
+	keys := []string{"qdrant", "mem0"}
+	err := validatePartitionOrder(keys, nil, []string{"mem0"}, []string{"qdrant"})
+	if err == nil {
+		t.Fatal("expected an error when a dependency is scheduled to run after its dependent")
+	}
+}
+
+// TestValidatePartitionOrderAllowsCurrentRegistry confirms today's only
+// Deps user (mem0 → qdrant, ollama) does not trip the guardrail: all
+// three land in the tui bucket together via the real PartitionByStdio.
+func TestValidatePartitionOrderAllowsCurrentRegistry(t *testing.T) {
+	keys := []string{"qdrant", "ollama", "mem0"}
+	sudo, tui, inter := PartitionByStdio(keys)
+	if err := validatePartitionOrder(keys, sudo, tui, inter); err != nil {
+		t.Fatalf("current registry should not trip the guardrail: %v", err)
+	}
+}
+
+// TestValidatePartitionOrderIgnoresDepsOutsideBatch confirms a dependency
+// that isn't part of the current key batch (e.g. already installed in a
+// prior Configure call) is not flagged — only deps scheduled WITHIN the
+// same batch matter.
+func TestValidatePartitionOrderIgnoresDepsOutsideBatch(t *testing.T) {
+	keys := []string{"mem0"}
+	if err := validatePartitionOrder(keys, nil, []string{"mem0"}, nil); err != nil {
+		t.Fatalf("dependency outside the batch should be ignored: %v", err)
+	}
+}

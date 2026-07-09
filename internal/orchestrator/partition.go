@@ -44,6 +44,48 @@ func PartitionByStdio(keys []string) (sudo, tui, inter []string) {
 	return sudo, tui, inter
 }
 
+// validatePartitionOrder catches a dependency scheduled to run in a
+// LATER-executing bucket than its dependent. PartitionByStdio only
+// preserves relative order WITHIN each bucket (see its doc comment) —
+// buckets themselves always execute sudo → tui → inter regardless of
+// where each key fell in the topo-sorted input. No tool in the current
+// registry triggers this (the only Deps user, mem0, and its deps qdrant
+// + ollama all land in the tui bucket), but nothing previously stopped a
+// future tool declaration from silently breaking install order. Fail
+// loud instead.
+func validatePartitionOrder(keys []string, sudo, tui, inter []string) error {
+	rank := make(map[string]int, len(keys))
+	for _, k := range sudo {
+		rank[k] = 0
+	}
+	for _, k := range tui {
+		rank[k] = 1
+	}
+	for _, k := range inter {
+		rank[k] = 2
+	}
+	for _, k := range keys {
+		t, err := tools.Get(k)
+		if err != nil {
+			continue // unknown key — TopoSort already surfaces this
+		}
+		for _, dep := range t.Deps {
+			depRank, ok := rank[dep]
+			if !ok {
+				continue // dep not part of this batch (already installed / not selected)
+			}
+			if depRank > rank[k] {
+				return fmt.Errorf(
+					"orden de partición inválido: %q se ejecutaría antes que su dependencia %q "+
+						"(bucket %d vs %d) — %q necesita Deploy/Interactive compatibles con %q, o Deps debe ajustarse",
+					k, dep, rank[k], depRank, k, dep,
+				)
+			}
+		}
+	}
+	return nil
+}
+
 // runInlineTools runs each tool closure with inherited stdio so upstream
 // prompts (sudo password, interactive installers) are visible and usable.
 // Runs OUTSIDE any Bubbletea TUI.
