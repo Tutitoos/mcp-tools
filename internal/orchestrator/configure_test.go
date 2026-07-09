@@ -68,6 +68,8 @@ func TestConfigureRemovesDeselectedTool(t *testing.T) {
 // still correctly reported (this is the one path where "sin cambios" is
 // the RIGHT answer).
 func TestConfigureNoChangeIsNoop(t *testing.T) {
+	t.Setenv("MCP_TOOLS_ROOT", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	prev := state.State{Selected: []string{"tokensave"}}
 	var lines []string
 	log := func(l string) { lines = append(lines, l) }
