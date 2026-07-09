@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	installPort          int
-	installBind          string
-	installModeOverride  string
+	installPort         int
+	installBind         string
+	installModeOverride string
 
 	installNoOpenBrowser bool
 )

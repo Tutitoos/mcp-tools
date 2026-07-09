@@ -32,6 +32,7 @@ const (
 	sidecarHandshakeTimeout = 3 * time.Second
 	sidecarRequestTimeout   = 2 * time.Second
 )
+
 type ssrEngine struct {
 	cmd        *exec.Cmd
 	sidecarURL string

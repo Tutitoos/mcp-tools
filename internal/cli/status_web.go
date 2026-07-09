@@ -6,8 +6,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-
-
 )
 
 // `mcp-tools status-web` is a thin alias for `mcp-tools web --status`.
