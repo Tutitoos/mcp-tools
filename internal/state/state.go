@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
@@ -57,9 +58,24 @@ func Load() (State, error) {
 	return s, nil
 }
 
+// saveMu serializes Save() across goroutines. Save/install/uninstall/
+// configure all run as background jobs (internal/web/job.go), so two
+// concurrent operations (two browser tabs, or two devices on the LAN --
+// MCP_TOOLS_BIND defaults to 0.0.0.0, see internal/cli/constants.go) can
+// legitimately race here. Without this, both goroutines' tempfile+rename
+// sequences interleave on the SAME fixed path+".tmp" name: the second
+// os.Rename finds its source already moved away by the first and fails
+// with ENOENT, surfacing a spurious "save state" error on an operation
+// that otherwise succeeded (installed/uninstalled the tool, just failed
+// to persist that fact). Reproduced directly: 50 concurrent Save() calls
+// against a fresh temp dir reliably produced several such rename errors.
+var saveMu sync.Mutex
+
 // Save writes the state atomically (tempfile + rename). UpdatedAt is set to
 // time.Now() before serialising.
 func (s *State) Save() error {
+	saveMu.Lock()
+	defer saveMu.Unlock()
 	s.Version = SchemaVersion
 	s.UpdatedAt = time.Now().UTC()
 	if s.Versions == nil {
@@ -77,7 +93,7 @@ func (s *State) Save() error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
+	tmp := fmt.Sprintf("%s.tmp.%d", path, os.Getpid())
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return err
 	}

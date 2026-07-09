@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -74,5 +75,48 @@ func TestStateRoundTrip(t *testing.T) {
 		if out.Versions[k] != v {
 			t.Fatalf("Versions[%q] = %q, want %q", k, out.Versions[k], v)
 		}
+	}
+}
+
+// TestSaveConcurrentDoesNotError is a regression guard: Save() used to
+// write to a FIXED tempfile path (path+".tmp") with no synchronization.
+// Install/uninstall/configure all persist state from background jobs
+// (internal/web/job.go), so two concurrent operations -- two browser
+// tabs, or two devices on the LAN since MCP_TOOLS_BIND defaults to
+// 0.0.0.0 -- could race: both goroutines' WriteFile+Rename sequences
+// interleaved on the same tmp name, and the loser's os.Rename found its
+// source already moved away by the winner and failed with ENOENT --
+// surfacing a spurious "save state" error on an operation whose actual
+// install/uninstall work had already succeeded. Reproduced directly
+// before the fix: 50 concurrent Save() calls reliably produced several
+// such rename errors.
+func TestSaveConcurrentDoesNotError(t *testing.T) {
+	_ = withDataDir(t)
+
+	const n = 50
+	var wg sync.WaitGroup
+	errs := make(chan error, n)
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s := State{Selected: []string{"tool"}, Versions: map[string]string{"tool": "v1"}}
+			if err := s.Save(); err != nil {
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("Save() under concurrency: %v", err)
+	}
+
+	got, err := Load()
+	if err != nil {
+		t.Fatalf("Load() after concurrent saves: %v", err)
+	}
+	if len(got.Selected) != 1 || got.Selected[0] != "tool" {
+		t.Errorf("state.json unexpected after concurrent Save(): got %+v", got)
 	}
 }
