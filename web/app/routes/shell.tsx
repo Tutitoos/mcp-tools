@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useMatches } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion, MotionConfig } from "motion/react";
@@ -10,13 +9,10 @@ import {
   Gauge,
   Layers,
   Menu,
-  Moon,
   Puzzle,
   Settings as SettingsIcon,
-  Sun,
   TerminalSquare,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { api, type StatusPayload, type VersionResponse } from "~/lib/api";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
@@ -76,28 +72,6 @@ function LogoMark() {
         fill="none"
       />
     </motion.svg>
-  );
-}
-
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const current = mounted ? resolvedTheme : "dark";
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setTheme(current === "dark" ? "light" : "dark")}
-      aria-label="Cambiar tema"
-      suppressHydrationWarning
-    >
-      {current === "dark" ? (
-        <Sun className="h-4 w-4" />
-      ) : (
-        <Moon className="h-4 w-4" />
-      )}
-    </Button>
   );
 }
 
@@ -291,7 +265,6 @@ function TopBar() {
       <h1 className="invisible flex-1 text-sm font-medium md:visible">
         {title}
       </h1>
-      <ThemeToggle />
     </header>
   );
 }

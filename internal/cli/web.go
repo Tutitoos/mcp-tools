@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/systemd"
 )
 
@@ -33,6 +34,7 @@ var (
 	webShowStatus   bool
 	webRestart      bool
 	webModeOverride string
+	webNoOpen       bool
 )
 
 var webCmd = &cobra.Command{
@@ -52,6 +54,7 @@ func init() {
 	webCmd.Flags().IntVar(&webSetPort, "set-port", 0, "reconfigura el puerto del panel y reinicia si está activo")
 	webCmd.Flags().BoolVar(&webShowStatus, "status", false, "muestra el estado del servicio + últimas líneas del journal")
 	webCmd.Flags().BoolVar(&webRestart, "restart", false, "reinicia el servicio systemd (recarga el binario tras make install)")
+	webCmd.Flags().BoolVar(&webNoOpen, "no-open", false, "no intenta abrir el navegador; imprime la URL y sale")
 	webCmd.Flags().StringVar(&webModeOverride, "mode", "", "user|system|auto (default auto)")
 	rootCmd.AddCommand(webCmd)
 }
@@ -106,17 +109,58 @@ func runWebOpen(mode systemd.Mode) error {
 		bind = DefaultBind
 	}
 	url := webURL(bind, port)
+
+	unitPath := unitPathOrEmpty(mode)
+	unitExists := unitPath != "" && fileExists(unitPath)
+	active := mode != systemd.ModeNone && systemd.IsActive(mode)
+
+	if webNoOpen || !hasBrowserLauncher() {
+		printWebInfo(mode, url, port, bind, unitExists, active)
+		return nil
+	}
 	if err := openBrowser(url); err != nil {
-		fmt.Fprintf(os.Stderr, "no pude abrir el navegador (%v). Abre %s manualmente.\n", err, url)
-		return err
+		printWebInfo(mode, url, port, bind, unitExists, active)
+		return nil
 	}
 	fmt.Fprintf(os.Stdout, "%s abierto en tu navegador\n", url)
 	return nil
 }
 
+// printWebInfo prints the panel URL plus a hint block describing the
+// service state. Used by runWebOpen's headless / no-browser paths so
+// `mcp-tools web` stays informational (exit 0) instead of erroring out
+// when there is no browser launcher on PATH.
+func printWebInfo(mode systemd.Mode, url string, port int, bind string, unitExists, active bool) {
+	fmt.Fprintf(os.Stdout, "url:     %s\n", url)
+	switch {
+	case !unitExists:
+		fmt.Fprintf(os.Stdout, "servicio: no instalado\n")
+		fmt.Fprintf(os.Stdout, "→  ejecuta `mcp-tools install` para arrancar el panel como servicio systemd\n")
+		fmt.Fprintf(os.Stdout, "→  o `mcp-tools serve --port %d --bind %s` para arrancarlo en foreground\n", port, bind)
+	case !active:
+		fmt.Fprintf(os.Stdout, "servicio: parado\n")
+		fmt.Fprintf(os.Stdout, "→  ejecuta `mcp-tools web --enable` para arrancarlo\n")
+	default:
+		fmt.Fprintf(os.Stdout, "servicio: activo — abre la URL manualmente en tu navegador\n")
+	}
+}
+
+// fileExists reports whether path exists on disk.
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
+}
+
 func runWebEnable(mode systemd.Mode) error {
 	if mode == systemd.ModeNone {
 		return errNoSystemd("--enable")
+	}
+	unitPath, err := systemd.UnitPath(mode)
+	if err != nil {
+		return fmt.Errorf("--enable: %w", err)
+	}
+	if _, err := os.Stat(unitPath); os.IsNotExist(err) {
+		return fmt.Errorf("--enable: unit %s no existe — ejecuta `mcp-tools install` primero", unitPath)
 	}
 	if err := systemd.Enable(mode); err != nil {
 		return fmt.Errorf("--enable: %w", err)
@@ -177,7 +221,7 @@ func runWebSetPort(mode systemd.Mode, port int) error {
 	if err != nil {
 		return err
 	}
-	envPath := filepath.Join(repoRoot(), ".env")
+	envPath := filepath.Join(config.RepoRoot(), ".env")
 	bind, err := systemd.SetPort(mode, port, "", binPath, envPath)
 	if err != nil {
 		return fmt.Errorf("--set-port: %w", err)

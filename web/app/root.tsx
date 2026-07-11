@@ -7,15 +7,9 @@
 // script tags that must NOT be duplicated by App.
 //
 // Theme handling:
-//   1. A static <script> in web/index.html reads localStorage and sets
-//      `<html class="dark">` or `<html class="light">` before React
-//      boots, so first paint already has the right class (no flash).
-//   2. `ThemeProvider` (next-themes, `attribute="class"`) below keeps
-//      that class in sync with `localStorage["mcp-tools-theme"]` for
-//      the lifetime of the app; `useTheme()` (see routes/shell.tsx)
-//      reads/writes through it.
-// `dark` is the default; `enableSystem={false}` means the OS preference
-// is never consulted — only the bootstrap script and explicit toggles.
+//   The page is permanently dark. The static class in web/index.html prevents
+//   a light first paint, and ThemeProvider keeps the dark class stable.
+//   There is no user-selectable light/system theme.
 
 import { useState } from "react";
 import { Outlet, useRouteError } from "react-router";
@@ -60,8 +54,8 @@ function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider
       attribute="class"
       defaultTheme="dark"
+      forcedTheme="dark"
       enableSystem={false}
-      storageKey="mcp-tools-theme"
     >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>

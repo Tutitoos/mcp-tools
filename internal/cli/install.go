@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/systemd"
 )
 
@@ -67,7 +68,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	envPath := filepath.Join(repoRoot(), ".env")
+	envPath := filepath.Join(config.RepoRoot(), ".env")
 
 	override := systemd.Mode("")
 	switch strings.ToLower(installModeOverride) {
@@ -89,7 +90,12 @@ func runInstall(cmd *cobra.Command, args []string) error {
 
 	hostport := net.JoinHostPort(bind, strconv.Itoa(port))
 	url := "http://" + hostport + "/"
-	if !installNoOpenBrowser {
+	switch {
+	case installNoOpenBrowser:
+		// user opted out; nothing to print — the URL is shown in the summary below
+	case !hasBrowserLauncher():
+		fmt.Fprintf(os.Stdout, "── sin navegador local: abre %s manualmente\n", url)
+	default:
 		if err := openBrowser(url); err != nil {
 			fmt.Fprintf(os.Stderr, "AVISO: no pude abrir el navegador (%v). Abre %s manualmente.\n", err, url)
 		}
@@ -168,12 +174,25 @@ func openBrowser(url string) error {
 	return errors.New("no browser launcher found (xdg-open/open/wslview)")
 }
 
+// hasBrowserLauncher reports whether any of the browser launchers
+// openBrowser would try is on PATH. Used by the web/install CLI to
+// short-circuit the browser attempt on headless hosts and print an
+// informational URL instead of erroring out.
+func hasBrowserLauncher() bool {
+	for _, bin := range []string{"xdg-open", "open", "wslview"} {
+		if _, err := exec.LookPath(bin); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 func printNoSystemdFallback(port int, bind string) error {
 	binPath, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	envPath := filepath.Join(repoRoot(), ".env")
+	envPath := filepath.Join(config.RepoRoot(), ".env")
 	hostport := net.JoinHostPort(bind, strconv.Itoa(port))
 	fmt.Fprintf(os.Stdout, "systemd no disponible en este host.\n")
 	fmt.Fprintf(os.Stdout, "para arrancar el panel en foreground:\n")
@@ -183,15 +202,4 @@ func printNoSystemdFallback(port int, bind string) error {
 	fmt.Fprintf(os.Stdout, "URL:   http://%s/\n", hostport)
 	fmt.Fprintf(os.Stdout, ".env:  %s\n", envPath)
 	return nil
-}
-
-func repoRoot() string {
-	if r := os.Getenv("MCP_TOOLS_ROOT"); r != "" {
-		return r
-	}
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return ""
-	}
-	return filepath.Join(home, "mcp-tools")
 }

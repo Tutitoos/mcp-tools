@@ -29,33 +29,34 @@ export function useJobStream(jobId: string | null) {
     error: null,
     open: false,
   });
-  const pending = useRef<JobLine[]>([]);
-  const flushScheduled = useRef(false);
-  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
+    setState({ lines: [], done: false, ok: false, error: null, open: false });
     if (!jobId) return;
+
     let cancelled = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     let buf = "";
+    let pendingLines: JobLine[] = [];
+    let flushScheduled = false;
+    let rafId: number | null = null;
     const ac = new AbortController();
-    pending.current = [];
-    flushScheduled.current = false;
 
     function flushPending() {
-      if (pending.current.length === 0) return;
-      const toFlush = pending.current;
-      pending.current = [];
+      if (cancelled || pendingLines.length === 0) return;
+      const toFlush = pendingLines;
+      pendingLines = [];
       setState((s) => ({ ...s, lines: s.lines.concat(toFlush) }));
     }
 
     function queueLine(line: JobLine) {
-      pending.current.push(line);
-      if (!flushScheduled.current) {
-        flushScheduled.current = true;
-        rafId.current = requestAnimationFrame(() => {
-          flushScheduled.current = false;
-          rafId.current = null;
+      if (cancelled) return;
+      pendingLines.push(line);
+      if (!flushScheduled) {
+        flushScheduled = true;
+        rafId = requestAnimationFrame(() => {
+          flushScheduled = false;
+          rafId = null;
           flushPending();
         });
       }
@@ -66,8 +67,8 @@ export function useJobStream(jobId: string | null) {
         const res = await apiStream(`/api/jobs/${jobId}/events`, {
           signal: ac.signal,
         });
+        if (cancelled) return;
         if (!res.ok || !res.body) {
-          flushPending();
           setState((s) => ({
             ...s,
             done: true,
@@ -85,16 +86,17 @@ export function useJobStream(jobId: string | null) {
           if (done) break;
           buf += dec.decode(value, { stream: true });
           let idx: number;
-          while ((idx = buf.indexOf("\n\n")) !== -1) {
+          while (!cancelled && (idx = buf.indexOf("\n\n")) !== -1) {
             const frame = buf.slice(0, idx);
             buf = buf.slice(idx + 2);
             handleFrame(frame);
           }
         }
+        if (cancelled) return;
         flushPending();
         setState((s) => ({ ...s, open: false }));
       } catch (err) {
-        flushPending();
+        if (cancelled) return;
         setState((s) => ({
           ...s,
           done: true,
@@ -106,6 +108,7 @@ export function useJobStream(jobId: string | null) {
     })();
 
     function handleFrame(frame: string) {
+      if (cancelled) return;
       let event = "message";
       const dataLines: string[] = [];
       for (const line of frame.split("\n")) {
@@ -116,7 +119,7 @@ export function useJobStream(jobId: string | null) {
         }
       }
       const data = dataLines.join("\n");
-      if (event === "hello") return; // handshake frame (see internal/web/job.go handleJobEvents) — not a log line
+      if (event === "hello") return;
       if (event === "done") {
         let ok = true;
         let error: string | undefined;
@@ -137,7 +140,6 @@ export function useJobStream(jobId: string | null) {
         }));
         return;
       }
-      // Default frame: "<stream> <line>"
       if (!data) return;
       const sp = data.indexOf(" ");
       if (sp === -1) {
@@ -157,12 +159,12 @@ export function useJobStream(jobId: string | null) {
       if (reader) {
         reader.cancel().catch(() => undefined);
       }
-      if (rafId.current !== null) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = null;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
-      pending.current = [];
-      flushScheduled.current = false;
+      pendingLines = [];
+      flushScheduled = false;
     };
   }, [jobId]);
 

@@ -1,6 +1,10 @@
 package cli
 
 import (
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Tutitoos/mcp-tools/internal/systemd"
@@ -14,32 +18,37 @@ func TestWebFlagCombinations(t *testing.T) {
 		disable bool
 		port    int
 		status  bool
+		noOpen  bool
 		wantOK  bool
 	}{
-		{"no flags", false, false, 0, false, true},
-		{"enable alone", true, false, 0, false, true},
-		{"disable alone", false, true, 0, false, true},
-		{"set-port alone", false, false, 9090, false, true},
-		{"status alone", false, false, 0, true, true},
-		{"enable+disable", true, true, 0, false, false},
-		{"enable+set-port", true, false, 9090, false, false},
-		{"disable+set-port", false, true, 9090, false, false},
-		{"status+enable", true, false, 0, true, false},
-		{"status+disable", false, true, 0, true, false},
-		{"status+set-port", false, false, 9090, true, false},
+		{"no flags", false, false, 0, false, false, true},
+		{"enable alone", true, false, 0, false, false, true},
+		{"disable alone", false, true, 0, false, false, true},
+		{"set-port alone", false, false, 9090, false, false, true},
+		{"status alone", false, false, 0, true, false, true},
+		{"enable+disable", true, true, 0, false, false, false},
+		{"enable+set-port", true, false, 9090, false, false, false},
+		{"disable+set-port", false, true, 9090, false, false, false},
+		{"status+enable", true, false, 0, true, false, false},
+		{"status+disable", false, true, 0, true, false, false},
+		{"status+set-port", false, false, 9090, true, false, false},
+		{"no-open alone", false, false, 0, false, true, true},
+		{"no-open+enable", true, false, 0, false, true, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			oldEnable, oldDisable, oldPort, oldStatus := webEnable, webDisable, webSetPort, webShowStatus
+			oldEnable, oldDisable, oldPort, oldStatus, oldNoOpen := webEnable, webDisable, webSetPort, webShowStatus, webNoOpen
 			webEnable = tc.enable
 			webDisable = tc.disable
 			webSetPort = tc.port
 			webShowStatus = tc.status
+			webNoOpen = tc.noOpen
 			defer func() {
 				webEnable = oldEnable
 				webDisable = oldDisable
 				webSetPort = oldPort
 				webShowStatus = oldStatus
+				webNoOpen = oldNoOpen
 			}()
 			err := validateWebFlags()
 			ok := err == nil
@@ -83,6 +92,56 @@ func TestWebURLBuild(t *testing.T) {
 				t.Errorf("webURL(%s, %d) = %q, want %q", tc.bind, tc.port, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestHasBrowserLauncher confirms the PATH probe used to short-circuit
+// the browser attempt on headless hosts.
+func TestHasBrowserLauncher(t *testing.T) {
+	dir := t.TempDir()
+	fakeXdgOpen := filepath.Join(dir, "xdg-open")
+	if err := os.WriteFile(fakeXdgOpen, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake xdg-open: %v", err)
+	}
+	t.Setenv("PATH", dir)
+	if !hasBrowserLauncher() {
+		t.Error("hasBrowserLauncher() = false, want true with xdg-open on PATH")
+	}
+
+	t.Setenv("PATH", t.TempDir())
+	if hasBrowserLauncher() {
+		t.Error("hasBrowserLauncher() = true, want false with no launcher on PATH")
+	}
+}
+
+// TestRunWebOpenHeadlessNoError confirms runWebOpen degrades to an
+// informational, exit-0 print (never an error) when there is no
+// browser launcher on PATH.
+func TestRunWebOpenHeadlessNoError(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	oldNoOpen := webNoOpen
+	webNoOpen = false
+	defer func() { webNoOpen = oldNoOpen }()
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runWebOpen(systemd.ModeNone)
+
+	w.Close()
+	os.Stdout = old
+	data, _ := io.ReadAll(r)
+	out := string(data)
+
+	if err != nil {
+		t.Fatalf("runWebOpen() error = %v, want nil", err)
+	}
+	if !strings.Contains(out, "url:") {
+		t.Errorf("stdout missing %q, got %q", "url:", out)
+	}
+	if !strings.Contains(out, "no instalado") && !strings.Contains(out, "foreground") {
+		t.Errorf("stdout missing service hint, got %q", out)
 	}
 }
 
