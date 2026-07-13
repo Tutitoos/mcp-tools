@@ -1,3 +1,4 @@
+<!-- GENERATED FILE - do not edit. Source: instructions/. Regenerate: mcp-tools instructions sync -->
 # mcp-tools agent instructions
 
 This repository contains an installer + registry for MCP servers and operational skills.
@@ -18,6 +19,8 @@ Default tool mapping (overrides "use native Read" instinct):
 - "rename X to Y" / "replace body of X" → `replace_symbol_body` / `rename_symbol` (LSP-accurate)
 
 Native `Read` is only for: raw config, docs, `.env`, logs, JSON dumps, and files in non-LSP languages. **Never** use native `Read` to "see how function X works" — that is serena's job.
+
+If serena returns an error or "not connected" → see the escalation list in `RULES.md`.
 
 ## Other MCP servers
 
@@ -44,6 +47,10 @@ Important rules:
 - NEVER fall back to native `Grep`/`Read`/`find`/`bash grep` for repo-wide code search — use serena (named symbol), tokensave (open question), or codebase-memory (cross-repo).
 - NEVER use `rtk grep` to find references of a named symbol — it matches strings/comments, not symbol identity. Use serena.
 - NEVER write local `notes.md`/scratchpad files to persist facts across sessions — that's what `mcp_tools_mem0` is for.
+
+## Serena activation reminder
+
+If you have not called `activate_project` for the current project in this session, the FIRST code-operation call you make must be `activate_project("/absolute/path")`. After that, all serena tools work without re-activation for the rest of the session. If you find yourself about to call `Read` on a `.go` / `.ts` / `.py` / `.rs` / `.java` file, stop and use serena instead.
 
 ## OMP MCP discovery workflow
 

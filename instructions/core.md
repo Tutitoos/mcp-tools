@@ -2,7 +2,6 @@
 description: mcp-tools MCP routing and hard rules — which server to use for what, and how to pick between MCP and native tools.
 alwaysApply: true
 ---
-<!-- GENERATED FILE - do not edit. Source: instructions/. Regenerate: mcp-tools instructions sync -->
 
 # mcp-tools — reglas de uso
 
