@@ -24,12 +24,13 @@ This MCP provides persistent cross-session memory: facts about the user, decisio
 
 ## Known state (verifica antes de usar)
 
-Ver `~/mcp-tools/RULES.md` §"Known bugs — read first" para el detalle exhaustivo. Resumen:
+Esta sección es la fuente del detalle; `RULES.md` solo lleva la firma corta.
 
-- `search_memories(query)` y `get_memories(user_id)`: **roto** upstream — la lib nueva de mem0 exige `filters={user_id: ...}` y el MCP pasa `user_id` al top level. Devuelven `Memory not initialized` o error de validación.
-- Estado degradado ocasional: `Memory not initialized` en TODAS las ops → reinicia `mem0-mcp-selfhosted` (`pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill`, luego `/mcp reconnect mcp_tools_mem0`).
-- Confiables: `add_memory`, `get_memory(uuid)`, `list_entities`.
-- Destructivas: `delete_memory`, `delete_entities`, `delete_all_memories` — NUNCA sin confirmación explícita del user.
+- **Bug upstream (verificado 2026-07-06, re-verificado 2026-07-13)**: `search_memories(query)` y `get_memories(user_id)` fallan con `ValueError: Top-level entity parameters frozenset({'user_id'}) are not supported in search(). Use filters={'user_id': '...'}` — la lib mem0 nueva exige `filters` y el MCP siempre inyecta `user_id` al top level. Pasar `filters={"user_id": ...}` como parámetro del tool NO lo evita: el MCP añade el top-level igualmente. Solo se arregla upstream (issues #10-#13 de `elvismdev/mem0-mcp-selfhosted`).
+- **Estado degradado ocasional**: TODAS las ops (incluidas las fiables) devuelven `RuntimeError: Memory not initialized. Infrastructure may be unavailable.` Suele aparecer tras reiniciar qdrant/ollama (p.ej. `docker compose ... restart` o desde el panel `/services`) sin dar tiempo al init de mem0. Fix: reinicia el proceso — `pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill`, luego `/mcp reconnect mcp_tools_mem0`.
+- **Fiables en estado sano**: `add_memory`, `get_memory(uuid)`, `list_entities`, `update_memory`, `mcp_search_graph`.
+- **Rotas en cualquier estado**: `search_memories`, `get_memories` (el bug del filtro).
+- **Destructivas**: `delete_memory`, `delete_entities`, `delete_all_memories` — NUNCA sin confirmación explícita del user.
 
 ## Fast path
 
