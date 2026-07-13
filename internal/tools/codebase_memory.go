@@ -2,7 +2,6 @@ package tools
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -24,9 +23,14 @@ func codebaseMemoryTool() Tool {
 	}
 }
 
-// TODO(security): pin to a known-good commit. The script is fetched from
-// `main` (not a tagged release) and executed locally. See docs/REVIEW-rd2.md (H26).
-const codebaseMemoryInstallURL = "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh"
+// Pinned to a reviewed commit of DeusData/codebase-memory-mcp `main`
+// (2026-07-13) + SHA-256 of the script at that commit. fetchVerified
+// refuses to execute anything else. Bump = review the new script, then
+// update BOTH constants. Closes AUDIT-2026-07-11 F7 / REVIEW-rd2 H26.
+const (
+	codebaseMemoryInstallURL    = "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/2469ecc3a7a2f80debe296e1f17a1efcfdb9450c/install.sh"
+	codebaseMemoryInstallSHA256 = "90ef82a3da3336ddc2c3851ad56822067b161856f24cd88cbd405fe423af6a66"
+)
 
 func installCodebaseMemory(dry bool, log func(string)) error {
 	home, err := hostHome()
@@ -38,35 +42,25 @@ func installCodebaseMemory(dry bool, log func(string)) error {
 	dst := filepath.Join(binDir, "codebase-memory-mcp")
 
 	if dry {
-		log(fmt.Sprintf("$ curl -fsSL %s | bash -s -- --standard --skip-config --dir %s", codebaseMemoryInstallURL, installDir))
+		log(fmt.Sprintf("$ curl -fsSL %s | bash -s -- --ui --skip-config --dir %s  # sha256-verified", codebaseMemoryInstallURL, installDir))
 		log(fmt.Sprintf("$ ln -snf %s/codebase-memory-mcp %s", installDir, dst))
 		return nil
-	}
-	if _, err := exec.LookPath("curl"); err != nil {
-		return errors.New("curl no está en PATH; instala curl antes de codebase-memory-mcp")
 	}
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return err
 	}
 
-	curl := exec.Command("curl", "-fsSL", codebaseMemoryInstallURL)
+	script, err := fetchVerified(codebaseMemoryInstallURL, codebaseMemoryInstallSHA256)
+	if err != nil {
+		return fmt.Errorf("codebase-memory install.sh: %w", err)
+	}
 	bash := exec.Command("bash", "-s", "--", "--ui", "--skip-config", "--dir", installDir)
 	bash.Env = append(os.Environ(), "HOME="+home)
-	pipe, err := curl.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	bash.Stdin = pipe
+	bash.Stdin = bytes.NewReader(script)
 	var out bytes.Buffer
 	bash.Stdout = &out
 	bash.Stderr = &out
-	if err := bash.Start(); err != nil {
-		return fmt.Errorf("codebase-memory bash start: %w", err)
-	}
-	if err := curl.Run(); err != nil {
-		return fmt.Errorf("codebase-memory curl: %w", err)
-	}
-	if err := bash.Wait(); err != nil {
+	if err := bash.Run(); err != nil {
 		return fmt.Errorf("codebase-memory install.sh: %w\n%s", err, strings.TrimSpace(out.String()))
 	}
 

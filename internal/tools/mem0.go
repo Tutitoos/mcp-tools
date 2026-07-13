@@ -25,8 +25,11 @@ func mem0Tool() Tool {
 	}
 }
 
-// TODO(security): pin mem0-mcp-selfhosted to a known-good commit. See docs/REVIEW.md (H6).
-const mem0GitURL = "git+https://github.com/elvismdev/mem0-mcp-selfhosted.git"
+// Pinned to elvismdev/mem0-mcp-selfhosted main HEAD as of 2026-07-13
+// (closes REVIEW.md H6 / AUDIT-2026-07-11 F7). `uv tool install` resolves
+// the `@<sha>` rev, so installs are reproducible; upgrading = reviewing
+// upstream and bumping this SHA.
+const mem0GitURL = "git+https://github.com/elvismdev/mem0-mcp-selfhosted.git@a4f538afc60ca13a9f5975e6a11fd36e578393ac"
 
 func installMem0(dry bool, log func(string)) error {
 	home, err := hostHome()
@@ -59,17 +62,15 @@ func upgradeMem0(dry bool, log func(string)) error {
 		return err
 	}
 	if dry {
-		log("$ uv tool upgrade mem0-mcp-selfhosted")
+		log(fmt.Sprintf("$ uv tool install --force --from %s mem0-mcp-selfhosted", mem0GitURL))
 		return nil
 	}
-	cmd := exec.Command(uvBin(home), "tool", "upgrade", "mem0-mcp-selfhosted")
+	// With a pinned rev, `uv tool upgrade` is a no-op by design; upgrade
+	// converges the install onto the current pin instead.
+	cmd := exec.Command(uvBin(home), "tool", "install", "--force", "--from", mem0GitURL, "mem0-mcp-selfhosted")
 	cmd.Env = withLocalBinPath(os.Environ(), home)
 	cmd.Env = append(cmd.Env, "HOME="+home)
-	if err := runCombined(cmd, "uv tool upgrade mem0-mcp-selfhosted"); err != nil {
-		// Not installed? fall back to install.
-		if strings.Contains(err.Error(), "not installed") {
-			return installMem0(dry, log)
-		}
+	if err := runCombined(cmd, "uv tool install --force mem0-mcp-selfhosted"); err != nil {
 		return err
 	}
 	return installMem0Launcher(home)

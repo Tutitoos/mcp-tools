@@ -34,7 +34,7 @@ var installCmd = &cobra.Command{
 
 func init() {
 	installCmd.Flags().IntVar(&installPort, "port", 0, "puerto del panel (default 8888)")
-	installCmd.Flags().StringVar(&installBind, "bind", "", "dirección de escucha (default 0.0.0.0; usa 127.0.0.1 para loopback-only)")
+	installCmd.Flags().StringVar(&installBind, "bind", "", "dirección de escucha (default 127.0.0.1, loopback-only; usa 0.0.0.0 para exponer el panel a la LAN)")
 	installCmd.Flags().StringVar(&installModeOverride, "mode", "", "user|system|auto (default auto)")
 
 	installCmd.Flags().BoolVar(&installNoOpenBrowser, "no-open", false, "no abre el navegador al terminar")
@@ -77,7 +77,10 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	case "system":
 		override = systemd.ModeSystem
 	}
-	mode, _ := systemd.DetectMode(override)
+	mode, err := systemd.DetectMode(override)
+	if err != nil {
+		return err
+	}
 
 	if mode == systemd.ModeNone {
 		return printNoSystemdFallback(port, bind)

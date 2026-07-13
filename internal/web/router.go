@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -51,12 +52,15 @@ import (
 // to the SSR handler (or SPA fallback when SSR is unavailable).
 func NewRouter() http.Handler {
 	r := chi.NewRouter()
-	// Middleware stack: request logger + recoverer. The API is open
-	// by design -- bind to 127.0.0.1 (or rely on firewall) to restrict
-	// access. The bearer-token gate was removed: too much friction for
-	// a self-hosted home tool.
+	// Middleware stack: request logger + recoverer + cross-origin gate.
+	// There is still no auth (self-hosted home tool; DefaultBind is
+	// loopback since the 2026-07-13 audit), but crossOriginGate rejects
+	// browser-initiated cross-site mutations: a malicious web page in the
+	// same browser could otherwise fire POSTs at http://127.0.0.1:8888
+	// (or the LAN address) without needing to read the response.
 	r.Use(requestLogger)
 	r.Use(recoverer)
+	r.Use(crossOriginGate)
 
 	// Public, unauthenticated health probe.
 	r.Get("/api/version", handleVersion)
@@ -98,6 +102,43 @@ func NewRouter() http.Handler {
 	r.NotFound(ssrHandler(SPAAssets, ssrEngineOrNil()))
 
 	return r
+}
+
+// crossOriginGate rejects state-changing requests that a browser marks as
+// cross-site. Non-browser clients (curl, CLIs, same-origin fetch from the
+// SPA) are unaffected: they either send no Origin header or one matching
+// the Host. Two independent signals, either one rejects:
+//
+//   - Sec-Fetch-Site: cross-site  (sent by all current browsers)
+//   - Origin present but its host != request Host (covers older browsers
+//     and non-HTTPS contexts where Sec-Fetch-* is absent)
+//
+// GET/HEAD/OPTIONS pass through: they don't mutate, and SSE/log streams
+// must keep working from the SPA.
+func crossOriginGate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			next.ServeHTTP(w, r)
+			return
+		}
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			http.Error(w, "cross-site request rejected", http.StatusForbidden)
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" && origin != "null" {
+			u, err := url.Parse(origin)
+			if err != nil || !strings.EqualFold(u.Host, r.Host) {
+				http.Error(w, "cross-origin request rejected", http.StatusForbidden)
+				return
+			}
+		} else if origin == "null" {
+			// Opaque origin (sandboxed iframe, file://) — always cross-site.
+			http.Error(w, "cross-origin request rejected", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func handleVersion(w http.ResponseWriter, _ *http.Request) {

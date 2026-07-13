@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Save, RefreshCcw, Settings as SettingsIcon } from "lucide-react";
 import { api, type StatusPayload, type JobResponse } from "~/lib/api";
+import { useJobStream } from "~/lib/sse";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -95,11 +96,31 @@ export default function SettingsRoute() {
     queryFn: () => api<StatusPayload>("/api/status"),
     refetchInterval: 5_000,
   });
+  // WEB-02: a 202 from /api/*/sync only means "job enqueued" — the real
+  // outcome arrives later over the job's SSE stream. Track the enqueued
+  // job and toast its FINAL result; never claim success on enqueue.
+  const [syncJob, setSyncJob] = useState<{ id: string; path: string } | null>(null);
+  const jobState = useJobStream(syncJob?.id ?? null);
+  useEffect(() => {
+    if (!syncJob || !jobState.done) return;
+    if (jobState.ok) {
+      toast.success(`sync ${syncJob.path}`, { description: `job ${syncJob.id} completado` });
+    } else {
+      toast.error(`sync ${syncJob.path} falló`, {
+        description: jobState.error ?? `revisa el job ${syncJob.id} en /jobs`,
+      });
+    }
+    setSyncJob(null);
+    qc.invalidateQueries({ queryKey: ["status"] });
+  }, [syncJob, jobState.done, jobState.ok, jobState.error, qc]);
   const syncMut = useMutation({
     mutationFn: (path: string) => api<JobResponse>(path, { method: "POST" }),
     onSuccess: (res, path) => {
-      toast.success(`sync ${path}`, { description: `job ${res.job_id}` });
-      qc.invalidateQueries({ queryKey: ["status"] });
+      toast.info(`sync ${path} encolado`, { description: `job ${res.job_id}` });
+      setSyncJob({ id: res.job_id, path });
+    },
+    onError: (err, path) => {
+      toast.error(`sync ${path} no se pudo encolar`, { description: String(err) });
     },
   });
 
@@ -167,21 +188,21 @@ export default function SettingsRoute() {
         <CardContent className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            disabled={syncMut.isPending}
+            disabled={syncMut.isPending || !!syncJob}
             onClick={() => syncMut.mutate("/api/mcp-config/sync")}
           >
             <RefreshCcw className="h-4 w-4" /> Re-run mcp-config
           </Button>
           <Button
             variant="outline"
-            disabled={syncMut.isPending}
+            disabled={syncMut.isPending || !!syncJob}
             onClick={() => syncMut.mutate("/api/skills/sync")}
           >
             <RefreshCcw className="h-4 w-4" /> Sync skills
           </Button>
           <Button
             variant="outline"
-            disabled={syncMut.isPending}
+            disabled={syncMut.isPending || !!syncJob}
             onClick={() => syncMut.mutate("/api/rules/sync")}
           >
             <RefreshCcw className="h-4 w-4" /> Sync rules

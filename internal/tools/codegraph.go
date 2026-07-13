@@ -24,9 +24,14 @@ func codegraphTool() Tool {
 	}
 }
 
-// TODO(security): pin to a known-good commit. The script is fetched from
-// `main` (not a tagged release) and executed locally. See docs/REVIEW-rd2.md (H27).
-const codegraphInstallURL = "https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh"
+// Pinned to a reviewed commit of colbymchenry/codegraph `main` (2026-07-13)
+// + SHA-256 of the script at that commit. fetchVerified refuses to execute
+// anything else. Bump = review the new script, then update BOTH constants.
+// Closes AUDIT-2026-07-11 F7 / REVIEW-rd2 H27.
+const (
+	codegraphInstallURL    = "https://raw.githubusercontent.com/colbymchenry/codegraph/e871c49a3173a637172f501f21f6a2753ea5a39f/install.sh"
+	codegraphInstallSHA256 = "f4e90c6e0c1d2ac95a43fa6e82e4caf76fabdb18310afc72597314b58632e56c"
+)
 
 func installCodegraph(dry bool, log func(string)) error {
 	home, err := hostHome()
@@ -34,32 +39,22 @@ func installCodegraph(dry bool, log func(string)) error {
 		return err
 	}
 	if dry {
-		log(fmt.Sprintf("$ curl -fsSL %s | sh", codegraphInstallURL))
+		log(fmt.Sprintf("$ curl -fsSL %s | sh  # sha256-verified", codegraphInstallURL))
 		log("$ codegraph install --yes")
 		return nil
 	}
-	if _, err := exec.LookPath("curl"); err != nil {
-		return errors.New("curl no está en PATH; instala curl antes de codegraph")
+	// 1. Upstream bundle installer, pinned + checksum-verified.
+	script, err := fetchVerified(codegraphInstallURL, codegraphInstallSHA256)
+	if err != nil {
+		return fmt.Errorf("codegraph install.sh: %w", err)
 	}
-	// 1. Upstream bundle installer.
-	curl := exec.Command("curl", "-fsSL", codegraphInstallURL)
 	shell := exec.Command("sh")
 	shell.Env = append(os.Environ(), "HOME="+home)
-	pipe, err := curl.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	shell.Stdin = pipe
+	shell.Stdin = bytes.NewReader(script)
 	var out bytes.Buffer
 	shell.Stdout = &out
 	shell.Stderr = &out
-	if err := shell.Start(); err != nil {
-		return fmt.Errorf("codegraph install.sh start: %w", err)
-	}
-	if err := curl.Run(); err != nil {
-		return fmt.Errorf("codegraph curl: %w", err)
-	}
-	if err := shell.Wait(); err != nil {
+	if err := shell.Run(); err != nil {
 		return fmt.Errorf("codegraph install.sh: %w\n%s", err, strings.TrimSpace(out.String()))
 	}
 

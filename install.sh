@@ -9,7 +9,7 @@ set -euo pipefail
 REPO="Tutitoos/mcp-tools"
 BIN_DIR="${MCP_TOOLS_BIN:-$HOME/.local/bin}"
 VERSION="${MCP_TOOLS_VERSION:-latest}"
-REQUIRED_GO_VERSION="1.24.4"
+REQUIRED_GO_VERSION="1.25.0"
 
 log()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mwarn:\033[0m %s\n' "$*" >&2; }
@@ -32,23 +32,20 @@ case "$os" in
   *) err "OS no soportado: $os (soportados: linux, darwin)" ;;
 esac
 
-# Ensure the project's Go version is installed at $HOME/.local/go/bin/go,
-# unconditionally. Two reasons:
-#   1. `make install` falls back to that path when `go` isn't on PATH (e.g.
-#      containers/root with a stripped PATH that still has /usr/bin/go).
-#   2. Idempotent — re-running install.sh doesn't re-download if the local
-#      Go already matches the project's version.
-# Skip on a version match anywhere (`command -v go`); install locally if the
-# local copy is missing or wrong. We don't touch /usr/bin/go — that's the
-# user's existing toolchain (apt, gvm, asdf).
+# Ensure the project's Go version is available. Needed only for the
+# build-from-source fallback (`make install`), but installed eagerly so that
+# fallback always works. Skip on a version match anywhere (`command -v go`
+# or the local copy); install to $HOME/.local/go otherwise. We don't touch
+# /usr/bin/go — that's the user's existing toolchain (apt, gvm, asdf).
 ensure_go_local() {
-  local target="$HOME/.local/go/bin/go"
-  if [ -x "$target" ]; then
-    current="$("$target" version | awk '{print $3}' | sed 's/^go//')"
+  local candidate current
+  for candidate in "$(command -v go 2>/dev/null || true)" "$HOME/.local/go/bin/go"; do
+    [ -n "$candidate" ] && [ -x "$candidate" ] || continue
+    current="$("$candidate" version | awk '{print $3}' | sed 's/^go//')"
     if [ "$current" = "$REQUIRED_GO_VERSION" ]; then
       return 0
     fi
-  fi
+  done
 
   local go_arch go_tarball go_url go_tmp
   case "$arch" in
@@ -61,14 +58,14 @@ ensure_go_local() {
   go_url="https://go.dev/dl/${go_tarball}"
 
   go_tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp" "$go_tmp"' EXIT
 
   log "instalando go $REQUIRED_GO_VERSION en \$HOME/.local/go"
   curl -fsSL "$go_url" -o "$go_tmp/$go_tarball" \
-    || err "no pude descargar Go desde $go_url"
+    || { rm -rf "$go_tmp"; err "no pude descargar Go desde $go_url"; }
   mkdir -p "$HOME/.local"
   tar -C "$HOME/.local" -xzf "$go_tmp/$go_tarball" \
-    || err "no pude extraer Go en \$HOME/.local"
+    || { rm -rf "$go_tmp"; err "no pude extraer Go en \$HOME/.local"; }
+  rm -rf "$go_tmp"
   log "go $REQUIRED_GO_VERSION instalado en \$HOME/.local/go"
   warn "añade a tu shell rc (~/.bashrc o ~/.zshrc) para usarlo fuera de make:"
   # shellcheck disable=SC2016
@@ -159,5 +156,5 @@ cat <<MSG
 Siguiente paso:
   $BIN_DIR/mcp-tools install   # elegirá el puerto del panel y habilitará el servicio systemd
 
-Luego abre http://<bind>:<puerto>/ (default 0.0.0.0:8888) en tu navegador.
+Luego abre http://<bind>:<puerto>/ (default 127.0.0.1:8888) en tu navegador.
 MSG

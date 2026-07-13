@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Tutitoos/mcp-tools/webassets"
 )
@@ -24,7 +25,7 @@ func NewServer() *http.Server {
 	}
 	return &http.Server{
 		Handler:           NewRouter(),
-		ReadHeaderTimeout: 5 * 1_000_000_000, // 5s
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 }
 
@@ -34,5 +35,6 @@ func NewServer() *http.Server {
 func Listen() *http.Server {
 	srv := NewServer()
 	srv.WriteTimeout = 0
+	srv.ReadTimeout = 30 * time.Second
 	return srv
 }

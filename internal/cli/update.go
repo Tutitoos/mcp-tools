@@ -20,7 +20,7 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().BoolVar(&updateSelf, "self", false, "alias del comportamiento por defecto;保留 por compatibilidad")
+	updateCmd.Flags().BoolVar(&updateSelf, "self", false, "alias del comportamiento por defecto; se mantiene por compatibilidad")
 	rootCmd.AddCommand(updateCmd)
 }
 

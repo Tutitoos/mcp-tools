@@ -60,8 +60,9 @@ func Load() (State, error) {
 
 // saveMu serializes Save() across goroutines. Save/install/uninstall/
 // configure all run as background jobs (internal/web/job.go), so two
-// concurrent operations (two browser tabs, or two devices on the LAN --
-// MCP_TOOLS_BIND defaults to 0.0.0.0, see internal/cli/constants.go) can
+// concurrent operations (two browser tabs, or two devices on the LAN when
+// the panel is bound to 0.0.0.0 — opt-in since 2026-07-13, see
+// internal/config/bind.go) can
 // legitimately race here. Without this, both goroutines' tempfile+rename
 // sequences interleave on the SAME fixed path+".tmp" name: the second
 // os.Rename finds its source already moved away by the first and fails
@@ -98,6 +99,35 @@ func (s *State) Save() error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+// updateMu serializes read-modify-write cycles done through Update. saveMu
+// only makes the final write atomic; it does NOT close the Load → mutate →
+// Save window, so two concurrent single-key mutations (e.g. the web panel's
+// per-row install/uninstall jobs) could each Load the same snapshot and the
+// second Save would silently drop the first mutation. Reproduced: 50
+// concurrent Load+mutate+Save cycles reliably lost updates.
+var updateMu sync.Mutex
+
+// Update atomically applies `mutate` to the on-disk state: Load → mutate →
+// Save under updateMu. Use it for any incremental mutation (add/remove one
+// key); full-selection writers (install/configure) intentionally keep
+// last-writer-wins semantics because their input IS the complete selection.
+// If mutate returns an error, nothing is written.
+func Update(mutate func(*State) error) (State, error) {
+	updateMu.Lock()
+	defer updateMu.Unlock()
+	st, err := Load()
+	if err != nil {
+		return State{}, err
+	}
+	if err := mutate(&st); err != nil {
+		return st, err
+	}
+	if err := st.Save(); err != nil {
+		return st, err
+	}
+	return st, nil
 }
 
 // Has reports whether key is currently selected.

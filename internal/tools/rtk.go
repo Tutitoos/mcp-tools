@@ -27,11 +27,13 @@ func rtkTool() Tool {
 	}
 }
 
-// TODO(security): pin to a stable upstream tag. The branch below can be
-// force-pushed. See docs/REVIEW.md (H5) for guidance.
+// Pinned to a commit of makoMakoGo/rtk `feat/omp-extension-rewrite`
+// (HEAD as of 2026-07-13; closes REVIEW.md H5 / AUDIT-2026-07-11 F7).
+// A `--branch` pin could be force-pushed under us; `--rev` cannot.
+// Upgrade = review upstream and bump the SHA.
 const (
-	rtkGitURL    = "https://github.com/makoMakoGo/rtk.git"
-	rtkGitBranch = "feat/omp-extension-rewrite"
+	rtkGitURL = "https://github.com/makoMakoGo/rtk.git"
+	rtkGitRev = "32dd7e620819613b3e03a72dc986926fdf7554da"
 )
 
 func installRTK(dry bool, log func(string), force bool) error {
@@ -42,7 +44,7 @@ func installRTK(dry bool, log func(string), force bool) error {
 	if err := ensureCargo(dry, log, home); err != nil {
 		return err
 	}
-	args := []string{"install", "--git", rtkGitURL, "--branch", rtkGitBranch, "--locked"}
+	args := []string{"install", "--git", rtkGitURL, "--rev", rtkGitRev, "--locked"}
 	if force {
 		args = append(args, "--force")
 	}

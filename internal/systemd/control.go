@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/Tutitoos/mcp-tools/internal/config"
 )
 
 // Enable enables + starts the unit (idempotent — re-running `enable`
@@ -91,16 +93,16 @@ func CurrentPort(mode Mode) int {
 }
 
 // CurrentBind returns the `--bind` value from the existing unit, or
-// "0.0.0.0" (all interfaces — the project default) when the unit file
+// config.DefaultBind (loopback — the project default) when the unit file
 // is missing or unparseable.
 func CurrentBind(mode Mode) string {
 	unitPath, err := UnitPath(mode)
 	if err != nil {
-		return "0.0.0.0"
+		return config.DefaultBind
 	}
 	data, err := readFile(unitPath)
 	if err != nil {
-		return "0.0.0.0"
+		return config.DefaultBind
 	}
 	return parseBindFromUnit(string(data))
 }

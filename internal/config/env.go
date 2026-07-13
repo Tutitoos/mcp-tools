@@ -11,6 +11,12 @@ import (
 // envLine matches KEY=VALUE lines with a valid shell-style key.
 var envLine = regexp.MustCompile(`^([A-Z_][A-Z0-9_]*)=(.*)$`)
 
+// envKey matches a valid shell-style variable name. UpdateEnv rejects any
+// other key: regexp.QuoteMeta escapes regex metacharacters but does NOT
+// neutralise an embedded newline, so an unvalidated key like "SAFE\nINJECTED"
+// would let a caller inject arbitrary KEY=VALUE lines into the file.
+var envKey = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
+
 // LoadEnv parses a .env-style file. Missing file returns an empty map and no error.
 func LoadEnv(path string) (map[string]string, error) {
 	data, err := os.ReadFile(path)
@@ -35,7 +41,8 @@ func LoadEnv(path string) (map[string]string, error) {
 	return out, nil
 }
 
-// UpdateEnv rewrites lines matching keys in `updates`, appending any missing key. Returns
+// UpdateEnv rewrites lines matching keys in `updates`, appending any missing key.
+// Every key must match envKey; the whole update is rejected otherwise. Returns
 // os.ErrNotExist if the file is missing (idempotent replacement is not defined without a base).
 func UpdateEnv(path string, updates map[string]string) error {
 	data, err := os.ReadFile(path)
@@ -43,6 +50,11 @@ func UpdateEnv(path string, updates map[string]string) error {
 		return err
 	}
 	text := string(data)
+	for k := range updates {
+		if !envKey.MatchString(k) {
+			return fmt.Errorf("clave de entorno inválida %q (debe cumplir ^[A-Z_][A-Z0-9_]*$)", k)
+		}
+	}
 	for k, v := range updates {
 		re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(k) + `=.*$`)
 		newLine := k + "=" + v

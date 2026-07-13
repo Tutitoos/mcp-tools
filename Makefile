@@ -12,7 +12,8 @@ endif
 
 PNPM := $(shell command -v pnpm 2>/dev/null)
 ifeq ($(PNPM),)
-PNPM := $(HOME)/.nvm/versions/node/$(shell node -v 2>/dev/null | sed 's/^v//' | cut -d. -f1 | xargs -I{} echo {} || echo "")/bin/pnpm
+# nvm keeps the `v` prefix in its directory names (~/.nvm/versions/node/v22.14.0/).
+PNPM := $(HOME)/.nvm/versions/node/$(shell node -v 2>/dev/null)/bin/pnpm
 endif
 
 # Copy (not symlink) web/build into the webassets package directory so the

@@ -81,8 +81,8 @@ func handleStatus(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	env, _ := config.LoadEnv(config.EnvFile())
-	mem0, _ := config.LoadEnv(config.EnvMem0File())
+	env := redactEnv(loadEnvOrEmpty(config.EnvFile()))
+	mem0 := redactEnv(loadEnvOrEmpty(config.EnvMem0File()))
 	services, dockerRunning := listComposeServices()
 	resp := map[string]any{
 		"state": map[string]any{
@@ -96,6 +96,28 @@ func handleStatus(w http.ResponseWriter, _ *http.Request) {
 		"docker_running":   dockerRunning,
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// secretKeyRe matches env keys whose values must never leave the host via
+// the API: API keys, tokens, secrets, passwords. Neither generated env file
+// contains such a key today, but /api/status dumps both files verbatim, so
+// this is the guard that keeps a future TOKEN/KEY addition from leaking.
+var secretKeyRe = regexp.MustCompile(`(?i)(KEY|TOKEN|SECRET|PASS)`)
+
+func loadEnvOrEmpty(path string) map[string]string {
+	m, _ := config.LoadEnv(path)
+	return m
+}
+
+// redactEnv returns env with secret-shaped values masked. The key stays
+// visible (the settings UI lists it); only the value is replaced.
+func redactEnv(env map[string]string) map[string]string {
+	for k, v := range env {
+		if v != "" && secretKeyRe.MatchString(k) {
+			env[k] = "••••••••"
+		}
+	}
+	return env
 }
 
 // handleToolAction returns a handler for /api/tools/{key}/{install|upgrade|uninstall}.
@@ -383,8 +405,9 @@ func listComposeServices() ([]map[string]string, bool) {
 	}
 	out, err := docker.Output("ps", "--format", "json")
 	if err != nil {
-		// Fallback: try with a shorter timeout via docker info to detect docker.
-		if info, ierr := exec.Command("docker", "info").Output(); ierr == nil && len(info) > 0 {
+		// Fallback: bounded `docker info` probe to distinguish "daemon up,
+		// no compose stack" from "daemon down/hung".
+		if info, ierr := docker.RunCmdWithTimeout(5*time.Second, "info").Output(); ierr == nil && len(info) > 0 {
 			return nil, true
 		}
 		return nil, false

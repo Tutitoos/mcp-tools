@@ -40,7 +40,7 @@ var (
 var webCmd = &cobra.Command{
 	Use:   "web",
 	Short: "Gestiona el panel web (browser, enable, disable, port, status).",
-	Long: "Sin flags: abre el navegador en http://<bind>:<port>/ (default 0.0.0.0:8888). " +
+	Long: "Sin flags: abre el navegador en http://<bind>:<port>/ (default 127.0.0.1:8888). " +
 		"--enable / --disable controlan el servicio systemd. " +
 		"--set-port N reconfigura el puerto y reinicia. " +
 		"--restart reinicia el servicio (útil tras make install). " +

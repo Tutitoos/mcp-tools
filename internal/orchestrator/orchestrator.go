@@ -91,8 +91,8 @@ func Install(ctx context.Context, st state.State, dry bool, log LogFn) (state.St
 	return stNew, nil
 }
 
-// Configure is the diff-based add/remove workflow used by both the CLI
-// `mcp-tools configure` and the web panel's "Configurar" tab. `next` is the
+// Configure is the diff-based add/remove workflow behind the web panel's
+// "Configurar" tab (the CLI `configure` subcommand was removed). `next` is the
 // target selection (post-edit); the diff against `prev.Selected` decides
 // what gets installed/uninstalled.
 func Configure(ctx context.Context, prev state.State, next []string, dry bool, log LogFn) (state.State, error) {
@@ -216,16 +216,19 @@ func Uninstall(ctx context.Context, key string, force bool, dry bool, log LogFn)
 	if dry {
 		return nil
 	}
-	st.Selected = append([]string{}, st.Selected...)
-	newSelected := st.Selected[:0]
-	for _, k := range st.Selected {
-		if k != key {
-			newSelected = append(newSelected, k)
+	// Re-load + mutate + save atomically: another job (e.g. a per-row
+	// install) may have mutated state.json since the validation Load above.
+	if _, err := state.Update(func(cur *state.State) error {
+		newSelected := make([]string, 0, len(cur.Selected))
+		for _, k := range cur.Selected {
+			if k != key {
+				newSelected = append(newSelected, k)
+			}
 		}
-	}
-	st.Selected = newSelected
-	delete(st.Versions, key)
-	if err := st.Save(); err != nil {
+		cur.Selected = newSelected
+		delete(cur.Versions, key)
+		return nil
+	}); err != nil {
 		return fmt.Errorf("save state: %w", err)
 	}
 	log(fmt.Sprintf("OK %s desinstalado", key))
@@ -251,25 +254,25 @@ func InstallSingle(ctx context.Context, key string, log LogFn) (state.State, err
 	if err := runAll(ctx, "install", []string{key}, false, log); err != nil {
 		return state.State{}, err
 	}
-	st, err := state.Load()
-	if err != nil {
-		return state.State{}, err
-	}
-	if !st.Has(key) {
-		next := append([]string{}, st.Selected...)
-		next = append(next, key)
-		st.Selected = next
+	// Atomic read-modify-write: two per-row install jobs racing here used
+	// to lose one of the two keys (Load→mutate→Save window).
+	st, err := state.Update(func(cur *state.State) error {
+		if cur.Has(key) {
+			return nil
+		}
+		cur.Selected = append(append([]string{}, cur.Selected...), key)
 		if t, terr := tools.Get(key); terr == nil && t.Status != nil {
 			if p, perr := t.Status(); perr == nil && p.Version != "" {
-				if st.Versions == nil {
-					st.Versions = map[string]string{}
+				if cur.Versions == nil {
+					cur.Versions = map[string]string{}
 				}
-				st.Versions[key] = p.Version
+				cur.Versions[key] = p.Version
 			}
 		}
-		if err := st.Save(); err != nil {
-			return st, fmt.Errorf("save state: %w", err)
-		}
+		return nil
+	})
+	if err != nil {
+		return st, fmt.Errorf("save state: %w", err)
 	}
 	return st, nil
 }

@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/Tutitoos/mcp-tools/internal/config"
 )
 
 // Install writes the unit file, runs `daemon-reload`, then `enable --now`.
@@ -75,7 +77,7 @@ func SetPort(mode Mode, port int, bind, binaryPath, envFile string) (string, err
 	if bind == "" {
 		bind = CurrentBind(mode)
 		if bind == "" {
-			bind = "0.0.0.0"
+			bind = config.DefaultBind
 		}
 	}
 	cfg := UnitConfig{

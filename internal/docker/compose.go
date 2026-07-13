@@ -81,11 +81,14 @@ func RunWithFiles(files []string, args ...string) error {
 	return ComposeWithFiles(files, args...).Run()
 }
 
-// Output captures stdout of `docker compose ... <args>`.
+// Output captures stdout of `docker compose ... <args>`, bounded by a 10s
+// deadline. Its only caller is status polling (listComposeServices): without
+// the deadline a hung Docker daemon pins one goroutine + child process per
+// poll, indefinitely.
 func Output(args ...string) ([]byte, error) {
-	cmd := Compose(args...)
-	cmd.Stdout = nil // let Output capture
-	return cmd.Output()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return ComposeCmdContext(ctx, []string{"dockers/compose.yaml"}, args...).Output()
 }
 
 // Exec builds `docker exec <container> <cmd...>`. stdio wired to terminal.

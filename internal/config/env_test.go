@@ -45,3 +45,43 @@ func TestUpdateEnvPreservesDollarSigns(t *testing.T) {
 		t.Errorf("KEY = %q, want literal %q", got["KEY"], want)
 	}
 }
+
+// TestUpdateEnvRejectsInvalidKeys reproduces F2 (AUDIT-2026-07-11):
+// regexp.QuoteMeta escapes regex metacharacters but does NOT neutralise an
+// embedded newline, so a key like "SAFE\nINJECTED" appended "INJECTED=x" as
+// a brand-new valid env var. UpdateEnv must reject the whole update.
+func TestUpdateEnvRejectsInvalidKeys(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".env")
+	original := "HOST_HOME=/home/test\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, key := range []string{"SAFE\nINJECTED", "lower", "1BAD", "A-B", "", "A B"} {
+		if err := UpdateEnv(path, map[string]string{key: "x"}); err == nil {
+			t.Errorf("UpdateEnv accepted invalid key %q", key)
+		}
+	}
+
+	// The file must be byte-identical: a rejected update writes nothing.
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != original {
+		t.Errorf("file mutated by rejected update:\n%s", got)
+	}
+
+	// Sanity: a valid key still works.
+	if err := UpdateEnv(path, map[string]string{"NEW_KEY": "v"}); err != nil {
+		t.Fatalf("UpdateEnv (valid key): %v", err)
+	}
+	envs, err := LoadEnv(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if envs["NEW_KEY"] != "v" {
+		t.Errorf("NEW_KEY = %q, want %q", envs["NEW_KEY"], "v")
+	}
+}

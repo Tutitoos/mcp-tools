@@ -58,7 +58,7 @@ func RunMcpConfig(dry bool, st state.State, out io.Writer) error {
 	for _, f := range failures {
 		fmt.Fprintf(&b, "  %s: %v — %s\n", f.client, f.err, f.hint)
 	}
-	b.WriteString("Para reintentar: mcp-tools mcp-config")
+	b.WriteString("Para reintentar: panel web /settings → \"Re-run mcp-config\" (POST /api/mcp-config/sync)")
 	return fmt.Errorf("%s", b.String())
 }
 

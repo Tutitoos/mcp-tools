@@ -73,6 +73,14 @@ func DetectMode(override Mode) (Mode, error) {
 		return ModeUser, nil
 	}
 	if err := exec.Command("systemctl", "is-system-running").Run(); err == nil {
+		// Only system-level systemd is reachable. Writing
+		// /etc/systemd/system requires root, and Install deliberately
+		// does not elevate (AUDIT-WEB-INSTALL INS-03): for a non-root
+		// caller this mode is guaranteed to fail late with a permission
+		// error, so fail early with the actionable alternative instead.
+		if os.Geteuid() != 0 {
+			return ModeNone, fmt.Errorf("systemd: solo hay systemd de sistema y no eres root; corre `sudo mcp-tools install --mode system` o usa `mcp-tools serve` en foreground")
+		}
 		return ModeSystem, nil
 	}
 	return ModeNone, nil

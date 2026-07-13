@@ -22,7 +22,7 @@ func TestRenderUnitUser(t *testing.T) {
 		"After=network-online.target docker.service",
 		"[Service]",
 		"Type=simple",
-		"ExecStart=/home/u/.local/bin/mcp-tools serve --port 8080 --bind 127.0.0.1",
+		`ExecStart="/home/u/.local/bin/mcp-tools" serve --port 8080 --bind 127.0.0.1`,
 		"EnvironmentFile=-/home/u/mcp-tools/.env",
 		"Restart=on-failure",
 		"RestartSec=5",
@@ -55,11 +55,41 @@ func TestRenderUnitSystem(t *testing.T) {
 	}
 }
 
-func TestRenderUnitDangerousChars(t *testing.T) {
-	// Regression guard: if anyone ever tries to put bind= with shell
-	// metacharacters, the unit must still render (text/template escapes
-	// nothing by default, so the caller is responsible — but the unit
-	// must still validate the bind is non-empty).
+// TestRenderUnitSpacesAndQuotes pins the INS-07 contract: paths with spaces
+// must survive systemd's ExecStart word-splitting (via quoting), and paths
+// that would break the quoting/unit syntax must be rejected, not written.
+func TestRenderUnitSpacesAndQuotes(t *testing.T) {
+	out, err := RenderUnit(UnitConfig{
+		BinaryPath: "/Users/Alice Smith/.local/bin/mcp-tools",
+		Port:       8888,
+		Bind:       "127.0.0.1",
+		EnvFile:    "/Users/Alice Smith/mcp-tools/.env",
+		User:       true,
+	})
+	if err != nil {
+		t.Fatalf("RenderUnit: %v", err)
+	}
+	if !strings.Contains(out, `ExecStart="/Users/Alice Smith/.local/bin/mcp-tools" serve`) {
+		t.Errorf("binary path with spaces must be quoted\n%s", out)
+	}
+	// EnvironmentFile is not word-split by systemd; raw spaces are valid.
+	if !strings.Contains(out, "EnvironmentFile=-/Users/Alice Smith/mcp-tools/.env") {
+		t.Errorf("env file path mangled\n%s", out)
+	}
+
+	for _, bad := range []UnitConfig{
+		{BinaryPath: `/tmp/evil"quote/mcp-tools`, Port: 1, Bind: "127.0.0.1", EnvFile: "/tmp/.env"},
+		{BinaryPath: "/tmp/mcp-tools", Port: 1, Bind: "127.0.0.1", EnvFile: "/tmp/evil\ninjected/.env"},
+	} {
+		if _, err := RenderUnit(bad); err == nil {
+			t.Errorf("RenderUnit(%q, %q) should reject quote/newline", bad.BinaryPath, bad.EnvFile)
+		}
+	}
+}
+
+func TestRenderUnitEmptyBind(t *testing.T) {
+	// text/template escapes nothing by default; the unit must still render
+	// with an empty bind (validation happens at the caller).
 	_, err := RenderUnit(UnitConfig{
 		BinaryPath: "/bin/mcp-tools",
 		Port:       1,

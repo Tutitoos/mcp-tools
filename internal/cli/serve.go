@@ -26,7 +26,7 @@ var (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Arranca la API + el panel web embebido.",
-	Long:  "Bind por defecto: 0.0.0.0:8888. Flags --port/--bind/--unix-socket. Maneja SIGINT/SIGTERM con 10s de gracia.",
+	Long:  "Bind por defecto: 127.0.0.1:8888 (loopback; usa --bind 0.0.0.0 para exponer a la LAN). Flags --port/--bind/--unix-socket. Maneja SIGINT/SIGTERM con 10s de gracia.",
 	RunE:  runServe,
 }
 

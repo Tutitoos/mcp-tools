@@ -37,7 +37,7 @@ func RunEnv(dry, force bool, out io.Writer) error {
 		"HOST_GID":       fmt.Sprintf("%d", syscall.Getgid()),
 		"MCP_TOOLS_ROOT": repoDir,
 		"MCP_TOOLS_DATA": dataDir,
-		"MCP_TOOLS_BIND": "0.0.0.0",
+		"MCP_TOOLS_BIND": config.DefaultBind,
 		"MEM0_USER_ID":   u.Username,
 	}
 	fmt.Fprintln(out, "── env")

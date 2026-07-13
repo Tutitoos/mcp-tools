@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+// claudeMemVersion pins the npm package: `@latest` pulled whatever was
+// published at install time and propagated it to every user (REVIEW-rd2
+// H28 / AUDIT-2026-07-11 F7). 13.11.0 = npm latest on 2026-07-13. Bump is
+// an explicit, reviewed change.
+const claudeMemVersion = "13.11.0"
+
 func claudeMemTool() Tool {
 	return Tool{
 		Key:           "claude-mem",
@@ -19,7 +25,7 @@ func claudeMemTool() Tool {
 		SelfRegisters: true,
 		Interactive:   true,
 		Install:       installClaudeMem,
-		Upgrade:       installClaudeMem, // `npx claude-mem@latest install` is idempotent + reinstalls
+		Upgrade:       installClaudeMem, // reinstall at the pinned version; bump claudeMemVersion to actually upgrade
 		Uninstall:     uninstallClaudeMem,
 		Status:        statusClaudeMem,
 	}
@@ -30,13 +36,10 @@ func installClaudeMem(dry bool, log func(string)) error {
 		return err
 	}
 	if dry {
-		log("$ npx --yes claude-mem@latest install")
+		log("$ npx --yes claude-mem@" + claudeMemVersion + " install")
 		return nil
 	}
-	// TODO(security): pin claude-mem to a stable version. `@latest` pulls
-	// whatever is on npm at install time and is propagated to all users.
-	// See docs/REVIEW-rd2.md (H28).
-	cmd := exec.Command("npx", "--yes", "claude-mem@latest", "install")
+	cmd := exec.Command("npx", "--yes", "claude-mem@"+claudeMemVersion, "install")
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -52,7 +55,7 @@ func uninstallClaudeMem(dry bool, log func(string)) error {
 		return err
 	}
 	if dry {
-		log("$ npx --yes claude-mem@latest uninstall")
+		log("$ npx --yes claude-mem@" + claudeMemVersion + " uninstall")
 		return nil
 	}
 	// npx fetches its own copy of claude-mem to run `uninstall`, so this
@@ -60,8 +63,7 @@ func uninstallClaudeMem(dry bool, log func(string)) error {
 	// local ~/.local/bin/claude-mem binary was already removed by hand —
 	// unlike the cargo/uv-installed tools, PATH presence isn't the source
 	// of truth here, so it is deliberately NOT gated on which("claude-mem").
-	// TODO(security): mirror H28 — see docs/REVIEW-rd2.md.
-	cmd := exec.Command("npx", "--yes", "claude-mem@latest", "uninstall")
+	cmd := exec.Command("npx", "--yes", "claude-mem@"+claudeMemVersion, "uninstall")
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

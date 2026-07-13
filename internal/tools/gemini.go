@@ -1,14 +1,12 @@
 package tools
 
-import (
-	"fmt"
-	"os"
-	"os/exec"
-)
+import "fmt"
 
 // geminiTool is the Google Gemini CLI. CLIENT that consumes MCP servers
 // registered in ~/.gemini/settings.json (see mcp.ConfigureGemini). npm
-// global install writes to /usr/local/{lib/node_modules,bin} → DeploySudo.
+// global install may write to a root-owned prefix (/usr/local) →
+// DeploySudo; runNpmGlobal pre-checks writability instead of dying
+// mid-install (INS-04).
 func geminiTool() Tool {
 	return Tool{
 		Key:       "gemini",
@@ -33,15 +31,7 @@ func installGemini(dry bool, log func(string)) error {
 		log(fmt.Sprintf("$ npm install -g %s", geminiPackage))
 		return nil
 	}
-	cmd := exec.Command("npm", "install", "-g", geminiPackage)
-	cmd.Env = os.Environ()
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("npm install -g %s: %w", geminiPackage, err)
-	}
-	return nil
+	return runNpmGlobal("install", geminiPackage)
 }
 
 func upgradeGemini(dry bool, log func(string)) error {
@@ -52,15 +42,9 @@ func upgradeGemini(dry bool, log func(string)) error {
 		log(fmt.Sprintf("$ npm install -g %s  # upgrade", geminiPackage))
 		return nil
 	}
-	cmd := exec.Command("npm", "install", "-g", geminiPackage)
-	cmd.Env = os.Environ()
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("npm upgrade %s: %w", geminiPackage, err)
-	}
-	return nil
+	// `npm install -g <pkg>` re-resolves to latest tag and overwrites — same
+	// effect as `npm update -g` without needing the package to be pre-installed.
+	return runNpmGlobal("install", geminiPackage)
 }
 
 func uninstallGemini(dry bool, log func(string)) error {
@@ -71,12 +55,7 @@ func uninstallGemini(dry bool, log func(string)) error {
 		log(fmt.Sprintf("$ npm uninstall -g %s", geminiPackage))
 		return nil
 	}
-	cmd := exec.Command("npm", "uninstall", "-g", geminiPackage)
-	cmd.Env = os.Environ()
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("npm uninstall -g %s: %w", geminiPackage, err)
-	}
-	return nil
+	return runNpmGlobal("uninstall", geminiPackage)
 }
 
 func statusGemini() (StatusPayload, error) {
