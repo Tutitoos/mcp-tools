@@ -40,7 +40,7 @@ esac
 ensure_go_local() {
   local candidate current
   for candidate in "$(command -v go 2>/dev/null || true)" "$HOME/.local/go/bin/go"; do
-    [ -n "$candidate" ] && [ -x "$candidate" ] || continue
+    [ -x "$candidate" ] || continue # -x on "" is false, covers the empty case too
     current="$("$candidate" version | awk '{print $3}' | sed 's/^go//')"
     if [ "$current" = "$REQUIRED_GO_VERSION" ]; then
       return 0
