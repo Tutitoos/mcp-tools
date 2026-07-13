@@ -1,20 +1,14 @@
 ---
 name: serena
 description: >
-  Language-server-backed semantic code MCP via `mcp_tools_serena`. Use for
-  precise LSP-grade operations on a SINGLE project: find symbol, find
-  declaration, find references, rename, replace symbol body, list symbols
-  in a file, hierarchical outline. Requires calling `activate_project` first
-  with an absolute path. Triggers EN: "find references", "who uses this
-  symbol", "rename symbol", "list symbols in file", "symbol at", "declaration
-  of", "replace symbol body", "LSP", "semantic edit". Triggers ES: "quién usa
-  este símbolo", "encuentra referencias", "renombra", "símbolos en el archivo",
-  "declaración de", "reemplaza el cuerpo del símbolo", "operación LSP",
-  "edición semántica". Prefer serena over grep-based tools when the target
-  is a NAMED symbol you want the compiler-accurate answer for. Prefer
-  `tokensave` for natural-language exploration; prefer `codebase-memory` for
-  cross-repo / architecture. NEVER call serena on a project you have not
-  activated in this session.
+  LSP-accurate semantic code operations on a single project via
+  `mcp_tools_serena`: find symbol, references, declaration, rename, replace
+  symbol body, file outline. Requires `activate_project` with an absolute
+  path first. Triggers EN: "find references", "who uses this symbol",
+  "rename symbol", "list symbols in file", "declaration of", "replace symbol
+  body", "LSP", "semantic edit". Triggers ES: "quién usa este símbolo",
+  "encuentra referencias", "renombra", "símbolos en el archivo",
+  "declaración de", "reemplaza el cuerpo del símbolo", "edición semántica".
 ---
 
 # serena
@@ -42,23 +36,14 @@ Fast workflows:
 
 Do not enter plan mode for a single read-only symbol lookup.
 
-## When to use vs when NOT to use
+## Routing
 
-Use `mcp_tools_serena` when:
+Tool selection between serena/tokensave/codebase-memory/mem0/native is defined ONCE in the shared core (`RULES.md`, generated from `instructions/core.md`). Use this skill once the task routes here: a NAMED symbol needing the compiler-accurate answer.
 
-- The user names a specific symbol (function, class, method, constant, type) and asks about it.
-- The user asks for compiler-accurate references, declarations, or a rename.
-- The user asks to edit a symbol's body without re-typing the file around it.
-- The user asks for an outline / symbol overview of a specific file.
-- The project is single-repo, indexable by an LSP, and the user has already told the agent which project.
+Serena-specific limits (not routing):
 
-Do NOT use `mcp_tools_serena` when:
-
-- The question spans multiple repositories → prefer `mcp_tools_codebase_memory`.
-- The user asks a natural-language exploratory question ("how does auth work here") → prefer `tokensave` if the project is `tokensave init`'d, else `mcp_tools_codebase_memory`.
-- No project has been activated in this session and the user has not named one.
-- The target file is not part of an LSP-indexable language.
-- The task is opening a specific file the user already named → native `Read`.
+- No project activated this session and the user has not named one → activate first; never guess.
+- The target file is not in an LSP-indexable language → native `Read`.
 
 ## Activate the project FIRST
 

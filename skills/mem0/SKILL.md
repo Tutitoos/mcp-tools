@@ -1,17 +1,14 @@
 ---
 name: mem0
 description: >
-  Persistent cross-session memory via the `mcp_tools_mem0` MCP server. Use whenever
-  the user asks to remember, recall, note, save, store, retrieve, or look up past
-  facts, decisions, preferences, or context from prior sessions. Triggers EN:
-  "remember", "recall", "note this", "save this", "we decided", "the user prefers",
-  "prior session", "what did we discuss", "context from before". Triggers ES:
+  Persistent cross-session memory via `mcp_tools_mem0`: remember, recall,
+  save, or look up facts, decisions, preferences, and prior-session context.
+  Triggers EN: "remember", "recall", "note this", "save this", "we decided",
+  "the user prefers", "prior session", "what did we discuss". Triggers ES:
   "recuerda", "acuérdate", "guarda esto", "apunta esto", "hemos decidido",
-  "el usuario prefiere", "sesión anterior", "qué habíamos hablado", "contexto de antes".
-  ALWAYS call `search_memories` before `add_memory` to avoid duplicates. NEVER fall
-  back to local notes files, bash `echo >> notes.md`, or agent scratchpad for these
-  intents — persistent memory MUST go through this MCP. Native tools are only OK
-  when the user's ask is scoped to the current session (single-turn scratch).
+  "el usuario prefiere", "sesión anterior", "qué habíamos hablado".
+  Persistent memory MUST go through this MCP — never local notes files or
+  agent scratchpads. Check §Known state first: search/get are broken upstream.
 ---
 
 # mem0
@@ -56,22 +53,14 @@ Do not ask follow-up questions after completing a simple `search_memories` / `ad
 
 If the user's query cleanly matches an existing memory, prefer `search_memories` (single call) over `list_entities` + `get_memories` scans.
 
-## When to use vs when NOT to use
+## Routing
 
-Use `mcp_tools_mem0` when:
+Tool selection between serena/tokensave/codebase-memory/mem0/native is defined ONCE in the shared core (`RULES.md`, generated from `instructions/core.md`). Use this skill once the task routes here: a fact, decision, preference, or context that must survive the current session.
 
-- The user says "recuerda", "acuérdate", "guarda esto", "apunta esto", "remember", "recall", "note this", "save this".
-- The user asks "qué habíamos decidido", "what did we decide", "prefiero X" ("the user prefers X"), "en la sesión anterior".
-- The user asks for context that clearly comes from a prior session.
-- The user establishes a durable preference the agent should honour later (formatting, tone, tooling defaults, project conventions).
+mem0-specific limits (not routing):
 
-Do NOT use `mcp_tools_mem0` when:
-
-- The user asks to read one specific file they already named → native `Read` is correct.
-- The user asks to run a build / test / shell command → native `bash` is correct.
-- The user asks to edit code → native `edit` / `write` is correct.
-- The scratchpad is single-turn (the note is only meaningful inside this reply) → agent context is enough.
-- The user asks about the codebase, architecture, symbols, or code search → that's `mcp_tools_codebase_memory`, not this MCP.
+- Single-turn scratch (the note only matters inside this reply) → agent context is enough; do not persist.
+- A durable preference established implicitly ("prefiero X") counts as memory even without the word "recuerda" — save it.
 
 ## Runtime
 
