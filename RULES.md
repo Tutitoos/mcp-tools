@@ -13,7 +13,7 @@ Este fichero es cargado globalmente por Claude Code, OpenCode y OMP. Define qué
 
 **Síntoma observado (verificado 2026-07-09)**: tras qdrant o ollama arrancar antes de que mem0-mcp-selfhosted complete su init, TODAS las operaciones devuelven `RuntimeError: Memory not initialized. Infrastructure may be unavailable.` — no sólo `search_memories`. Un reinicio limpio del proceso (`pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill; /mcp reconnect mcp_tools_mem0`) recupera el estado normal.
 
-**Segundo bug (upstream, verificado 2026-07-06)**: en el estado sano, `search_memories(query)` y `get_memories(user_id)` fallan porque la lib mem0 nueva exige `filters={user_id: ...}` y el MCP pasa `user_id` al top level.
+**Segundo bug (upstream, verificado 2026-07-06, re-verificado 2026-07-13)**: en el estado sano, `search_memories(query)` y `get_memories(user_id)` fallan con `ValueError: Top-level entity parameters frozenset({'user_id'}) are not supported in search(). Use filters={'user_id': '...'}` — la lib mem0 nueva exige `filters={user_id: ...}` y el MCP siempre inyecta `user_id` al top level. Pasar `filters={"user_id": ...}` como parámetro del tool NO lo evita (verificado 2026-07-13): el MCP añade el `user_id` top-level igualmente.
 
 | Operación | Estado sano | Estado degradado |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ Este fichero es cargado globalmente por Claude Code, OpenCode y OMP. Define qué
 - Recuperar por UUID conocido → `get_memory(uuid)`.
 - Listar todo → `list_entities()` + iterar UUIDs con `get_memory`.
 
-**Si TODO devuelve `Memory not initialized`**: reinicia el proceso mem0 (comando arriba) antes de escalar más. Este estado degradado suele aparecer tras `mcp-tools restart` u `docker compose restart mcp_tools_mem0_qdrant` sin dar a mem0 tiempo de re-inicializarse.
+**Si TODO devuelve `Memory not initialized`**: reinicia el proceso mem0 (comando arriba) antes de escalar más. Este estado degradado suele aparecer tras reiniciar los contenedores (`docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env restart`) sin dar a mem0 tiempo de re-inicializarse.
 
 ## How to decide which tool to use (default: serena for code)
 
@@ -147,23 +147,23 @@ Si en OMP no aparecen visibles, usa `search_tool_bm25` con la capacidad como que
 5. **Nunca sintetices input** más grande para "probar" un MCP.
 6. **Rutas absolutas** para `codebase_memory`, `serena.activate_project` y `tokensave --path` (nunca `~`, resuelve `$HOME` antes).
 7. **Modo de indexado codebase-memory** por defecto `moderate`; solo `full` si el user pide arquitectura completa o grafo semántico persistente.
-8. **`mem0` levanta ollama + qdrant automáticamente** vía `depends_on`. Si el wrapper falla con URL error, comprueba `docker compose ps` en `~/mcp-tools`.
+8. **`mem0` NO levanta ollama + qdrant por sí mismo**: `mem0-launcher` sólo exporta `.env.mem0` y ejecuta el binario. Los servicios Docker se levantan desde el panel web (`/services`) o con `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d`. Si el wrapper falla con URL error, comprueba `docker compose ps` en `~/mcp-tools`.
 9. **NUNCA borres una memoria de mem0** sin confirmación explícita del user.
 10. **Scratchpads de MCP ≠ memoria persistente**: `serena.write_memory` (per-project `.serena/memories/`) y `tokensave_todos` (per-project `.tokensave/`) sirven SOLO como notas del proyecto activo. Cualquier fact que deba sobrevivir a la sesión va a `mcp_tools_mem0`.
 
 ## Escalación si un MCP no responde
 
 0. **Serena first**: si serena no está conectado, ESTO es prioritario — el agente DEBE intentar activarlo antes de cualquier otra acción. Pasos:
-   1. `mcp-tools serena install` (idempotente, instala `~/.local/bin/serena`).
+   1. Instala serena si falta el binario: `uv tool install -p 3.13 serena-agent` (idempotente, instala `~/.local/bin/serena`), o desde el panel web de mcp-tools (`/tools` → serena → install, equivale a `POST /api/tools/serena/install`).
    2. `which serena` para confirmar que está en PATH.
-   3. `mcp-tools mcp-config` para re-registrar el MCP server en el cliente activo.
+   3. Re-registra los MCP servers en los clientes: panel web `/settings` → "Re-run mcp-config" (`POST /api/mcp-config/sync`). El CLI `mcp-tools` ya NO tiene subcomando `mcp-config`.
    4. Si el cliente sigue sin exponerlo: `search_tool_bm25` con query `serena find symbol activate project`.
    5. Si tras 3 intentos sigue sin responder, recurre a `tokensave_context` (paso 2) o `mcp_tools_codebase_memory` (paso 3) — NUNCA a `Read`/`Grep` para entender código.
 1. **`/mcp list`** para ver el estado por cliente.
 2. **`/mcp reload`** o **`/mcp reconnect <server>`**.
 3. Si sigue fallando: **cierra completamente el cliente y relánzalo** (`/mcp reload` no purga entradas removidas de la config).
 4. Contenedor caído (`mcp_tools_mem0_qdrant`, `mcp_tools_ollama` — service keys de compose): `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d`.
-5. Ver logs de un servicio: `mcp-tools logs <service-key>` (usa `docker compose logs` internamente, sin prefijo `stdout ` / `stderr `). Ejemplo: `mcp-tools logs mcp_tools_mem0_qdrant`. Si quieres el nombre del contenedor real (con guiones) para `docker inspect` o `docker exec`, es `mcp-tools-mem0-qdrant`, `mcp-tools-ollama`.
+5. Ver logs de un servicio: `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env logs --tail 50 <service-key>`, o el panel web (`/services`). Ejemplo de service-key: `mcp_tools_mem0_qdrant`. Si quieres el nombre del contenedor real (con guiones) para `docker inspect` o `docker exec`, es `mcp-tools-mem0-qdrant`, `mcp-tools-ollama`. El CLI `mcp-tools` ya NO tiene subcomando `logs`.
 6. `tokensave` marca "not connected" en Claude/OpenCode → el cwd no tiene `.tokensave/`. Corre `tokensave init` en un proyecto (una vez basta para que serve arranque desde cualquier cwd).
 7. `serena` marca "not connected" tras los pasos 0.1–0.4 → `~/.local/bin/serena` no está en PATH o `activate_project` no se ha llamado. Llama `activate_project("/absolute/path")` antes de cualquier otra tool de serena.
 

@@ -82,7 +82,7 @@ The MCP server name is:
 mcp_tools_serena
 ```
 
-The runtime is `~/.local/bin/serena` (installed by `mcp-tools serena install` via `uv tool install -p 3.13 serena-agent`). No Docker.
+The runtime is `~/.local/bin/serena` (installed from the mcp-tools web panel — `/tools` → serena → install — via `uv tool install -p 3.13 serena-agent`). No Docker.
 
 Serena downloads per-language LSP servers on demand under `~/.serena/language_servers/`. First call for a new language may take 10–60 s; subsequent calls are cached.
 
@@ -183,5 +183,5 @@ Good:
 2. `/mcp reload` or `/mcp reconnect mcp_tools_serena`.
 3. If still failing: close the client fully and relaunch. LSP servers can leak on abrupt kills.
 4. Missing LSP for a language: `~/.serena/language_servers/` gets populated on the first `activate_project` for that language — first call for a new language may take ~30 s.
-5. Serena binary missing: `mcp-tools serena install` (idempotent).
+5. Serena binary missing: reinstall from the web panel (`/tools` → serena → install, i.e. `POST /api/tools/serena/install`) or `uv tool install -p 3.13 serena-agent` (idempotent).
 6. Serena config file: `~/.serena/serena_config.yml`.

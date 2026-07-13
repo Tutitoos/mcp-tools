@@ -20,7 +20,7 @@ description: >
 
 Use `mcp_tools_mem0` whenever the user asks the agent to remember, recall, save, or look up any fact, decision, preference, or context that must survive the current session.
 
-This MCP provides persistent cross-session memory: facts about the user, decisions taken, preferences, project context, prior conversations. Backed by Qdrant (vector search) and Ollama (embeddings) — both are Docker services managed by `mcp-tools up`.
+This MCP provides persistent cross-session memory: facts about the user, decisions taken, preferences, project context, prior conversations. Backed by Qdrant (vector search) and Ollama (embeddings) — both are Docker services managed from the mcp-tools web panel (`/services`) or `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d`.
 
 ## Known state (verifica antes de usar)
 
@@ -39,8 +39,8 @@ Use `mcp_tools_mem0` directly.
 
 Fast workflows:
 
-- Recall / lookup past context: call `search_memories` with a semantic query.
-- Save a new fact / preference / decision: call `search_memories` first to dedupe, then `add_memory`.
+- Recall / lookup past context: call `search_memories` with a semantic query. If it fails with the known `ValueError` (filters bug, see Known state) → fall back to `list_entities` + `get_memory(uuid)`; do NOT retry the same call.
+- Save a new fact / preference / decision: call `search_memories` first to dedupe, then `add_memory`. If the dedupe call hits the known bug → proceed with `add_memory` directly (accept the duplicate risk; one failed attempt is enough).
 - List memories with filters: call `get_memories`.
 - Get a specific memory by ID: call `get_memory`.
 - Find relationships between entities: call `mcp_search_graph`.
@@ -82,7 +82,7 @@ mcp_tools_mem0
 
 The runtime is a host binary `mem0-mcp-selfhosted` (installed by `uv tool install`), wrapped by `~/.local/bin/mem0-launcher`. The wrapper sources `~/mcp-tools/.env.mem0` on each invocation and execs the binary. No Docker container is involved for mem0 itself.
 
-Dependencies (Docker services managed by `mcp-tools up`):
+Dependencies (Docker services, started from the web panel `/services` or `docker compose ... up -d`):
 
 - `mcp-tools-ollama` on port `:11434` (embeddings + LLM).
 - `mcp-tools-mem0-qdrant` on port `:6333` (vector store).
@@ -128,13 +128,13 @@ Tools exposed by `mcp_tools_mem0` (11 total):
 
 When the user asks to recall:
 
-1. Call `search_memories` with a semantic query built from the user's phrasing.
+1. Call `search_memories` with a semantic query built from the user's phrasing. On the known `ValueError` → workaround path (`list_entities` + `get_memory`), no retries.
 2. If matches exist → summarise the top hits and answer directly.
 3. If nothing matches → say so; do NOT invent an answer, do NOT hallucinate a memory.
 
 When the user asks to save (`recuerda`, `remember`, `guarda`):
 
-1. Call `search_memories` with a query summarising the fact — cheap dedupe.
+1. Call `search_memories` with a query summarising the fact — cheap dedupe. On the known `ValueError` → skip dedupe, go straight to `add_memory` (one failed attempt is enough).
 2. If an equivalent memory exists → `update_memory` on that ID (avoid duplicates).
 3. If nothing matches → `add_memory` with a concise, self-contained content string.
 4. Confirm with the user in one line: "Guardado" / "Saved" — do not read back the whole memory.
@@ -147,7 +147,7 @@ When the user asks to list:
 When the user asks to delete a memory:
 
 1. NEVER delete on the first mention. Ask for explicit confirmation.
-2. Only after confirmation, use the appropriate deletion path (currently not exposed as a tool — treat as read-only unless the user provides an explicit override).
+2. Only after confirmation, use `delete_memory(memory_id)` (or `delete_all_memories` / `delete_entities` for a whole scope — doubly confirm those: they cascade).
 
 ## Query hygiene
 
@@ -187,6 +187,6 @@ For memory answers:
 1. `/mcp list` in the client to check status.
 2. `/mcp reload` or `/mcp reconnect mcp_tools_mem0`.
 3. If still failing: close the client fully and relaunch.
-4. Ollama or Qdrant down: `mcp-tools up` restarts both services.
-5. Logs: `mcp-tools logs mcp_tools_ollama --tail 50` and `mcp-tools logs mcp_tools_mem0_qdrant --tail 50`.
-6. mem0 binary missing: `mcp-tools mem0 install` (idempotent).
+4. Ollama or Qdrant down: restart from the web panel (`/services`) or `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d`.
+5. Logs: `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env logs --tail 50 mcp_tools_ollama` (same for `mcp_tools_mem0_qdrant`), or the panel's `/services` log viewer.
+6. mem0 binary missing: reinstall from the web panel (`/tools` → mem0 → install, i.e. `POST /api/tools/mem0/install`).

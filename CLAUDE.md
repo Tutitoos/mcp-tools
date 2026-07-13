@@ -40,8 +40,8 @@ Use `mcp_tools_mem0` for persistent cross-session memory (facts, preferences, de
 
 Important rules:
 
-- The MCP servers run as host binaries (not Docker). `codebase-memory-mcp` lives at `~/.local/bin/codebase-memory-mcp`; `mem0-mcp-selfhosted` runs behind the `~/.local/bin/mem0-launcher` wrapper (sourcea `.env.mem0`); `serena` lives at `~/.local/bin/serena` (installed by `mcp-tools serena install`).
-- Do not spawn old `mcp-tools-*-docker` wrappers — they were removed. If a client still references them, run `mcp-tools mcp-config` to re-register cleanly.
+- The MCP servers run as host binaries (not Docker). `codebase-memory-mcp` lives at `~/.local/bin/codebase-memory-mcp`; `mem0-mcp-selfhosted` runs behind the `~/.local/bin/mem0-launcher` wrapper (sources `.env.mem0`); `serena` lives at `~/.local/bin/serena` (installed from the mcp-tools web panel, `/tools` → serena → install, or `uv tool install -p 3.13 serena-agent`).
+- Do not spawn old `mcp-tools-*-docker` wrappers — they were removed. If a client still references them, re-run mcp-config from the web panel (`/settings` → "Re-run mcp-config", i.e. `POST /api/mcp-config/sync`). The `mcp-tools` CLI no longer has a `mcp-config` subcommand.
 - Persistent data lives under `$HOME/mcp-tools-data/` (subdirs per MCP: `mem0`, `ollama`, plus `state.json`). Per-project serena state lives at `<project>/.serena/`.
 - NEVER fall back to native `Grep`/`Read`/`find`/`bash grep` for repo-wide code search — use serena (named symbol), tokensave (open question), or codebase-memory (cross-repo).
 - NEVER use `rtk grep` to find references of a named symbol — `rtk grep` matches strings/comments, not symbol identity. Use serena.

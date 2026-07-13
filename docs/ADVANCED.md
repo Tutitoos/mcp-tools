@@ -85,35 +85,35 @@ Plugin de Claude Code. Opt-in en el TUI. Requiere Node ≥ 20 (verifica con `nod
 
 MCP con auto-registro en 8 IDEs (Claude Code, Cursor, Windsurf, etc.). Opt-in en el TUI.
 
-- **Instalación**: `mcp-tools codegraph install` corre el bundle self-contained (`curl -fsSL … | sh`) y luego `codegraph install --yes` para auto-registrarse.
-- **Uninstall**: `mcp-tools uninstall codegraph` corre `codegraph uninstall --yes`.
+- **Instalación**: install de codegraph (panel `/tools` → codegraph → install, `POST /api/tools/codegraph/install`) corre el bundle self-contained (`curl -fsSL … | sh`) y luego `codegraph install --yes` para auto-registrarse.
+- **Uninstall**: desde el panel (`/tools` → codegraph → uninstall) — corre `codegraph uninstall --yes`.
 
 ### serena (host)
 
 MCP semántico LSP-accurate. Opt-in en el TUI.
 
-- **Instalación**: `mcp-tools serena install` — instala `uv` si falta (`ensureUV`, compartido con headroom/mem0), corre `uv tool install -p 3.13 serena-agent`, luego `serena init`.
-- **Upgrade**: `mcp-tools serena upgrade`.
+- **Instalación**: install de serena (panel `/tools` → serena → install, `POST /api/tools/serena/install`) — instala `uv` si falta (`ensureUV`, compartido con headroom/mem0), corre `uv tool install -p 3.13 serena-agent`, luego `serena init`.
+- **Upgrade**: panel `/tools` → serena → upgrade (`POST /api/tools/serena/upgrade`).
 - **Registrado en clientes** como MCP `mcp_tools_serena`, `command=serena`, `args=["start-mcp-server", "--context", "agent", "--project-from-cwd"]`.
-- **Uninstall**: `mcp-tools uninstall serena`.
+- **Uninstall**: panel `/tools` → serena → uninstall.
 - Requiere `activate_project` explícito en la sesión del cliente antes de operar sobre un proyecto (no lo hace `mcp-config`).
 
 ### tokensave (host)
 
 MCP semántico en Rust (code-graph, 40+ tools). Opt-in en el TUI (`DefaultOn: false`). Se auto-registra — no pasa por `internal/mcp/servers.go`.
 
-- **Instalación**: `mcp-tools tokensave install` — instala `cargo`/rustup si falta (`ensureCargo`, compartido con rtk), corre `cargo install tokensave --locked`, luego `tokensave install --git-hook no` (autodetecta y se registra en Claude Code, OpenCode, OMP y demás agentes soportados).
-- **Upgrade**: `mcp-tools tokensave upgrade` (`cargo install --force`).
-- **Uninstall**: `mcp-tools uninstall tokensave`.
-- **Cap de memoria** (opt-in, recomendado): `mcp-tools tokensave cap` instala `~/.local/bin/tokensave-capped` (wrapper `systemd-run --scope`) y reescribe la entrada `tokensave` en los configs MCP de Claude Code/OpenCode/OMP para que cada spawn arranque en un cgroup transient con `MemoryMax=30G`, `MemoryHigh=28G`, sin swap. Idempotente; `tokensave install`/`upgrade` restauran el binario crudo en los configs, así que re-correr `cap` después. `mcp-tools tokensave uncap` deshace el wrap. No aplica en macOS: `systemd-run` no existe, y `mcp-tools tokensave cap`/`uncap` devuelve error explícito.
+- **Instalación**: install de tokensave (panel `/tools` → tokensave → install) — instala `cargo`/rustup si falta (`ensureCargo`, compartido con rtk), corre `cargo install tokensave --locked`, luego `tokensave install --git-hook no` (autodetecta y se registra en Claude Code, OpenCode, OMP y demás agentes soportados).
+- **Upgrade**: panel `/tools` → tokensave → upgrade (`cargo install --force`).
+- **Uninstall**: panel `/tools` → tokensave → uninstall.
+- **Cap de memoria** (opt-in, recomendado): el verbo `cap` de tokensave instala `~/.local/bin/tokensave-capped` (wrapper `systemd-run --scope`) y reescribe la entrada `tokensave` en los configs MCP de Claude Code/OpenCode/OMP para que cada spawn arranque en un cgroup transient con `MemoryMax=30G`, `MemoryHigh=28G`, sin swap. Idempotente; install/upgrade de tokensave restauran el binario crudo en los configs, así que re-correr `cap` después. `uncap` deshace el wrap. No aplica en macOS: `systemd-run` no existe y `cap`/`uncap` devuelve error explícito.
 - Requiere `.tokensave/` en el proyecto (`tokensave init`, side effect del propio binario) — `mcp-tools` no gestiona el init por-proyecto, solo la instalación del binario y el registro MCP.
 
 ### ollama (Docker + GPU opcional)
 
-- Imagen `ollama/ollama:latest`. Puerto expuesto en `${MCP_TOOLS_BIND}:11434`.
+- Imagen `ollama/ollama` pinneada en `dockers/compose.yaml` (hoy `0.31.1`). Puerto expuesto en `${MCP_TOOLS_BIND}:11434`.
 - Modelos en `${MCP_TOOLS_DATA}/ollama` (bind mount → `/root/.ollama`).
 - Post-install: el tool descarga `MEM0_LLM_MODEL` y `MEM0_EMBED_MODEL` declarados en `.env.mem0` (idempotente).
-- GPU passthrough: NO viene por default. Se activa cuando (a) `nvidia-smi -L` pasa **y** (b) `nvidia-toolkit` está en `state.Selected`. En ese caso `mcp-tools up` incluye `dockers/ollama-gpu-overlay.yml` que añade `deploy.resources.reservations.devices` con `driver: nvidia`. La lógica vive en `internal/tools/compose.go OllamaComposeFiles(state.State)` — sync point compartido por `Ollama.Install` y `internal/cli/up.go`.
+- GPU passthrough: NO viene por default. Se activa cuando (a) `nvidia-smi -L` pasa **y** (b) `nvidia-toolkit` está en `state.Selected`. En ese caso el install de ollama incluye `dockers/ollama-gpu-overlay.yml` que añade `deploy.resources.reservations.devices` con `driver: nvidia`. La lógica vive en `internal/tools/compose.go OllamaComposeFiles(state.State)` — sync point compartido por `Ollama.Install` y `Ollama.Status`.
 - Si tu compose es < 1.28 y no soporta el bloque `deploy`, cambia el overlay al equivalente `gpus: all` (compatible con versiones más antiguas).
 
 ### qdrant (Docker)
@@ -184,11 +184,11 @@ Si tenías qdrant/ollama corriendo bajo el proyecto compose `mcp-infra`, ahora s
 1. Parar el stack viejo sin borrar volúmenes: `docker compose -p mcp-infra -f /path/al/docker-compose.yml down`.
 2. Verificar que el volumen `mcp-qdrant-storage` sigue existiendo (`docker volume ls | grep mcp-qdrant-storage`).
 3. Copiar los modelos de Ollama al path convencional: `docker run --rm -v /path/a/ollama-data:/src:ro -v ~/mcp-tools-data/ollama:/dst alpine sh -c 'cp -a /src/. /dst/'`.
-4. `mcp-tools up` — adopta el volumen y la carpeta de modelos sin re-descargar nada.
+4. Re-install de ollama/qdrant desde el panel (`/tools`), o `docker compose -f ~/mcp-tools/dockers/compose.yaml --env-file ~/mcp-tools/.env up -d` — adopta el volumen y la carpeta de modelos sin re-descargar nada.
 5. Los nombres de contenedor cambian: cualquier script externo que use `docker exec mem0-qdrant …` o `docker exec mcp-ollama …` hay que actualizarlo a `mcp-tools-mem0-qdrant` / `mcp-tools-ollama`.
 
 ## Seguridad
 
 Cinco instaladores upstream usan `curl … | sh`: rustup (RTK + tokensave), uv (headroom + mem0 + serena), install.sh de codebase-memory, install.sh de codegraph, y el apt repo de nvidia-container-toolkit. Audita los scripts si no confías en la fuente antes de correr `mcp-tools install`. Los tools instalados aquí son opt-in per-registry: puedes marcar sólo lo que quieras en el TUI multi-select.
 
-Con `MCP_TOOLS_BIND=0.0.0.0` (default), qdrant y ollama son alcanzables desde toda la LAN. Ninguno tiene auth por default. Setea `MCP_TOOLS_BIND=127.0.0.1` en `.env` antes de `mcp-tools install` para bindear sólo a loopback.
+`MCP_TOOLS_BIND` es `127.0.0.1` por default (panel web + puertos publicados de qdrant y ollama). Ninguno de los tres tiene auth, así que la exposición LAN es opt-in: setea `MCP_TOOLS_BIND=0.0.0.0` en `.env` (o `mcp-tools install --bind 0.0.0.0` para el panel) sólo si confías en la red. El panel además rechaza mutaciones cross-site iniciadas por un navegador (gate de `Origin`/`Sec-Fetch-Site`); las instalaciones existentes conservan el bind que ya tuvieran en su `.env` y su unit systemd.

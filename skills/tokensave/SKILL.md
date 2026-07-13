@@ -87,9 +87,9 @@ The MCP server name is:
 tokensave
 ```
 
-Bare — NOT `mcp_tools_tokensave`. Tokensave `SelfRegisters` and uses its own naming convention; `mcp-tools mcp-config` deliberately skips it.
+Bare — NOT `mcp_tools_tokensave`. Tokensave `SelfRegisters` and uses its own naming convention; mcp-tools' mcp-config sync (panel `/settings` → "Re-run mcp-config") deliberately skips it.
 
-The runtime is `~/.cargo/bin/tokensave` (installed by `mcp-tools tokensave install`). No Docker. First install is 5–15 min because tokensave builds 30+ tree-sitter grammars from source.
+The runtime is `~/.cargo/bin/tokensave` (installed from the mcp-tools web panel, `/tools` → tokensave → install). No Docker. First install is 5–15 min because tokensave builds 30+ tree-sitter grammars from source.
 
 Per-project index lives at `<project>/.tokensave/`.
 Global project registry lives at `~/.tokensave/`.
@@ -170,5 +170,5 @@ Always use absolute paths for `--path` flags and project references. `.tokensave
 2. If tokensave shows `not connected`: the current project (client cwd) has no `.tokensave/`. Either run `tokensave init` there or pass `--path` to a project that IS initialised.
 3. `/mcp reconnect tokensave` after init.
 4. `tokensave doctor` — checks installation, configuration, and agent integration.
-5. Missing binary: `mcp-tools tokensave install`.
+5. Missing binary: reinstall from the web panel (`/tools` → tokensave → install, i.e. `POST /api/tools/tokensave/install`) or `cargo install tokensave --locked`.
 6. Corrupt index: `tokensave wipe` and re-run `tokensave init`.
