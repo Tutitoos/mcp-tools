@@ -34,7 +34,14 @@ export default defineConfig(({ isSsrBuild }) => ({
         // the runtime needs no node_modules on disk.
         rollupOptions: {
           input: "app/entry.server.tsx",
-          output: { entryFileNames: "index.js", format: "esm" },
+          // inlineDynamicImports: the Go side (internal/web/ssr.go)
+          // extracts exactly ONE embedded file to a temp dir; lazy
+          // route imports must not split the SSR bundle into chunks.
+          output: {
+            entryFileNames: "index.js",
+            format: "esm",
+            inlineDynamicImports: true,
+          },
         },
         target: "node20",
         minify: false, // keep stack traces readable
@@ -49,7 +56,17 @@ export default defineConfig(({ isSsrBuild }) => ({
       outDir: "build/client",
       emptyOutDir: true,
       rollupOptions: {
-        output: { entryFileNames: "assets/entry.client-[hash].js" },
+        output: {
+          entryFileNames: "assets/entry.client-[hash].js",
+          // Long-term caching: dependencies change on upgrades, app code
+          // changes on every release. Splitting them means a routine
+          // app-only release invalidates only the (small) app chunks —
+          // the vendor chunk keeps its hash and stays cached (the Go
+          // server serves /assets/* with `immutable`).
+          manualChunks(id: string) {
+            if (id.includes("node_modules")) return "vendor";
+          },
+        },
       },
     },
   ssr: {

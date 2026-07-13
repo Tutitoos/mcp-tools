@@ -35010,11 +35010,7 @@ var M = (e, i, s, u, m, a, l, h) => {
   } catch (n) {
   }
 };
-var b = ["light", "dark"], I = "(prefers-color-scheme: dark)", O = typeof window == "undefined", x = reactExports.createContext(void 0), U = { setTheme: (e) => {
-}, themes: [] }, z = () => {
-  var e;
-  return (e = reactExports.useContext(x)) != null ? e : U;
-}, J = (e) => reactExports.useContext(x) ? reactExports.createElement(reactExports.Fragment, null, e.children) : reactExports.createElement(V, { ...e }), N = ["light", "dark"], V = ({ forcedTheme: e, disableTransitionOnChange: i = false, enableSystem: s = true, enableColorScheme: u = true, storageKey: m = "theme", themes: a = N, defaultTheme: l = s ? "system" : "light", attribute: h = "data-theme", value: d, children: w, nonce: p, scriptProps: R }) => {
+var b = ["light", "dark"], I = "(prefers-color-scheme: dark)", O = typeof window == "undefined", x = reactExports.createContext(void 0), J = (e) => reactExports.useContext(x) ? reactExports.createElement(reactExports.Fragment, null, e.children) : reactExports.createElement(V, { ...e }), N = ["light", "dark"], V = ({ forcedTheme: e, disableTransitionOnChange: i = false, enableSystem: s = true, enableColorScheme: u = true, storageKey: m = "theme", themes: a = N, defaultTheme: l = s ? "system" : "light", attribute: h = "data-theme", value: d, children: w, nonce: p, scriptProps: R }) => {
   let [c, n] = reactExports.useState(() => H(m, l)), [T, y] = reactExports.useState(() => c === "system" ? E() : c), k = d ? Object.values(d) : a, S = reactExports.useCallback((o) => {
     let r2 = o;
     if (!r2) return;
@@ -42995,8 +42991,8 @@ function Providers({ children }) {
     {
       attribute: "class",
       defaultTheme: "dark",
+      forcedTheme: "dark",
       enableSystem: false,
-      storageKey: "mcp-tools-theme",
       children: /* @__PURE__ */ jsxRuntimeExports.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsxRuntimeExports.jsx(TooltipProvider, { delayDuration: 200, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative isolate", children: [
         children,
         /* @__PURE__ */ jsxRuntimeExports.jsx(Toaster, { richColors: true, position: "top-right" })
@@ -51789,7 +51785,7 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$x = [
+const __iconNode$v = [
   [
     "path",
     {
@@ -51798,25 +51794,25 @@ const __iconNode$x = [
     }
   ]
 ];
-const Activity = createLucideIcon("Activity", __iconNode$x);
+const Activity = createLucideIcon("Activity", __iconNode$v);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$w = [
+const __iconNode$u = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "m4.9 4.9 14.2 14.2", key: "1m5liu" }]
 ];
-const Ban = createLucideIcon("Ban", __iconNode$w);
+const Ban = createLucideIcon("Ban", __iconNode$u);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$v = [
+const __iconNode$t = [
   [
     "path",
     {
@@ -51827,14 +51823,14 @@ const __iconNode$v = [
   ["path", { d: "m3.3 7 8.7 5 8.7-5", key: "g66t2b" }],
   ["path", { d: "M12 22V12", key: "d0xqtd" }]
 ];
-const Box = createLucideIcon("Box", __iconNode$v);
+const Box = createLucideIcon("Box", __iconNode$t);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$u = [
+const __iconNode$s = [
   [
     "path",
     {
@@ -51866,34 +51862,34 @@ const __iconNode$u = [
   ["path", { d: "m12 8 4.74-2.85", key: "3rx089" }],
   ["path", { d: "M12 13.5V8", key: "1io7kd" }]
 ];
-const Boxes = createLucideIcon("Boxes", __iconNode$u);
+const Boxes = createLucideIcon("Boxes", __iconNode$s);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$t = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-const Check = createLucideIcon("Check", __iconNode$t);
+const __iconNode$r = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+const Check = createLucideIcon("Check", __iconNode$r);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$s = [
+const __iconNode$q = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
   ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
 ];
-const CircleAlert = createLucideIcon("CircleAlert", __iconNode$s);
+const CircleAlert = createLucideIcon("CircleAlert", __iconNode$q);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$r = [
+const __iconNode$p = [
   ["path", { d: "M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z", key: "sobvz5" }],
   ["path", { d: "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z", key: "11i496" }],
   ["path", { d: "M12 2v2", key: "tus03m" }],
@@ -51909,14 +51905,14 @@ const __iconNode$r = [
   ["path", { d: "m17 3.34-1 1.73", key: "2wel8s" }],
   ["path", { d: "m11 13.73-4 6.93", key: "794ttg" }]
 ];
-const Cog = createLucideIcon("Cog", __iconNode$r);
+const Cog = createLucideIcon("Cog", __iconNode$p);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$q = [
+const __iconNode$o = [
   [
     "path",
     {
@@ -51929,30 +51925,7 @@ const __iconNode$q = [
   ["path", { d: "M14 19.8v-8.1", key: "159ecu" }],
   ["path", { d: "M18 17.5V9.4", key: "11uown" }]
 ];
-const Container = createLucideIcon("Container", __iconNode$q);
-/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$p = [
-  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
-  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
-];
-const Copy = createLucideIcon("Copy", __iconNode$p);
-/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$o = [
-  ["ellipse", { cx: "12", cy: "5", rx: "9", ry: "3", key: "msslwz" }],
-  ["path", { d: "M3 5V19A9 3 0 0 0 21 19V5", key: "1wlel7" }],
-  ["path", { d: "M3 12A9 3 0 0 0 21 12", key: "mv7ke4" }]
-];
-const Database = createLucideIcon("Database", __iconNode$o);
+const Container = createLucideIcon("Container", __iconNode$o);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -51960,11 +51933,10 @@ const Database = createLucideIcon("Database", __iconNode$o);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$n = [
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
-  ["polyline", { points: "7 10 12 15 17 10", key: "2ggqvy" }],
-  ["line", { x1: "12", x2: "12", y1: "15", y2: "3", key: "1vk2je" }]
+  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
+  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
 ];
-const Download = createLucideIcon("Download", __iconNode$n);
+const Copy = createLucideIcon("Copy", __iconNode$n);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -51972,10 +51944,11 @@ const Download = createLucideIcon("Download", __iconNode$n);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$m = [
-  ["path", { d: "m12 14 4-4", key: "9kzdfg" }],
-  ["path", { d: "M3.34 19a10 10 0 1 1 17.32 0", key: "19p75a" }]
+  ["ellipse", { cx: "12", cy: "5", rx: "9", ry: "3", key: "msslwz" }],
+  ["path", { d: "M3 5V19A9 3 0 0 0 21 19V5", key: "1wlel7" }],
+  ["path", { d: "M3 12A9 3 0 0 0 21 12", key: "mv7ke4" }]
 ];
-const Gauge = createLucideIcon("Gauge", __iconNode$m);
+const Database = createLucideIcon("Database", __iconNode$m);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -51983,6 +51956,29 @@ const Gauge = createLucideIcon("Gauge", __iconNode$m);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$l = [
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
+  ["polyline", { points: "7 10 12 15 17 10", key: "2ggqvy" }],
+  ["line", { x1: "12", x2: "12", y1: "15", y2: "3", key: "1vk2je" }]
+];
+const Download = createLucideIcon("Download", __iconNode$l);
+/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$k = [
+  ["path", { d: "m12 14 4-4", key: "9kzdfg" }],
+  ["path", { d: "M3.34 19a10 10 0 1 1 17.32 0", key: "19p75a" }]
+];
+const Gauge = createLucideIcon("Gauge", __iconNode$k);
+/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$j = [
   [
     "path",
     {
@@ -52005,26 +52001,7 @@ const __iconNode$l = [
     }
   ]
 ];
-const Layers = createLucideIcon("Layers", __iconNode$l);
-/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$k = [
-  ["path", { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", key: "1cjeqo" }],
-  ["path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71", key: "19qd67" }]
-];
-const Link = createLucideIcon("Link", __iconNode$k);
-/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$j = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
-const LoaderCircle = createLucideIcon("LoaderCircle", __iconNode$j);
+const Layers = createLucideIcon("Layers", __iconNode$j);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -52032,21 +52009,18 @@ const LoaderCircle = createLucideIcon("LoaderCircle", __iconNode$j);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$i = [
-  ["line", { x1: "4", x2: "20", y1: "12", y2: "12", key: "1e0a9i" }],
-  ["line", { x1: "4", x2: "20", y1: "6", y2: "6", key: "1owob3" }],
-  ["line", { x1: "4", x2: "20", y1: "18", y2: "18", key: "yk5zj1" }]
+  ["path", { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", key: "1cjeqo" }],
+  ["path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71", key: "19qd67" }]
 ];
-const Menu = createLucideIcon("Menu", __iconNode$i);
+const Link = createLucideIcon("Link", __iconNode$i);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$h = [
-  ["path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z", key: "a7tn18" }]
-];
-const Moon = createLucideIcon("Moon", __iconNode$h);
+const __iconNode$h = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]];
+const LoaderCircle = createLucideIcon("LoaderCircle", __iconNode$h);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -52054,25 +52028,37 @@ const Moon = createLucideIcon("Moon", __iconNode$h);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$g = [
+  ["line", { x1: "4", x2: "20", y1: "12", y2: "12", key: "1e0a9i" }],
+  ["line", { x1: "4", x2: "20", y1: "6", y2: "6", key: "1owob3" }],
+  ["line", { x1: "4", x2: "20", y1: "18", y2: "18", key: "yk5zj1" }]
+];
+const Menu = createLucideIcon("Menu", __iconNode$g);
+/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$f = [
   ["rect", { x: "14", y: "4", width: "4", height: "16", rx: "1", key: "zuxfzm" }],
   ["rect", { x: "6", y: "4", width: "4", height: "16", rx: "1", key: "1okwgv" }]
 ];
-const Pause = createLucideIcon("Pause", __iconNode$g);
+const Pause = createLucideIcon("Pause", __iconNode$f);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$f = [["polygon", { points: "6 3 20 12 6 21 6 3", key: "1oa8hb" }]];
-const Play = createLucideIcon("Play", __iconNode$f);
+const __iconNode$e = [["polygon", { points: "6 3 20 12 6 21 6 3", key: "1oa8hb" }]];
+const Play = createLucideIcon("Play", __iconNode$e);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$e = [
+const __iconNode$d = [
   [
     "path",
     {
@@ -52081,20 +52067,7 @@ const __iconNode$e = [
     }
   ]
 ];
-const Puzzle = createLucideIcon("Puzzle", __iconNode$e);
-/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$d = [
-  ["path", { d: "M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "14sxne" }],
-  ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
-  ["path", { d: "M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16", key: "1hlbsb" }],
-  ["path", { d: "M16 16h5v5", key: "ccwih5" }]
-];
-const RefreshCcw = createLucideIcon("RefreshCcw", __iconNode$d);
+const Puzzle = createLucideIcon("Puzzle", __iconNode$d);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -52102,10 +52075,12 @@ const RefreshCcw = createLucideIcon("RefreshCcw", __iconNode$d);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$c = [
-  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
-  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
+  ["path", { d: "M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "14sxne" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
+  ["path", { d: "M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16", key: "1hlbsb" }],
+  ["path", { d: "M16 16h5v5", key: "ccwih5" }]
 ];
-const RotateCcw = createLucideIcon("RotateCcw", __iconNode$c);
+const RefreshCcw = createLucideIcon("RefreshCcw", __iconNode$c);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -52113,6 +52088,17 @@ const RotateCcw = createLucideIcon("RotateCcw", __iconNode$c);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$b = [
+  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
+];
+const RotateCcw = createLucideIcon("RotateCcw", __iconNode$b);
+/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$a = [
   [
     "path",
     {
@@ -52123,14 +52109,14 @@ const __iconNode$b = [
   ["path", { d: "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7", key: "1ydtos" }],
   ["path", { d: "M7 3v4a1 1 0 0 0 1 1h7", key: "t51u73" }]
 ];
-const Save = createLucideIcon("Save", __iconNode$b);
+const Save = createLucideIcon("Save", __iconNode$a);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$a = [
+const __iconNode$9 = [
   ["path", { d: "M15 12h-5", key: "r7krc0" }],
   ["path", { d: "M15 8h-5", key: "1khuty" }],
   ["path", { d: "M19 17V5a2 2 0 0 0-2-2H4", key: "zz82l3" }],
@@ -52142,20 +52128,7 @@ const __iconNode$a = [
     }
   ]
 ];
-const ScrollText = createLucideIcon("ScrollText", __iconNode$a);
-/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$9 = [
-  ["path", { d: "M20 7h-9", key: "3s1dr2" }],
-  ["path", { d: "M14 17H5", key: "gfn3mx" }],
-  ["circle", { cx: "17", cy: "17", r: "3", key: "18b49y" }],
-  ["circle", { cx: "7", cy: "7", r: "3", key: "dfmy0x" }]
-];
-const Settings2 = createLucideIcon("Settings2", __iconNode$9);
+const ScrollText = createLucideIcon("ScrollText", __iconNode$9);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -52163,6 +52136,19 @@ const Settings2 = createLucideIcon("Settings2", __iconNode$9);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$8 = [
+  ["path", { d: "M20 7h-9", key: "3s1dr2" }],
+  ["path", { d: "M14 17H5", key: "gfn3mx" }],
+  ["circle", { cx: "17", cy: "17", r: "3", key: "18b49y" }],
+  ["circle", { cx: "7", cy: "7", r: "3", key: "dfmy0x" }]
+];
+const Settings2 = createLucideIcon("Settings2", __iconNode$8);
+/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [
   [
     "path",
     {
@@ -52172,14 +52158,14 @@ const __iconNode$8 = [
   ],
   ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
 ];
-const Settings = createLucideIcon("Settings", __iconNode$8);
+const Settings = createLucideIcon("Settings", __iconNode$7);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$7 = [
+const __iconNode$6 = [
   [
     "path",
     {
@@ -52192,19 +52178,7 @@ const __iconNode$7 = [
   ["path", { d: "M4 17v2", key: "vumght" }],
   ["path", { d: "M5 18H3", key: "zchphs" }]
 ];
-const Sparkles = createLucideIcon("Sparkles", __iconNode$7);
-/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$6 = [
-  ["path", { d: "m7 11 2-2-2-2", key: "1lz0vl" }],
-  ["path", { d: "M11 13h4", key: "1p7l4v" }],
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2", key: "1m3agn" }]
-];
-const SquareTerminal = createLucideIcon("SquareTerminal", __iconNode$6);
+const Sparkles = createLucideIcon("Sparkles", __iconNode$6);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -52212,9 +52186,11 @@ const SquareTerminal = createLucideIcon("SquareTerminal", __iconNode$6);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$5 = [
-  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }]
+  ["path", { d: "m7 11 2-2-2-2", key: "1lz0vl" }],
+  ["path", { d: "M11 13h4", key: "1p7l4v" }],
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2", key: "1m3agn" }]
 ];
-const Square = createLucideIcon("Square", __iconNode$5);
+const SquareTerminal = createLucideIcon("SquareTerminal", __iconNode$5);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -52222,17 +52198,9 @@ const Square = createLucideIcon("Square", __iconNode$5);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$4 = [
-  ["circle", { cx: "12", cy: "12", r: "4", key: "4exip2" }],
-  ["path", { d: "M12 2v2", key: "tus03m" }],
-  ["path", { d: "M12 20v2", key: "1lh1kg" }],
-  ["path", { d: "m4.93 4.93 1.41 1.41", key: "149t6j" }],
-  ["path", { d: "m17.66 17.66 1.41 1.41", key: "ptbguv" }],
-  ["path", { d: "M2 12h2", key: "1t8f8n" }],
-  ["path", { d: "M20 12h2", key: "1q8mjw" }],
-  ["path", { d: "m6.34 17.66-1.41 1.41", key: "1m8zz5" }],
-  ["path", { d: "m19.07 4.93-1.41 1.41", key: "1shlcs" }]
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }]
 ];
-const Sun = createLucideIcon("Sun", __iconNode$4);
+const Square = createLucideIcon("Square", __iconNode$4);
 /**
  * @license lucide-react v0.475.0 - ISC
  *
@@ -53826,23 +53794,6 @@ function LogoMark() {
     }
   );
 }
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = z();
-  const [mounted, setMounted] = reactExports.useState(false);
-  reactExports.useEffect(() => setMounted(true), []);
-  const current = mounted ? resolvedTheme : "dark";
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    Button,
-    {
-      variant: "ghost",
-      size: "icon",
-      onClick: () => setTheme(current === "dark" ? "light" : "dark"),
-      "aria-label": "Cambiar tema",
-      suppressHydrationWarning: true,
-      children: current === "dark" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Sun, { className: "h-4 w-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Moon, { className: "h-4 w-4" })
-    }
-  );
-}
 function UnitStatusPill() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["status"],
@@ -53976,8 +53927,7 @@ function TopBar() {
   const title = matches.at(-1)?.handle?.title ?? "";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "glass sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border px-4 lg:px-6", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(MobileNav, {}) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "invisible flex-1 text-sm font-medium md:visible", children: title }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(ThemeToggle, {})
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "invisible flex-1 text-sm font-medium md:visible", children: title })
   ] });
 }
 function Shell() {
@@ -54176,30 +54126,30 @@ function useJobStream(jobId) {
     error: null,
     open: false
   });
-  const pending = reactExports.useRef([]);
-  const flushScheduled = reactExports.useRef(false);
-  const rafId = reactExports.useRef(null);
   reactExports.useEffect(() => {
+    setState({ lines: [], done: false, ok: false, error: null, open: false });
     if (!jobId) return;
     let cancelled = false;
     let reader = null;
     let buf = "";
+    let pendingLines = [];
+    let flushScheduled = false;
+    let rafId = null;
     const ac = new AbortController();
-    pending.current = [];
-    flushScheduled.current = false;
     function flushPending() {
-      if (pending.current.length === 0) return;
-      const toFlush = pending.current;
-      pending.current = [];
+      if (cancelled || pendingLines.length === 0) return;
+      const toFlush = pendingLines;
+      pendingLines = [];
       setState((s) => ({ ...s, lines: s.lines.concat(toFlush) }));
     }
     function queueLine(line) {
-      pending.current.push(line);
-      if (!flushScheduled.current) {
-        flushScheduled.current = true;
-        rafId.current = requestAnimationFrame(() => {
-          flushScheduled.current = false;
-          rafId.current = null;
+      if (cancelled) return;
+      pendingLines.push(line);
+      if (!flushScheduled) {
+        flushScheduled = true;
+        rafId = requestAnimationFrame(() => {
+          flushScheduled = false;
+          rafId = null;
           flushPending();
         });
       }
@@ -54209,8 +54159,8 @@ function useJobStream(jobId) {
         const res = await apiStream(`/api/jobs/${jobId}/events`, {
           signal: ac.signal
         });
+        if (cancelled) return;
         if (!res.ok || !res.body) {
-          flushPending();
           setState((s) => ({
             ...s,
             done: true,
@@ -54228,16 +54178,17 @@ function useJobStream(jobId) {
           if (done) break;
           buf += dec.decode(value, { stream: true });
           let idx;
-          while ((idx = buf.indexOf("\n\n")) !== -1) {
+          while (!cancelled && (idx = buf.indexOf("\n\n")) !== -1) {
             const frame2 = buf.slice(0, idx);
             buf = buf.slice(idx + 2);
             handleFrame(frame2);
           }
         }
+        if (cancelled) return;
         flushPending();
         setState((s) => ({ ...s, open: false }));
       } catch (err) {
-        flushPending();
+        if (cancelled) return;
         setState((s) => ({
           ...s,
           done: true,
@@ -54248,6 +54199,7 @@ function useJobStream(jobId) {
       }
     })();
     function handleFrame(frame2) {
+      if (cancelled) return;
       let event = "message";
       const dataLines = [];
       for (const line of frame2.split("\n")) {
@@ -54296,12 +54248,12 @@ function useJobStream(jobId) {
       if (reader) {
         reader.cancel().catch(() => void 0);
       }
-      if (rafId.current !== null) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = null;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
-      pending.current = [];
-      flushScheduled.current = false;
+      pendingLines = [];
+      flushScheduled = false;
     };
   }, [jobId]);
   const reset = reactExports.useCallback(() => {
@@ -56719,11 +56671,28 @@ function SettingsRoute() {
     queryFn: () => api("/api/status"),
     refetchInterval: 5e3
   });
+  const [syncJob, setSyncJob] = reactExports.useState(null);
+  const jobState = useJobStream(syncJob?.id ?? null);
+  reactExports.useEffect(() => {
+    if (!syncJob || !jobState.done) return;
+    if (jobState.ok) {
+      toast.success(`sync ${syncJob.path}`, { description: `job ${syncJob.id} completado` });
+    } else {
+      toast.error(`sync ${syncJob.path} falló`, {
+        description: jobState.error ?? `revisa el job ${syncJob.id} en /jobs`
+      });
+    }
+    setSyncJob(null);
+    qc.invalidateQueries({ queryKey: ["status"] });
+  }, [syncJob, jobState.done, jobState.ok, jobState.error, qc]);
   const syncMut = useMutation({
     mutationFn: (path) => api(path, { method: "POST" }),
     onSuccess: (res, path) => {
-      toast.success(`sync ${path}`, { description: `job ${res.job_id}` });
-      qc.invalidateQueries({ queryKey: ["status"] });
+      toast.info(`sync ${path} encolado`, { description: `job ${res.job_id}` });
+      setSyncJob({ id: res.job_id, path });
+    },
+    onError: (err, path) => {
+      toast.error(`sync ${path} no se pudo encolar`, { description: String(err) });
     }
   });
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
@@ -56785,7 +56754,7 @@ function SettingsRoute() {
           Button,
           {
             variant: "outline",
-            disabled: syncMut.isPending,
+            disabled: syncMut.isPending || !!syncJob,
             onClick: () => syncMut.mutate("/api/mcp-config/sync"),
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCcw, { className: "h-4 w-4" }),
@@ -56797,7 +56766,7 @@ function SettingsRoute() {
           Button,
           {
             variant: "outline",
-            disabled: syncMut.isPending,
+            disabled: syncMut.isPending || !!syncJob,
             onClick: () => syncMut.mutate("/api/skills/sync"),
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCcw, { className: "h-4 w-4" }),
@@ -56809,7 +56778,7 @@ function SettingsRoute() {
           Button,
           {
             variant: "outline",
-            disabled: syncMut.isPending,
+            disabled: syncMut.isPending || !!syncJob,
             onClick: () => syncMut.mutate("/api/rules/sync"),
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCcw, { className: "h-4 w-4" }),
