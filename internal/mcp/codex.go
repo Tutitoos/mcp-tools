@@ -145,6 +145,16 @@ func renderCodexServer(s ServerSpec) string {
 	fmt.Fprintf(&b, "args = [%s]\n", strings.Join(args, ", "))
 	fmt.Fprintf(&b, "\n[mcp_servers.%s.env]\n", s.Name)
 	b.WriteString("HOME = \"${HOME}\"\n")
+	keys := make([]string, 0, len(s.Env))
+	for key := range s.Env {
+		if key != "HOME" {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		fmt.Fprintf(&b, "%s = %s\n", key, tomlString(s.Env[key]))
+	}
 	return b.String()
 }
 

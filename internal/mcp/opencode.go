@@ -53,7 +53,7 @@ func ConfigureOpenCode(st state.State, log func(string)) error {
 			"type":        "local",
 			"command":     cmdList,
 			"enabled":     true,
-			"environment": map[string]any{"HOME": home},
+			"environment": serverEnvironment(s, home),
 		}
 	}
 	for k := range mcpSection {

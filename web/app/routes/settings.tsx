@@ -19,6 +19,15 @@ const ENV_KEYS = [
   "MCP_TOOLS_DATA",
   "MCP_TOOLS_BIND",
   "MEM0_USER_ID",
+  "MDB_MCP_CONNECTION_STRING",
+  "MDB_MCP_API_CLIENT_ID",
+  "MDB_MCP_API_CLIENT_SECRET",
+  "REDIS_HOST",
+  "REDIS_PORT",
+  "REDIS_DB",
+  "REDIS_USERNAME",
+  "REDIS_PWD",
+  "REDIS_SSL",
 ] as const;
 
 const MEM0_KEYS = [
@@ -77,6 +86,7 @@ function EnvTable({
           <Label htmlFor={k}>{k}</Label>
           <Input
             id={k}
+            type={/(KEY|TOKEN|SECRET|PASS|PWD|CONNECTION_STRING)/.test(k) ? "password" : "text"}
             value={values[k] ?? ""}
             onChange={(e) => setValues({ ...values, [k]: e.target.value })}
           />

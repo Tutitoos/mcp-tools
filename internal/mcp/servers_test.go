@@ -1,6 +1,8 @@
 package mcp
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Tutitoos/mcp-tools/internal/state"
@@ -12,7 +14,7 @@ import (
 // and this fixture so the registry can't fall out of sync silently.
 // See H29 (review ronda 2, 2026-07-08).
 func TestServersCoversMCPTools(t *testing.T) {
-	wantKeys := []string{"codebase-memory", "mem0", "headroom", "serena"}
+	wantKeys := []string{"codebase-memory", "mem0", "headroom", "serena", "mongodb", "redis", "docker-mcp-toolkit", "sentry"}
 	st := state.State{Selected: wantKeys}
 	got := Servers(st)
 	if len(got) != len(wantKeys) {
@@ -49,5 +51,29 @@ func TestServersSkipsNonMCPTools(t *testing.T) {
 	got := Servers(st)
 	if len(got) != 0 {
 		t.Fatalf("Servers returned %d entries for system-only selection, want 0", len(got))
+	}
+}
+
+func TestServersResolvesConfiguredEnvironment(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("MDB_MCP_CONNECTION_STRING=from-file\nREDIS_HOST=redis.internal\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MCP_TOOLS_ROOT", root)
+	t.Setenv("MDB_MCP_CONNECTION_STRING", "from-process")
+
+	servers := Servers(state.State{Selected: []string{"mongodb", "redis", "docker-mcp-toolkit"}})
+	if got := servers[0].Env["MDB_MCP_CONNECTION_STRING"]; got != "from-process" {
+		t.Fatalf("MongoDB env = %q, want process env precedence", got)
+	}
+	if got := servers[1].Env["REDIS_HOST"]; got != "redis.internal" {
+		t.Fatalf("Redis env = %q, want repo .env value", got)
+	}
+	if got := servers[2].Env["DOCKER_MCP_IN_CONTAINER"]; got != "1" {
+		t.Fatalf("Docker env = %q, want headless gateway flag", got)
+	}
+	env := serverEnvironment(servers[0], "/home/test")
+	if env["HOME"] != "/home/test" || env["MDB_MCP_CONNECTION_STRING"] != "from-process" {
+		t.Fatalf("rendered environment lost HOME or server env: %v", env)
 	}
 }

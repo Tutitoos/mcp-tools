@@ -3,6 +3,9 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -52,15 +55,17 @@ func TestCrossOriginGate(t *testing.T) {
 // keep their name but lose their value; everything else passes through.
 func TestRedactEnv(t *testing.T) {
 	got := redactEnv(map[string]string{
-		"MEM0_USER_ID":   "tutitoos",
-		"SOME_API_KEY":   "abc123",
-		"AUTH_TOKEN":     "t0k3n",
-		"DB_PASSWORD":    "hunter2",
-		"CLIENT_SECRET":  "sssh",
-		"EMPTY_KEY":      "",
-		"MCP_TOOLS_BIND": "127.0.0.1",
+		"MEM0_USER_ID":              "tutitoos",
+		"SOME_API_KEY":              "abc123",
+		"AUTH_TOKEN":                "t0k3n",
+		"DB_PASSWORD":               "hunter2",
+		"CLIENT_SECRET":             "sssh",
+		"REDIS_PWD":                 "redis-secret",
+		"MDB_MCP_CONNECTION_STRING": "mongodb://user:password@host/db",
+		"EMPTY_KEY":                 "",
+		"MCP_TOOLS_BIND":            "127.0.0.1",
 	})
-	for _, k := range []string{"SOME_API_KEY", "AUTH_TOKEN", "DB_PASSWORD", "CLIENT_SECRET"} {
+	for _, k := range []string{"SOME_API_KEY", "AUTH_TOKEN", "DB_PASSWORD", "CLIENT_SECRET", "REDIS_PWD", "MDB_MCP_CONNECTION_STRING"} {
 		if got[k] != "••••••••" {
 			t.Errorf("%s = %q, want redacted", k, got[k])
 		}
@@ -70,5 +75,26 @@ func TestRedactEnv(t *testing.T) {
 	}
 	if got["EMPTY_KEY"] != "" {
 		t.Errorf("empty values stay empty (nothing to hide): %q", got["EMPTY_KEY"])
+	}
+}
+
+func TestUpdateEnvHandlerPreservesMaskedSecrets(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".env")
+	if err := os.WriteFile(path, []byte("MDB_MCP_API_CLIENT_SECRET=real-secret\nREDIS_HOST=old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/env", strings.NewReader(`{"values":{"MDB_MCP_API_CLIENT_SECRET":"••••••••","REDIS_HOST":"new"}}`))
+	rec := httptest.NewRecorder()
+	updateEnvHandler(path, rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("updateEnvHandler status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "MDB_MCP_API_CLIENT_SECRET=real-secret") || !strings.Contains(got, "REDIS_HOST=new") {
+		t.Fatalf("masked secret was overwritten or regular value not updated:\n%s", got)
 	}
 }

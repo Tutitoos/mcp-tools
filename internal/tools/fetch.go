@@ -18,6 +18,10 @@ import (
 // Bumping a pinned installer = update the commit in the URL *and* the
 // checksum constant next to it, after reviewing the new script.
 func fetchVerified(url, wantHex string) ([]byte, error) {
+	return fetchVerifiedLimit(url, wantHex, 4<<20)
+}
+
+func fetchVerifiedLimit(url, wantHex string, maxBytes int64) ([]byte, error) {
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -27,9 +31,12 @@ func fetchVerified(url, wantHex string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("descargar %s: HTTP %d", url, resp.StatusCode)
 	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20)) // installers are a few KB; 4 MiB is a hard sanity cap
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("leer %s: %w", url, err)
+	}
+	if int64(len(data)) > maxBytes {
+		return nil, fmt.Errorf("descargar %s: supera el límite de %d bytes", url, maxBytes)
 	}
 	sum := sha256.Sum256(data)
 	if got := hex.EncodeToString(sum[:]); got != wantHex {

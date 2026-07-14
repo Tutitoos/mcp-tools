@@ -67,3 +67,24 @@ func TestConfigureCodexPreservesUserSections(t *testing.T) {
 		t.Errorf("mcp_tools_serena.env HOME missing:\n%s", text)
 	}
 }
+
+func TestRenderCodexServerIncludesConfiguredEnvironment(t *testing.T) {
+	out := renderCodexServer(ServerSpec{
+		Name:    "mcp_tools_mongodb",
+		Wrapper: "mongodb-mcp-server",
+		Args:    []string{"--readOnly"},
+		Env: map[string]string{
+			"MDB_MCP_CONNECTION_STRING": "mongodb://user:p@host/db",
+			"Z_LAST":                    "quoted\"value",
+		},
+	})
+	for _, want := range []string{
+		`HOME = "${HOME}"`,
+		`MDB_MCP_CONNECTION_STRING = "mongodb://user:p@host/db"`,
+		`Z_LAST = "quoted\"value"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("renderCodexServer missing %q:\n%s", want, out)
+		}
+	}
+}
