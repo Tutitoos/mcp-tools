@@ -1,9 +1,0 @@
-{
-  "mcp": {
-    "mcp_tools_codebase_memory": {
-      "type": "local",
-      "command": ["codebase-memory-mcp", "--ui=false"],
-      "enabled": true
-    }
-  }
-}
