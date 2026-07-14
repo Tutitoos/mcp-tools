@@ -18,14 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { SkeletonRow } from "~/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
+import { Modal, JobLogPane } from "~/components/modal";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
 type Action = "install" | "upgrade" | "uninstall";
@@ -71,45 +64,20 @@ function RunDialog({
 }) {
   const job = useJobStream(jobId);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {action} · {toolKey}
-          </DialogTitle>
-          <DialogDescription>
-            {toolLabel} · job {jobId ?? "—"}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="max-h-80 overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs">
-          {job.lines.length === 0 && job.open && (
-            <p className="text-muted-foreground">Iniciando…</p>
-          )}
-          {job.lines.map((l, i) => (
-            <div
-              key={i}
-              className={
-                l.stream === "stderr" ? "text-warning" : "text-foreground/90"
-              }
-            >
-              {l.text}
-            </div>
-          ))}
-          {job.done && (
-            <div
-              className={job.ok ? "mt-2 text-success" : "mt-2 text-destructive"}
-            >
-              {job.ok ? "✓ completado" : `✗ ${job.error ?? "falló"}`}
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cerrar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={`${action} · ${toolKey}`}
+      description={`${toolLabel} · job ${jobId ?? "—"}`}
+    >
+      <JobLogPane
+        lines={job.lines}
+        done={job.done}
+        ok={job.ok}
+        error={job.error}
+      />
+    </Modal>
   );
 }
 
@@ -153,8 +121,7 @@ function ToolRow({ view }: { view: ToolView }) {
 
   return (
     <motion.div layout>
-      <Card className="border-border/60">
-        <CardContent className="grid gap-4 py-5 md:grid-cols-[1fr_auto] md:items-center">
+      <div className="row-vc grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-sm font-semibold">
@@ -225,8 +192,7 @@ function ToolRow({ view }: { view: ToolView }) {
               </Link>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+      </div>
       <AnimatePresence>
         {dialogOpen && (
           <RunDialog

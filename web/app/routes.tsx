@@ -4,9 +4,11 @@
 // Providers + <Outlet/> that every route renders into. The chrome
 // (header, nav, footer) lives in <Shell /> as a layout child of App.
 //
-// Routes are imported eagerly (no lazy splitting) because the SPA bundle
-// is small (~800 KB) and eager import keeps the first-paint latency
-// minimal at the cost of a single larger JS chunk.
+// Routes are imported eagerly (no per-route lazy splitting). The build
+// splits dependencies into a content-hashed `vendor` chunk (served with
+// Cache-Control: immutable + gzip), which is where the bytes live —
+// route modules themselves are small, so lazy() would only buy Suspense
+// fallback flashes on navigation, not a meaningful first-paint win.
 
 import type { RouteObject } from "react-router";
 

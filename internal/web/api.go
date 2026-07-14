@@ -83,7 +83,7 @@ func handleStatus(w http.ResponseWriter, _ *http.Request) {
 	}
 	env := redactEnv(loadEnvOrEmpty(config.EnvFile()))
 	mem0 := redactEnv(loadEnvOrEmpty(config.EnvMem0File()))
-	services, dockerRunning := listComposeServices()
+	services, dockerRunning := listComposeServicesCached()
 	resp := map[string]any{
 		"state": map[string]any{
 			"selected":   st.Selected,
@@ -295,7 +295,7 @@ func enqueueOllamaAction(w http.ResponseWriter, r *http.Request, verb string) {
 
 // handleServices returns `docker compose ps --format json`.
 func handleServices(w http.ResponseWriter, _ *http.Request) {
-	svcs, _ := listComposeServices()
+	svcs, _ := listComposeServicesCached()
 	if svcs == nil {
 		svcs = []map[string]string{}
 	}
@@ -388,6 +388,35 @@ func handleSync(kind string) http.HandlerFunc {
 		})
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "job_id": job.ID})
 	}
+}
+
+// composeCache memoises listComposeServices for a short window. The
+// dashboard shell polls /api/status every 5s and the services/logs views
+// poll /api/services on the same cadence; without the cache each poll
+// spawns a `docker compose ps` process (~300ms). 2.5s TTL keeps the UI
+// honest (state changes surface within one poll) while collapsing
+// concurrent pollers and multiple tabs into one docker invocation.
+var composeCache struct {
+	mu   sync.Mutex
+	at   time.Time
+	rows []map[string]string
+	ok   bool
+}
+
+// listComposeServicesCached is the handler-facing entry point; it serves
+// from composeCache when fresh and delegates to listComposeServices
+// otherwise. The lock is held across the docker call on purpose: a cold
+// cache with N concurrent pollers should run docker once, not N times.
+func listComposeServicesCached() ([]map[string]string, bool) {
+	composeCache.mu.Lock()
+	defer composeCache.mu.Unlock()
+	if time.Since(composeCache.at) < 2500*time.Millisecond {
+		return composeCache.rows, composeCache.ok
+	}
+	rows, ok := listComposeServices()
+	composeCache.at = time.Now()
+	composeCache.rows, composeCache.ok = rows, ok
+	return rows, ok
 }
 
 // listComposeServices invokes `docker compose ps --format json` and reduces

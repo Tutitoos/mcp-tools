@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 )
 
 // recoverer wraps panic-protected handlers in the style of chi's middleware
@@ -21,10 +22,15 @@ func recoverer(next http.Handler) http.Handler {
 	})
 }
 
-// requestLogger emits a single structured log line per request.
+// requestLogger emits a single structured log line per request. Static
+// asset fetches are skipped: with immutable caching they only appear on
+// first load, but each page boot would still spray a dozen lines into
+// the journal for zero diagnostic value.
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		slog.Info("web: request", "method", r.Method, "path", r.URL.Path, "remote", r.RemoteAddr)
+		if !strings.HasPrefix(r.URL.Path, "/assets/") {
+			slog.Info("web: request", "method", r.Method, "path", r.URL.Path, "remote", r.RemoteAddr)
+		}
 		next.ServeHTTP(w, r)
 	})
 }

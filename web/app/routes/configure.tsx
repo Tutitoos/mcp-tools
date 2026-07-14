@@ -103,7 +103,7 @@ export default function ConfigureRoute() {
               <motion.div
                 key={t.key}
                 layout
-                className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2"
+                className="row-vc flex items-center justify-between px-3 py-2"
               >
                 <div className="flex items-center gap-3">
                   <Switch

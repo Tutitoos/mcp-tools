@@ -98,4 +98,13 @@
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
   }
+  /* row-vc: the inset list-row surface used inside every card list
+     (tools, configure, models, services, plugins). One definition so
+     screens can't drift apart again — rows read darker than the card,
+     matching the JobLogPane inset treatment. */
+  .row-vc {
+    border-radius: var(--radius-control);
+    background: hsl(var(--background) / 0.4);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
 }

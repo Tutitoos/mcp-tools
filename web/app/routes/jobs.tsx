@@ -17,6 +17,7 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { SkeletonRow } from "~/components/ui/skeleton";
+import { JobLogPane } from "~/components/modal";
 
 const RELTIME = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
 function relTime(iso: string): string {
@@ -220,32 +221,14 @@ export default function JobsRoute() {
             </p>
           ) : (
             <div className="space-y-3">
-              <div className="max-h-[70vh] overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs">
-                {job.lines.length === 0 && job.open && (
-                  <p className="text-muted-foreground">Esperando salida…</p>
-                )}
-                {job.lines.map((l, i) => (
-                  <div
-                    key={i}
-                    className={
-                      l.stream === "stderr"
-                        ? "text-warning"
-                        : "text-foreground/90"
-                    }
-                  >
-                    {l.text}
-                  </div>
-                ))}
-                {job.done && (
-                  <div
-                    className={
-                      job.ok ? "mt-2 text-success" : "mt-2 text-destructive"
-                    }
-                  >
-                    {job.ok ? "✓ completado" : `✗ ${job.error ?? "falló"}`}
-                  </div>
-                )}
-              </div>
+              <JobLogPane
+                lines={job.lines}
+                waiting="Esperando salida…"
+                done={job.done}
+                ok={job.ok}
+                error={job.error}
+                className="max-h-[70vh]"
+              />
               <Button
                 variant="outline"
                 size="sm"

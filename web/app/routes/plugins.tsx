@@ -18,21 +18,13 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { SkeletonRow } from "~/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
+import { Modal, JobLogPane } from "~/components/modal";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
 type Action = "link" | "unlink" | "enable" | "disable";
@@ -82,44 +74,25 @@ function RunDialog({
   }, [job.done]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            Ejecutando <code>{VERB_LABEL[action]}</code> en{" "}
-            <code>{pluginName}</code>
-          </DialogTitle>
-          <DialogDescription>job {jobId ?? "—"}</DialogDescription>
-        </DialogHeader>
-        <div className="max-h-80 overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs">
-          {job.lines.length === 0 && job.open && (
-            <p className="text-muted-foreground">Iniciando…</p>
-          )}
-          {job.lines.map((l, i) => (
-            <div
-              key={i}
-              className={
-                l.stream === "stderr" ? "text-warning" : "text-foreground/90"
-              }
-            >
-              {l.text}
-            </div>
-          ))}
-          {job.done && (
-            <div
-              className={job.ok ? "mt-2 text-success" : "mt-2 text-destructive"}
-            >
-              {job.ok ? "✓ completado" : `✗ ${job.error ?? "falló"}`}
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cerrar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={
+        <>
+          Ejecutando <code>{VERB_LABEL[action]}</code> en{" "}
+          <code>{pluginName}</code>
+        </>
+      }
+      description={`job ${jobId ?? "—"}`}
+    >
+      <JobLogPane
+        lines={job.lines}
+        done={job.done}
+        ok={job.ok}
+        error={job.error}
+      />
+    </Modal>
   );
 }
 
@@ -174,12 +147,12 @@ function PluginRow({ view }: { view: PluginView }) {
 
   return (
     <motion.div layout>
-      <Card className="border-border/60">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="font-mono text-sm">{view.name}</CardTitle>
+      <div className="row-vc space-y-2 px-4 py-4">
+        <div className="flex flex-row items-center justify-between">
+          <span className="font-mono text-sm font-semibold">{view.name}</span>
           <Badge variant="outline">v{view.version || "0.0.0"}</Badge>
-        </CardHeader>
-        <CardContent className="space-y-2 pt-0">
+        </div>
+        <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             {view.linked ? (
               <Badge variant="success">Linked</Badge>
@@ -193,7 +166,7 @@ function PluginRow({ view }: { view: PluginView }) {
                 <Badge variant="warning">Disabled</Badge>
               ))}
           </div>
-          <CardDescription>{view.description}</CardDescription>
+          <p className="text-sm text-muted-foreground">{view.description}</p>
           {view.extensions.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               sin extensiones declaradas
@@ -220,8 +193,8 @@ function PluginRow({ view }: { view: PluginView }) {
               <AlertDescription className="text-xs">{error}</AlertDescription>
             </Alert>
           )}
-        </CardContent>
-        <CardFooter className="justify-end gap-2">
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
           {!view.linked && actionButton("link", <Link className="h-3 w-3" />)}
           {view.linked &&
             view.enabled &&
@@ -237,8 +210,8 @@ function PluginRow({ view }: { view: PluginView }) {
               logs
             </RouterLink>
           </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
       <AnimatePresence>
         {dialogOpen && (
           <RunDialog

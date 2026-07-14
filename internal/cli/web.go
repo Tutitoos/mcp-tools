@@ -106,6 +106,9 @@ func runWebOpen(mode systemd.Mode) error {
 	}
 	bind := systemd.CurrentBind(mode)
 	if bind == "" {
+		bind = config.BindFromEnv()
+	}
+	if bind == "" {
 		bind = DefaultBind
 	}
 	url := webURL(bind, port)
@@ -244,6 +247,9 @@ func runWebStatus(mode systemd.Mode) error {
 		port = DefaultPort
 	}
 	if bind == "" {
+		bind = config.BindFromEnv()
+	}
+	if bind == "" {
 		bind = DefaultBind
 	}
 	fmt.Fprintf(os.Stdout, "systemd mode: %s\n", mode)
@@ -301,7 +307,13 @@ func validatePort(port int) error {
 }
 
 // webURL assembles the panel URL with IPv6-safe hostport formatting.
+// Wildcard binds (0.0.0.0 / ::) are listen addresses, not destinations —
+// the printed/opened URL uses localhost, which the wildcard listener
+// serves too.
 func webURL(bind string, port int) string {
+	if bind == "0.0.0.0" || bind == "::" {
+		bind = "localhost"
+	}
 	return "http://" + net.JoinHostPort(bind, strconv.Itoa(port)) + "/"
 }
 

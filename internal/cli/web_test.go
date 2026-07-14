@@ -74,7 +74,8 @@ func TestValidatePort(t *testing.T) {
 }
 
 // TestWebURLBuild confirms the loopback URL is built with proper IPv6
-// brackets via net.JoinHostPort (no fmt.Sprintf %s:%d).
+// brackets via net.JoinHostPort (no fmt.Sprintf %s:%d), and that
+// wildcard listen addresses are rewritten to a navigable host.
 func TestWebURLBuild(t *testing.T) {
 	cases := []struct {
 		bind string
@@ -83,7 +84,9 @@ func TestWebURLBuild(t *testing.T) {
 	}{
 		{"127.0.0.1", 8080, "http://127.0.0.1:8080/"},
 		{"::1", 8080, "http://[::1]:8080/"},
-		{"0.0.0.0", 80, "http://0.0.0.0:80/"},
+		{"0.0.0.0", 80, "http://localhost:80/"},
+		{"::", 80, "http://localhost:80/"},
+		{"192.168.1.5", 8888, "http://192.168.1.5:8888/"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.bind, func(t *testing.T) {

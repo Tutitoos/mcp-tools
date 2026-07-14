@@ -22,13 +22,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { SkeletonRow } from "~/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
+import { Modal, JobLogPane } from "~/components/modal";
 
 function LogsDialog({
   service,
@@ -52,26 +46,19 @@ function LogsDialog({
     },
   );
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>logs · {service}</DialogTitle>
-          <DialogDescription>Stream en vivo de docker logs</DialogDescription>
-        </DialogHeader>
-        <pre className="max-h-[60vh] overflow-x-auto overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs whitespace-pre-wrap">
-          {lines.length === 0
-            ? "Esperando salida…"
-            : lines.map((l, i) => (
-                <div
-                  key={i}
-                  className={l.stream === "stderr" ? "text-warning" : "text-foreground/90"}
-                >
-                  {l.text}
-                </div>
-              ))}
-        </pre>
-      </DialogContent>
-    </Dialog>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      size="xl"
+      title={`logs · ${service}`}
+      description="Stream en vivo de docker logs"
+    >
+      <JobLogPane
+        lines={lines}
+        waiting="Esperando salida…"
+        className="max-h-[60vh] overflow-x-auto whitespace-pre-wrap"
+      />
+    </Modal>
   );
 }
 
@@ -145,7 +132,7 @@ export default function ServicesRoute() {
                 <motion.div
                   layout
                   key={svc.name}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2"
+                  className="row-vc flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <span className="truncate font-mono text-sm">

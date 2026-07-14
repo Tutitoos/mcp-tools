@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/Tutitoos/mcp-tools/internal/version"
 )
@@ -61,6 +62,17 @@ func NewRouter() http.Handler {
 	r.Use(requestLogger)
 	r.Use(recoverer)
 	r.Use(crossOriginGate)
+	// Compress compressible payloads (the SPA entry chunk is ~670KB raw,
+	// ~180KB gzipped). text/event-stream is deliberately NOT listed so
+	// SSE job streams pass through unbuffered.
+	r.Use(middleware.Compress(5,
+		"text/html",
+		"text/css",
+		"application/json",
+		"application/javascript",
+		"text/javascript",
+		"image/svg+xml",
+	))
 
 	// Public, unauthenticated health probe.
 	r.Get("/api/version", handleVersion)
@@ -176,6 +188,17 @@ func ssrHandler(assets embed.FS, ssr *ssrEngine) http.HandlerFunc {
 		}
 		// Asset path (has extension)? serve from embed directly.
 		if path.Ext(r.URL.Path) != "" {
+			// Vite content-hashes everything under /assets/, so those
+			// files are immutable: a changed file gets a new URL. The
+			// embed FS has a zero modtime (no Last-Modified/304s), so
+			// without this header every visit re-downloads the full
+			// bundle. Non-hashed files (favicon.svg, index.html served
+			// by path) get a short TTL instead.
+			if strings.HasPrefix(r.URL.Path, "/assets/") {
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			} else {
+				w.Header().Set("Cache-Control", "public, max-age=3600")
+			}
 			fileServer.ServeHTTP(w, r)
 			return
 		}
