@@ -1,14 +1,28 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/state"
 )
+
+func claudeServerSpec(s ServerSpec, home string) map[string]any {
+	spec := map[string]any{
+		"type":    "stdio",
+		"command": s.Wrapper,
+		"env":     serverEnvironment(s, home),
+	}
+	if len(s.Args) > 0 {
+		spec["args"] = s.Args
+	}
+	return spec
+}
 
 // ConfigureClaude registers each ServerSpec in Claude Code via `claude mcp add-json`.
 // SKIP silently if the `claude` CLI is not on PATH.
@@ -28,7 +42,9 @@ func ConfigureClaude(st state.State, log func(string)) error {
 	}
 
 	// Prune obsolete mcp_tools_* entries the user still has registered.
-	listOut, err := exec.Command("claude", "mcp", "list").Output()
+	listCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	listOut, err := exec.CommandContext(listCtx, "claude", "mcp", "list").Output()
 	if err != nil {
 		log(fmt.Sprintf("  SKIP Claude prune — 'claude mcp list' falló: %v", err))
 	} else {
@@ -52,12 +68,7 @@ func ConfigureClaude(st state.State, log func(string)) error {
 		removeCmd.Stderr = nil
 		_ = removeCmd.Run()
 
-		spec := map[string]any{
-			"type":    "stdio",
-			"command": s.Wrapper,
-			"args":    s.Args,
-			"env":     map[string]any{"HOME": home},
-		}
+		spec := claudeServerSpec(s, home)
 		blob, err := json.Marshal(spec)
 		if err != nil {
 			return fmt.Errorf("claude %s: marshal: %w", s.Name, err)

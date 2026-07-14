@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -49,6 +50,59 @@ func npmGlobalDir() string {
 		return ""
 	}
 	return filepath.Join(prefix, "lib", "node_modules")
+}
+
+// exposeNpmGlobalBinary keeps nvm-owned global installs reachable from
+// systemd and MCP clients, whose PATH deliberately does not include a
+// version-specific ~/.nvm directory.
+func exposeNpmGlobalBinary(name string) error {
+	globalDir := npmGlobalDir()
+	if globalDir == "" {
+		return errors.New("no se pudo resolver el prefix global de npm")
+	}
+	src := filepath.Join(filepath.Dir(filepath.Dir(globalDir)), "bin", name)
+	if _, err := os.Stat(src); err != nil {
+		return fmt.Errorf("binario npm %s no encontrado: %w", src, err)
+	}
+	home, err := hostHome()
+	if err != nil {
+		return err
+	}
+	binDir := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		return err
+	}
+	dst := filepath.Join(binDir, name)
+	if info, err := os.Lstat(dst); err == nil {
+		if info.Mode()&os.ModeSymlink == 0 {
+			return fmt.Errorf("%s ya existe y no es un symlink; no se sobrescribe", dst)
+		}
+		if err := os.Remove(dst); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return os.Symlink(src, dst)
+}
+
+func removeExposedNpmBinary(name string) error {
+	home, err := hostHome()
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(home, ".local", "bin", name)
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return nil
+	}
+	return os.Remove(path)
 }
 
 // writableDir probes dir for write access by creating and removing a temp

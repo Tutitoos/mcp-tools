@@ -244,5 +244,4 @@ const (
 	markerEnd   = "<!-- mcp-tools:end -->"
 )
 
-// skillNames mirrors the legacy internal/cli.skillsNames constant.
-var skillNames = []string{"codebase-memory", "mem0", "serena", "tokensave"}
+var skillNames = []string{"codebase-memory", "frontend-design", "mem0", "serena", "tokensave"}

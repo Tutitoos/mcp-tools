@@ -32,13 +32,22 @@ func RunEnv(dry, force bool, out io.Writer) error {
 	}
 
 	contents := map[string]string{
-		"HOST_HOME":      home,
-		"HOST_UID":       fmt.Sprintf("%d", syscall.Getuid()),
-		"HOST_GID":       fmt.Sprintf("%d", syscall.Getgid()),
-		"MCP_TOOLS_ROOT": repoDir,
-		"MCP_TOOLS_DATA": dataDir,
-		"MCP_TOOLS_BIND": config.DefaultBind,
-		"MEM0_USER_ID":   u.Username,
+		"HOST_HOME":                 home,
+		"HOST_UID":                  fmt.Sprintf("%d", syscall.Getuid()),
+		"HOST_GID":                  fmt.Sprintf("%d", syscall.Getgid()),
+		"MCP_TOOLS_ROOT":            repoDir,
+		"MCP_TOOLS_DATA":            dataDir,
+		"MCP_TOOLS_BIND":            config.DefaultBind,
+		"MEM0_USER_ID":              u.Username,
+		"MDB_MCP_CONNECTION_STRING": "",
+		"MDB_MCP_API_CLIENT_ID":     "",
+		"MDB_MCP_API_CLIENT_SECRET": "",
+		"REDIS_HOST":                "127.0.0.1",
+		"REDIS_PORT":                "6379",
+		"REDIS_DB":                  "0",
+		"REDIS_USERNAME":            "default",
+		"REDIS_PWD":                 "",
+		"REDIS_SSL":                 "false",
 	}
 	fmt.Fprintln(out, "── env")
 
@@ -46,7 +55,7 @@ func RunEnv(dry, force bool, out io.Writer) error {
 		fmt.Fprintf(out, "  OK %s ya existe, se conserva%s\n", envPath, dryPrefix(dry))
 	} else {
 		if dry {
-			fmt.Fprintf(out, "  OK escribiría %s con 7 variables (dry)\n", envPath)
+			fmt.Fprintf(out, "  OK escribiría %s con %d variables (dry)\n", envPath, len(contents))
 		} else {
 			if err := config.WriteEnv(envPath, contents); err != nil {
 				return fmt.Errorf("escribir .env: %w", err)

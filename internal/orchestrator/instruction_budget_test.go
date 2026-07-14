@@ -98,9 +98,10 @@ func TestInstructionBudget(t *testing.T) {
 			},
 		},
 		{
-			// Loaded only when a trigger fires.
+			// Loaded only when a trigger fires. The 1k allowance above the
+			// previous ceiling is the vendored Anthropic frontend-design skill.
 			name:      "on-demand (skill bodies)",
-			maxTokens: 9800,
+			maxTokens: 10800,
 			parts: func(root string) (map[string][]byte, error) {
 				skills, err := skillPaths(root)
 				if err != nil {
@@ -130,8 +131,9 @@ func TestInstructionBudget(t *testing.T) {
 		},
 		{
 			// Everything: prevents shrinking always-on by inflating skills.
+			// Includes the vendored Anthropic frontend-design skill verbatim.
 			name:      "total corpus (rules + repo files + skills)",
-			maxTokens: 15000,
+			maxTokens: 16000,
 			parts: func(root string) (map[string][]byte, error) {
 				out, err := readAll(root, "RULES.md", "AGENTS.md", "CLAUDE.md")
 				if err != nil {

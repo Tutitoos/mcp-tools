@@ -51,7 +51,7 @@ func ConfigureOMP(st state.State, log func(string)) error {
 		servers[s.Name] = map[string]any{
 			"command": s.Wrapper,
 			"args":    argsToAny(s.Args),
-			"env":     map[string]any{"HOME": home},
+			"env":     serverEnvironment(s, home),
 			"enabled": true,
 		}
 	}

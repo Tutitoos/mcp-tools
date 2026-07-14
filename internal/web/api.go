@@ -99,10 +99,10 @@ func handleStatus(w http.ResponseWriter, _ *http.Request) {
 }
 
 // secretKeyRe matches env keys whose values must never leave the host via
-// the API: API keys, tokens, secrets, passwords. Neither generated env file
-// contains such a key today, but /api/status dumps both files verbatim, so
-// this is the guard that keeps a future TOKEN/KEY addition from leaking.
-var secretKeyRe = regexp.MustCompile(`(?i)(KEY|TOKEN|SECRET|PASS)`)
+// the API: API keys, tokens, secrets, passwords.
+var secretKeyRe = regexp.MustCompile(`(?i)(KEY|TOKEN|SECRET|PASS|PWD|CONNECTION_STRING)`)
+
+const redactedEnvValue = "••••••••"
 
 func loadEnvOrEmpty(path string) map[string]string {
 	m, _ := config.LoadEnv(path)
@@ -114,7 +114,7 @@ func loadEnvOrEmpty(path string) map[string]string {
 func redactEnv(env map[string]string) map[string]string {
 	for k, v := range env {
 		if v != "" && secretKeyRe.MatchString(k) {
-			env[k] = "••••••••"
+			env[k] = redactedEnvValue
 		}
 	}
 	return env
@@ -200,6 +200,10 @@ func updateEnvHandler(path string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for k, v := range body.Values {
+		if v == redactedEnvValue {
+			delete(body.Values, k)
+			continue
+		}
 		if strings.ContainsAny(v, "\n\r") {
 			slog.Warn("web: stripped embedded newline from env value", "key", k)
 			body.Values[k] = strings.NewReplacer("\n", "", "\r", "").Replace(v)

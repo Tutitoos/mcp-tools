@@ -80,6 +80,8 @@ func WriteEnv(path string, contents map[string]string) error {
 		{"HOST_HOME", "HOST_UID", "HOST_GID"},
 		{"MCP_TOOLS_ROOT", "MCP_TOOLS_DATA", "MCP_TOOLS_BIND"},
 		{"MEM0_USER_ID"},
+		{"MDB_MCP_CONNECTION_STRING", "MDB_MCP_API_CLIENT_ID", "MDB_MCP_API_CLIENT_SECRET"},
+		{"REDIS_HOST", "REDIS_PORT", "REDIS_DB", "REDIS_USERNAME", "REDIS_PWD", "REDIS_SSL"},
 	}
 	written := map[string]bool{}
 	var b strings.Builder

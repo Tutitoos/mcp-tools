@@ -100,7 +100,7 @@ Soportado:
 
 | Tool | Linux | macOS |
 | --- | --- | --- |
-| codebase-memory, mem0, headroom, serena, tokensave (install/upgrade/status/uninstall desde `/tools`)¹ | ✓ | ✓ |
+| codebase-memory, mem0, headroom, serena, tokensave, MongoDB MCP, Redis MCP, Docker MCP Toolkit, Sentry MCP (install/upgrade/status/uninstall desde `/tools`)¹ | ✓ | ✓ |
 | claude-mem, rtk | ✓ | ✓ |
 | ollama, qdrant (Docker) | ✓ | ✓ (Docker Desktop) |
 | Clientes MCP (claude, codex, gemini) — instalador oficial de cada CLI | ✓ | ✓ |
@@ -113,7 +113,7 @@ macOS sin systemd: `mcp-tools install` detecta la ausencia de systemd y cae a `m
 
 ## Componentes gestionados
 
-El registry (`internal/tools/registry.go`) tiene 14 entradas: 10 servidores/servicios MCP y 4 clientes CLI opt-in.
+El registry (`internal/tools/registry.go`) tiene 18 entradas: 14 servidores/servicios MCP y 4 clientes CLI opt-in.
 
 Servidores y servicios:
 
@@ -126,6 +126,10 @@ Servidores y servicios:
 | claude-mem | Host | Se auto-registra (Claude Code) | `/tools` (opt-in; Node ≥ 20) |
 | serena | Host | `mcp-config` | `/tools` (opt-in, uv tool Python 3.13) |
 | tokensave | Host | Se auto-registra (Claude/OpenCode/OMP + agentes detectados) | `/tools` (opt-in; cargo install) |
+| MongoDB MCP Server | Host (npm) | `mcp-config` | `/tools` (conexión directa o Atlas API) |
+| Redis MCP Server | Host (uv) | `mcp-config` | `/tools` |
+| Docker MCP Toolkit | Host (plugin Docker CLI) | `mcp-config` | `/tools` (requiere Docker) |
+| Sentry MCP | Remote SaaS vía `mcp-remote` | `mcp-config` | `/tools` (OAuth en el primer uso) |
 | ollama | Docker (+ GPU opcional) | — (infra) | `/tools` |
 | qdrant | Docker | — (infra) | `/tools` |
 | nvidia-container-toolkit | Sudo | — (infra) | `/tools` (sólo si hay GPU) |
@@ -213,7 +217,7 @@ El panel registra los servers seleccionados en Claude Code, OpenCode y OMP autom
 
 ## Configuración
 
-- `.env` (root del repo): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MCP_TOOLS_BIND`, `MEM0_USER_ID`. 7 vars en total. Se genera/actualiza automáticamente en cada `install` o acción del panel (`internal/orchestrator.RunEnv`, corre dentro de `BootstrapEnv()`); edítalo a mano desde `/settings` si necesitas cambiar un valor puntual (p. ej. `MCP_TOOLS_BIND`).
+- `.env` (root del repo): 16 variables: host/runtime (`HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MCP_TOOLS_BIND`), identidad mem0 (`MEM0_USER_ID`), credenciales MongoDB (`MDB_MCP_CONNECTION_STRING`, `MDB_MCP_API_CLIENT_ID`, `MDB_MCP_API_CLIENT_SECRET`) y conexión Redis (`REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`, `REDIS_USERNAME`, `REDIS_PWD`, `REDIS_SSL`). Se genera/actualiza automáticamente en cada `install` o acción del panel (`internal/orchestrator.RunEnv`, corre dentro de `BootstrapEnv()`); edítalo desde `/settings`.
 - `.env.mem0` (root del repo, autogenerado con defaults; se conserva si ya existe para respetar el modelo elegido desde `/models`). Editable también desde `/settings`.
 - Datos persistentes: todo bajo `~/mcp-tools-data/{mem0,ollama}/` — por convención rígida. RTK, headroom, codebase-memory, claude-mem viven en `~/.cargo/bin` o `~/.local/bin` / `~/.local/share`.
 
