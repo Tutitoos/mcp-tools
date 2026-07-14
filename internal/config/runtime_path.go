@@ -10,7 +10,7 @@ import (
 // $PATH if they aren't already present, and exports $HOME itself if it
 // isn't already set. Idempotent. Must be called before any
 // exec.LookPath / exec.Command / os.Environ read that needs to see
-// host-tool installs (codebase-memory-mcp, codegraph, serena, tokensave,
+// host-tool installs (codebase-memory-mcp, serena, tokensave,
 // etc.) — systemd system-mode services inherit a minimal PATH
 // (/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin) AND no
 // $HOME at all, so the mcp-tools-web daemon can't find tools it already

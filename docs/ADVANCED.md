@@ -81,13 +81,6 @@ Plugin de Claude Code. Opt-in en el TUI. Requiere Node ≥ 20 (verifica con `nod
 - **Uninstall**: `mcp-tools claude-mem uninstall` corre `npx --yes claude-mem@latest uninstall`.
 - Con `nvm`: el CLI aterriza en `~/.nvm/versions/node/vXX.Y.Z/bin`. Si cambias de versión de Node el status puede aparecer como no-instalado; re-instala en la nueva versión.
 
-### codegraph (host)
-
-MCP con auto-registro en 8 IDEs (Claude Code, Cursor, Windsurf, etc.). Opt-in en el TUI.
-
-- **Instalación**: install de codegraph (panel `/tools` → codegraph → install, `POST /api/tools/codegraph/install`) corre el bundle self-contained (`curl -fsSL … | sh`) y luego `codegraph install --yes` para auto-registrarse.
-- **Uninstall**: desde el panel (`/tools` → codegraph → uninstall) — corre `codegraph uninstall --yes`.
-
 ### serena (host)
 
 MCP semántico LSP-accurate. Opt-in en el TUI.
@@ -189,6 +182,6 @@ Si tenías qdrant/ollama corriendo bajo el proyecto compose `mcp-infra`, ahora s
 
 ## Seguridad
 
-Cinco instaladores upstream usan `curl … | sh`: rustup (RTK + tokensave), uv (headroom + mem0 + serena), install.sh de codebase-memory, install.sh de codegraph, y el apt repo de nvidia-container-toolkit. Audita los scripts si no confías en la fuente antes de correr `mcp-tools install`. Los tools instalados aquí son opt-in per-registry: puedes marcar sólo lo que quieras en el TUI multi-select.
+Cuatro instaladores upstream usan `curl … | sh`: rustup (RTK + tokensave), uv (headroom + mem0 + serena), install.sh de codebase-memory, y el apt repo de nvidia-container-toolkit. Audita los scripts si no confías en la fuente antes de correr `mcp-tools install`. Los tools instalados aquí son opt-in per-registry: puedes marcar sólo lo que quieras en el TUI multi-select.
 
 `MCP_TOOLS_BIND` es `127.0.0.1` por default (panel web + puertos publicados de qdrant y ollama). Ninguno de los tres tiene auth, así que la exposición LAN es opt-in: setea `MCP_TOOLS_BIND=0.0.0.0` en `.env` (o `mcp-tools install --bind 0.0.0.0` para el panel) sólo si confías en la red. El panel además rechaza mutaciones cross-site iniciadas por un navegador (gate de `Origin`/`Sec-Fetch-Site`); las instalaciones existentes conservan el bind que ya tuvieran en su `.env` y su unit systemd.

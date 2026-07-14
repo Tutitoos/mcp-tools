@@ -82,8 +82,8 @@ func TestEnsureRuntimePathEmptyStart(t *testing.T) {
 }
 
 // TestEnsureRuntimePathMakesLookPathFindHomeBinBinary is the mechanical
-// reproducer for symptom 2 ("codegraph binario no encontrado tras
-// install.sh"): a binary installed to $HOME/.local/bin must become
+// reproducer for symptom 2 (host-tool binary "no encontrado" tras
+// install.sh): a binary installed to $HOME/.local/bin must become
 // resolvable via exec.LookPath once EnsureRuntimePath runs.
 func TestEnsureRuntimePathMakesLookPathFindHomeBinBinary(t *testing.T) {
 	home := t.TempDir()
@@ -91,7 +91,7 @@ func TestEnsureRuntimePathMakesLookPathFindHomeBinBinary(t *testing.T) {
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	stub := filepath.Join(binDir, "codegraph-fake")
+	stub := filepath.Join(binDir, "hosttool-fake")
 	if err := os.WriteFile(stub, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestEnsureRuntimePathMakesLookPathFindHomeBinBinary(t *testing.T) {
 		t.Fatalf("EnsureRuntimePath: %v", err)
 	}
 
-	got, err := exec.LookPath("codegraph-fake")
+	got, err := exec.LookPath("hosttool-fake")
 	if err != nil {
 		t.Fatalf("LookPath after EnsureRuntimePath: %v (PATH=%q)", err, os.Getenv("PATH"))
 	}
