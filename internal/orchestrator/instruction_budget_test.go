@@ -16,8 +16,8 @@ func estimateTokens(b []byte) int { return (len(b) + 3) / 4 }
 var frontmatterRE = regexp.MustCompile(`(?s)^---\n.*?\n---\n`)
 
 // budgetCategory groups instruction files under a shared token ceiling.
-// Categories are deliberately separate (see docs/AUDIT-2026-07-13.md and
-// the 2026-07-13 instruction-source refactor): counting on-demand skill
+// Categories are deliberately separate (decisión del refactor de
+// instruction-sources del 2026-07-13): counting on-demand skill
 // bodies as always-on would make the metric meaningless, and shrinking
 // RULES.md by silently inflating the skills must show up as a failure of
 // the total-corpus budget, not as a win.

@@ -7,7 +7,7 @@ import (
 )
 
 // The documented contract is `MCP_TOOLS_BIND=0.0.0.0` in the repo .env
-// (or the process env) — AUDIT-2026-07-14 found the CLI read a variable
+// (or the process env) — la auditoría del 2026-07-14 found the CLI read a variable
 // that was never documented (MCP_TOOLS_WEB_BIND) and ignored .env
 // entirely, so a user following the docs stayed on loopback.
 func TestBindFromEnvReadsRepoEnvFile(t *testing.T) {

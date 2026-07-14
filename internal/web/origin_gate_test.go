@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestCrossOriginGate covers the CSRF surface from AUDIT-2026-07-11 F1/WEB-03:
+// TestCrossOriginGate covers the CSRF surface from F1/WEB-03 (auditoría 2026-07-11):
 // a malicious page in the user's browser could fire POSTs at the panel
 // (loopback or LAN) without reading the response. The gate must reject
 // browser-marked cross-site mutations while keeping curl/CLI (no Origin)

@@ -46,7 +46,7 @@ func TestUpdateEnvPreservesDollarSigns(t *testing.T) {
 	}
 }
 
-// TestUpdateEnvRejectsInvalidKeys reproduces F2 (AUDIT-2026-07-11):
+// TestUpdateEnvRejectsInvalidKeys reproduces F2 (auditoría 2026-07-11):
 // regexp.QuoteMeta escapes regex metacharacters but does NOT neutralise an
 // embedded newline, so a key like "SAFE\nINJECTED" appended "INJECTED=x" as
 // a brand-new valid env var. UpdateEnv must reject the whole update.

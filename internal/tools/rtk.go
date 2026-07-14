@@ -28,7 +28,7 @@ func rtkTool() Tool {
 }
 
 // Pinned to a commit of makoMakoGo/rtk `feat/omp-extension-rewrite`
-// (HEAD as of 2026-07-13; closes REVIEW.md H5 / AUDIT-2026-07-11 F7).
+// (HEAD as of 2026-07-13; closes H5/F7, review y auditoría 2026-07).
 // A `--branch` pin could be force-pushed under us; `--rev` cannot.
 // Upgrade = review upstream and bump the SHA.
 const (

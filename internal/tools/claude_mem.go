@@ -10,8 +10,8 @@ import (
 )
 
 // claudeMemVersion pins the npm package: `@latest` pulled whatever was
-// published at install time and propagated it to every user (REVIEW-rd2
-// H28 / AUDIT-2026-07-11 F7). 13.11.0 = npm latest on 2026-07-13. Bump is
+// published at install time and propagated it to every user (hallazgos
+// H28 y F7, review/auditoría 2026-07). 13.11.0 = npm latest on 2026-07-13. Bump is
 // an explicit, reviewed change.
 const claudeMemVersion = "13.11.0"
 

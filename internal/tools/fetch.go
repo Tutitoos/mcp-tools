@@ -10,8 +10,8 @@ import (
 )
 
 // fetchVerified downloads url and verifies its SHA-256 against wantHex
-// before returning the bytes. It is the guard for the two `install.sh | sh`
-// third-party installers (codebase-memory, codegraph): their URLs are pinned
+// before returning the bytes. It is the guard for the `install.sh | sh`
+// third-party installer (codebase-memory): its URL is pinned
 // to a commit SHA, and this checksum additionally protects against a
 // compromised CDN or a rewritten object. On mismatch nothing is executed.
 //

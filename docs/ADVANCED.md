@@ -36,6 +36,7 @@ Correr `mcp-tools install --reconfigure` para verlo aparecer en el TUI.
 - Binario en `~/.local/bin/mem0-mcp-selfhosted` (uv tool install). Wrapper en `~/.local/bin/mem0-launcher` (script bash que sourcea `.env.mem0` y execs).
 - Requiere `qdrant` y `ollama` seleccionados (declarado en `Deps`; el TUI auto-marca ambos si marcas mem0).
 - Registrado en clientes como MCP `mcp_tools_mem0`, `command=/home/<USUARIO>/.local/bin/mem0-launcher`.
+- **Parche post-install** (`internal/tools/mem0_patch.go`): upstream v0.3.2 pasa `user_id` top-level a `search()`/`get_all()` y mem0ai ≥ 2.0 lo rechaza — el install/upgrade reescribe los dos call sites a `filters={...}` (idempotente; falla en seco si el pin cambia sin re-revisar el parche). Sin él, `search_memories` y `get_memories` fallan con `ValueError: Top-level entity parameters`.
 - Variables en `.env.mem0`:
 
 | Variable | Descripción |
@@ -80,13 +81,6 @@ Plugin de Claude Code. Opt-in en el TUI. Requiere Node ≥ 20 (verifica con `nod
 - **Instalación**: `mcp-tools claude-mem install` corre `npx --yes claude-mem@latest install`. El plugin se auto-registra en Claude Code.
 - **Uninstall**: `mcp-tools claude-mem uninstall` corre `npx --yes claude-mem@latest uninstall`.
 - Con `nvm`: el CLI aterriza en `~/.nvm/versions/node/vXX.Y.Z/bin`. Si cambias de versión de Node el status puede aparecer como no-instalado; re-instala en la nueva versión.
-
-### codegraph (host)
-
-MCP con auto-registro en 8 IDEs (Claude Code, Cursor, Windsurf, etc.). Opt-in en el TUI.
-
-- **Instalación**: install de codegraph (panel `/tools` → codegraph → install, `POST /api/tools/codegraph/install`) corre el bundle self-contained (`curl -fsSL … | sh`) y luego `codegraph install --yes` para auto-registrarse.
-- **Uninstall**: desde el panel (`/tools` → codegraph → uninstall) — corre `codegraph uninstall --yes`.
 
 ### serena (host)
 
@@ -189,6 +183,6 @@ Si tenías qdrant/ollama corriendo bajo el proyecto compose `mcp-infra`, ahora s
 
 ## Seguridad
 
-Cinco instaladores upstream usan `curl … | sh`: rustup (RTK + tokensave), uv (headroom + mem0 + serena), install.sh de codebase-memory, install.sh de codegraph, y el apt repo de nvidia-container-toolkit. Audita los scripts si no confías en la fuente antes de correr `mcp-tools install`. Los tools instalados aquí son opt-in per-registry: puedes marcar sólo lo que quieras en el TUI multi-select.
+Cuatro instaladores upstream usan `curl … | sh`: rustup (RTK + tokensave), uv (headroom + mem0 + serena), install.sh de codebase-memory, y el apt repo de nvidia-container-toolkit. Audita los scripts si no confías en la fuente antes de correr `mcp-tools install`. Los tools instalados aquí son opt-in per-registry: puedes marcar sólo lo que quieras en el TUI multi-select.
 
 `MCP_TOOLS_BIND` es `127.0.0.1` por default (panel web + puertos publicados de qdrant y ollama). Ninguno de los tres tiene auth, así que la exposición LAN es opt-in: setea `MCP_TOOLS_BIND=0.0.0.0` en `.env` (o `mcp-tools install --bind 0.0.0.0` para el panel) sólo si confías en la red. El panel además rechaza mutaciones cross-site iniciadas por un navegador (gate de `Origin`/`Sec-Fetch-Site`); las instalaciones existentes conservan el bind que ya tuvieran en su `.env` y su unit systemd.

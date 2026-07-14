@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test for mem0-launcher's KEY=VALUE parser — verifies that injection payloads
 # (semicolon chains, trailing commands) are NOT executed by the wrapper.
-# See REVIEW-rd2 (H22).
+# See H22 (review ronda 2, 2026-07-08).
 set -euo pipefail
 
 TMPDIR=$(mktemp -d)

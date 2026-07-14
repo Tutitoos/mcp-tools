@@ -74,7 +74,6 @@ func Registry() []Tool {
 		headroomTool(),
 		rtkTool(),
 		claudeMemTool(),
-		codegraphTool(),
 		serenaTool(),
 		tokensaveTool(),
 		claudeTool(),

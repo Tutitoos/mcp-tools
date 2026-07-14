@@ -10,7 +10,7 @@ import (
 // map (mcpServers) appears in the Servers() output when selected, with a
 // non-empty Wrapper. Adding a new MCP server requires updating both the map
 // and this fixture so the registry can't fall out of sync silently.
-// See REVIEW-rd2 (H29).
+// See H29 (review ronda 2, 2026-07-08).
 func TestServersCoversMCPTools(t *testing.T) {
 	wantKeys := []string{"codebase-memory", "mem0", "headroom", "serena"}
 	st := state.State{Selected: wantKeys}

@@ -43,7 +43,7 @@ el host debe tener disponibles antes de correr el instalador:
 | Componente | Por qué | Quién lo requiere |
 | --- | --- | --- |
 | **Docker** + `docker compose` v2 | Orquestar `mcp_tools_ollama`, `mcp_tools_mem0_qdrant`. Requerido sólo si vas a instalar `ollama` o `qdrant` (los únicos componentes `DeployDocker`); las demás tools se instalan sin Docker. | `ollama`, `qdrant` |
-| **curl** + **git** + **tar** + **sha256sum** | Descargar tarballs (install.sh), `codegraph` y `codebase-memory-mcp` install scripts, rustup, etc. | install.sh, `codegraph`, `codebase-memory` |
+| **curl** + **git** + **tar** + **sha256sum** | Descargar tarballs (install.sh), `codebase-memory-mcp` install script, rustup, etc. | install.sh, `codebase-memory` |
 | **Toolchain C** + `pkg-config` + `libssl-dev` + `libsqlite3-dev` | `cargo install` compila `ring` (TLS, depende de openssl via pkg-config) y `rusqlite` (SQLite con FTS5). Sin `cc` el build falla con `error: linker 'cc' not found`. | `rtk`, `tokensave` |
 | **Node ≥ 20** | `claude-mem` corre vía `npx --yes claude-mem@latest`; el panel también usa `node` para renderizar SSR (`internal/web/ssr.go`) si está disponible (opcional, cae a SPA-only sin él). | `claude-mem`, SSR del panel |
 | **sudo** + acceso al package manager | Instala `nvidia-container-toolkit` (apt/dnf, llave GPG, systemctl). | `nvidia-toolkit` (opt-in) |
@@ -101,7 +101,7 @@ Soportado:
 | Tool | Linux | macOS |
 | --- | --- | --- |
 | codebase-memory, mem0, headroom, serena, tokensave (install/upgrade/status/uninstall desde `/tools`)¹ | ✓ | ✓ |
-| claude-mem, codegraph, rtk | ✓ | ✓ |
+| claude-mem, rtk | ✓ | ✓ |
 | ollama, qdrant (Docker) | ✓ | ✓ (Docker Desktop) |
 | Clientes MCP (claude, codex, gemini) — instalador oficial de cada CLI | ✓ | ✓ |
 | `mcp-tools` (systemd `--user`/`--system`) | ✓ (requiere systemd) | ✗ — usa `mcp-tools serve` en foreground como fallback |
@@ -113,7 +113,7 @@ macOS sin systemd: `mcp-tools install` detecta la ausencia de systemd y cae a `m
 
 ## Componentes gestionados
 
-El registry (`internal/tools/registry.go`) tiene 15 entradas: 11 servidores/servicios MCP y 4 clientes CLI opt-in.
+El registry (`internal/tools/registry.go`) tiene 14 entradas: 10 servidores/servicios MCP y 4 clientes CLI opt-in.
 
 Servidores y servicios:
 
@@ -124,7 +124,6 @@ Servidores y servicios:
 | headroom | Host | `mcp-config` | `/tools` |
 | rtk | Host (hook shell) | — (hook shell) | `/tools` |
 | claude-mem | Host | Se auto-registra (Claude Code) | `/tools` (opt-in; Node ≥ 20) |
-| codegraph | Host | Se auto-registra (8 IDEs) | `/tools` (opt-in) |
 | serena | Host | `mcp-config` | `/tools` (opt-in, uv tool Python 3.13) |
 | tokensave | Host | Se auto-registra (Claude/OpenCode/OMP + agentes detectados) | `/tools` (opt-in; cargo install) |
 | ollama | Docker (+ GPU opcional) | — (infra) | `/tools` |
@@ -210,13 +209,13 @@ El panel registra los servers seleccionados en Claude Code, OpenCode y OMP autom
   }
   ```
 
-`rtk`, `claude-mem`, `codegraph` y `tokensave` **no** son MCP registrables desde `mcp-config`: rtk es un hook shell, y `claude-mem`/`codegraph`/`tokensave` se auto-registran ellos mismos en los IDEs/clientes correspondientes.
+`rtk`, `claude-mem` y `tokensave` **no** son MCP registrables desde `mcp-config`: rtk es un hook shell, y `claude-mem`/`tokensave` se auto-registran ellos mismos en los IDEs/clientes correspondientes.
 
 ## Configuración
 
 - `.env` (root del repo): `HOST_HOME`, `HOST_UID`, `HOST_GID`, `MCP_TOOLS_ROOT`, `MCP_TOOLS_DATA`, `MCP_TOOLS_BIND`, `MEM0_USER_ID`. 7 vars en total. Se genera/actualiza automáticamente en cada `install` o acción del panel (`internal/orchestrator.RunEnv`, corre dentro de `BootstrapEnv()`); edítalo a mano desde `/settings` si necesitas cambiar un valor puntual (p. ej. `MCP_TOOLS_BIND`).
 - `.env.mem0` (root del repo, autogenerado con defaults; se conserva si ya existe para respetar el modelo elegido desde `/models`). Editable también desde `/settings`.
-- Datos persistentes: todo bajo `~/mcp-tools-data/{mem0,ollama}/` — por convención rígida. RTK, headroom, codebase-memory, claude-mem, codegraph viven en `~/.cargo/bin` o `~/.local/bin` / `~/.local/share`.
+- Datos persistentes: todo bajo `~/mcp-tools-data/{mem0,ollama}/` — por convención rígida. RTK, headroom, codebase-memory, claude-mem viven en `~/.cargo/bin` o `~/.local/bin` / `~/.local/share`.
 
 ### Estado persistente
 

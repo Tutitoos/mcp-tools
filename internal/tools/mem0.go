@@ -26,7 +26,7 @@ func mem0Tool() Tool {
 }
 
 // Pinned to elvismdev/mem0-mcp-selfhosted main HEAD as of 2026-07-13
-// (closes REVIEW.md H6 / AUDIT-2026-07-11 F7). `uv tool install` resolves
+// (closes H6/F7, review y auditoría 2026-07). `uv tool install` resolves
 // the `@<sha>` rev, so installs are reproducible; upgrading = reviewing
 // upstream and bumping this SHA.
 const mem0GitURL = "git+https://github.com/elvismdev/mem0-mcp-selfhosted.git@a4f538afc60ca13a9f5975e6a11fd36e578393ac"
@@ -50,6 +50,9 @@ func installMem0(dry bool, log func(string)) error {
 	if err := runCombined(cmd, "uv tool install mem0-mcp-selfhosted"); err != nil {
 		return err
 	}
+	if err := patchMem0EntityFilters(home, log); err != nil {
+		return err
+	}
 	return installMem0Launcher(home)
 }
 
@@ -71,6 +74,9 @@ func upgradeMem0(dry bool, log func(string)) error {
 	cmd.Env = withLocalBinPath(os.Environ(), home)
 	cmd.Env = append(cmd.Env, "HOME="+home)
 	if err := runCombined(cmd, "uv tool install --force mem0-mcp-selfhosted"); err != nil {
+		return err
+	}
+	if err := patchMem0EntityFilters(home, log); err != nil {
 		return err
 	}
 	return installMem0Launcher(home)

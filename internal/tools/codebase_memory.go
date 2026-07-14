@@ -26,7 +26,7 @@ func codebaseMemoryTool() Tool {
 // Pinned to a reviewed commit of DeusData/codebase-memory-mcp `main`
 // (2026-07-13) + SHA-256 of the script at that commit. fetchVerified
 // refuses to execute anything else. Bump = review the new script, then
-// update BOTH constants. Closes AUDIT-2026-07-11 F7 / REVIEW-rd2 H26.
+// update BOTH constants. Closes F7/H26 (auditoría y review, 2026-07).
 const (
 	codebaseMemoryInstallURL    = "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/2469ecc3a7a2f80debe296e1f17a1efcfdb9450c/install.sh"
 	codebaseMemoryInstallSHA256 = "90ef82a3da3336ddc2c3851ad56822067b161856f24cd88cbd405fe423af6a66"
