@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Tutitoos/mcp-tools/internal/config"
 	"github.com/Tutitoos/mcp-tools/internal/web"
 )
 
@@ -26,13 +27,13 @@ var (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Arranca la API + el panel web embebido.",
-	Long:  "Bind por defecto: 127.0.0.1:8888 (loopback; usa --bind 0.0.0.0 para exponer a la LAN). Flags --port/--bind/--unix-socket. Maneja SIGINT/SIGTERM con 10s de gracia.",
+	Long:  "Bind por defecto: 127.0.0.1:8888 (loopback). Para exponer a la LAN usa --bind 0.0.0.0 o MCP_TOOLS_BIND=0.0.0.0 (env o .env del repo). Flags --port/--bind/--unix-socket. Maneja SIGINT/SIGTERM con 10s de gracia.",
 	RunE:  runServe,
 }
 
 func init() {
 	serveCmd.Flags().IntVar(&servePort, "port", DefaultPort, "puerto TCP")
-	serveCmd.Flags().StringVar(&serveBind, "bind", DefaultBind, "dirección TCP")
+	serveCmd.Flags().StringVar(&serveBind, "bind", "", "dirección TCP (default: MCP_TOOLS_BIND o 127.0.0.1)")
 	serveCmd.Flags().StringVar(&serveUnixSock, "unix-socket", "", "path al unix socket (alternativa a --port/--bind)")
 	rootCmd.AddCommand(serveCmd)
 }
@@ -94,7 +95,14 @@ func bindListener() (string, net.Listener, error) {
 
 		return "unix://" + serveUnixSock, ln, nil
 	}
-	addr := net.JoinHostPort(serveBind, strconv.Itoa(servePort))
+	bind := serveBind
+	if bind == "" {
+		bind = config.BindFromEnv()
+	}
+	if bind == "" {
+		bind = DefaultBind
+	}
+	addr := net.JoinHostPort(bind, strconv.Itoa(servePort))
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return "", nil, fmt.Errorf("listen tcp %s: %w", addr, err)

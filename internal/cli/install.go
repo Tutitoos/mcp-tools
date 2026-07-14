@@ -152,11 +152,14 @@ func resolvePort(flagVal int) (int, error) {
 	}
 }
 
+// resolveBind resolves the panel bind address: explicit --bind flag,
+// then MCP_TOOLS_BIND (process env, then repo .env — the documented
+// contract), then loopback.
 func resolveBind(flagVal string) (string, error) {
 	if flagVal != "" {
 		return flagVal, nil
 	}
-	if v := os.Getenv("MCP_TOOLS_WEB_BIND"); v != "" {
+	if v := config.BindFromEnv(); v != "" {
 		return v, nil
 	}
 	return DefaultBind, nil
