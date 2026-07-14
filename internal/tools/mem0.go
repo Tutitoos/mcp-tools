@@ -26,7 +26,7 @@ func mem0Tool() Tool {
 }
 
 // Pinned to elvismdev/mem0-mcp-selfhosted main HEAD as of 2026-07-13
-// (closes REVIEW.md H6 / AUDIT-2026-07-11 F7). `uv tool install` resolves
+// (closes H6/F7, review y auditoría 2026-07). `uv tool install` resolves
 // the `@<sha>` rev, so installs are reproducible; upgrading = reviewing
 // upstream and bumping this SHA.
 const mem0GitURL = "git+https://github.com/elvismdev/mem0-mcp-selfhosted.git@a4f538afc60ca13a9f5975e6a11fd36e578393ac"

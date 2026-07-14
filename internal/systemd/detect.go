@@ -75,7 +75,7 @@ func DetectMode(override Mode) (Mode, error) {
 	if err := exec.Command("systemctl", "is-system-running").Run(); err == nil {
 		// Only system-level systemd is reachable. Writing
 		// /etc/systemd/system requires root, and Install deliberately
-		// does not elevate (AUDIT-WEB-INSTALL INS-03): for a non-root
+		// does not elevate (hallazgo INS-03, auditoría web-install 2026-07-11): for a non-root
 		// caller this mode is guaranteed to fail late with a permission
 		// error, so fail early with the actionable alternative instead.
 		if os.Geteuid() != 0 {

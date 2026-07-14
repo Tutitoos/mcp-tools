@@ -27,7 +27,7 @@ type UnitConfig struct {
 // unitTemplate is the deterministic mcp-tools-web.service template.
 // ExecStart's binary path is double-quoted: systemd word-splits ExecStart,
 // so an unquoted path with spaces ("/Users/Alice Smith/...") truncates to
-// its first word (AUDIT-WEB-INSTALL INS-07). EnvironmentFile is NOT
+// its first word (hallazgo INS-07, auditoría web-install 2026-07-11). EnvironmentFile is NOT
 // word-split by systemd, so it stays raw. RenderUnit validates both paths
 // against quote/control characters, which would otherwise corrupt the
 // unit syntax.

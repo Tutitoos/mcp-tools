@@ -11,7 +11,7 @@ import (
 // returned by OllamaComposeFiles is relative to config.RepoRoot(). Mixes of
 // absolute + relative paths used to slip through because every caller pinned
 // cmd.Dir = RepoRoot(); a future caller that forgets cmd.Dir would otherwise
-// silently resolve the relative entry against the wrong cwd. See REVIEW-rd2 (H25).
+// silently resolve the relative entry against the wrong cwd. See H25 (review ronda 2).
 func TestOllamaComposeFilesRelative(t *testing.T) {
 	cases := []struct {
 		name     string

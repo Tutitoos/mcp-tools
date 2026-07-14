@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestUpdateConcurrentMutationsNoLostUpdates reproduces F5 (AUDIT-2026-07-11):
+// TestUpdateConcurrentMutationsNoLostUpdates reproduces F5 (auditoría 2026-07-11):
 // the bare Load → mutate → Save pattern lost updates under concurrency
 // because saveMu only made the final write atomic. state.Update must make
 // the whole read-modify-write cycle atomic: N concurrent single-key adds

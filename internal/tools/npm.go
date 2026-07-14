@@ -10,7 +10,7 @@ import (
 
 // runNpmGlobal runs `npm <verb> -g <pkg>` with stdio wired to the caller.
 //
-// It makes the DeploySudo contract honest (AUDIT-WEB-INSTALL INS-04): the
+// It makes the DeploySudo contract honest (hallazgo INS-04, auditoría web-install 2026-07-11): the
 // old closures declared "requiere sudo" but exec'd plain `npm`, so on a
 // root-owned prefix (/usr/local) they died mid-install with EACCES — and
 // from the web panel there is no TTY to answer a sudo prompt anyway. This
