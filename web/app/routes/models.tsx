@@ -24,13 +24,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
+import { Modal, JobLogPane } from "~/components/modal";
 
 function PullDialog({
   tag,
@@ -45,36 +39,21 @@ function PullDialog({
 }) {
   const job = useJobStream(jobId);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>pull {tag ?? ""}</DialogTitle>
-          <DialogDescription>job {jobId ?? "—"}</DialogDescription>
-        </DialogHeader>
-        <div className="max-h-80 overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs">
-          {job.lines.length === 0 && (
-            <span className="text-muted-foreground">Iniciando…</span>
-          )}
-          {job.lines.map((l, i) => (
-            <div
-              key={i}
-              className={
-                l.stream === "stderr" ? "text-warning" : "text-foreground/90"
-              }
-            >
-              {l.text}
-            </div>
-          ))}
-          {job.done && (
-            <div
-              className={job.ok ? "mt-2 text-success" : "mt-2 text-destructive"}
-            >
-              {job.ok ? "✓ listo" : `✗ ${job.error ?? "falló"}`}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={`pull ${tag ?? ""}`}
+      description={`job ${jobId ?? "—"}`}
+    >
+      <JobLogPane
+        lines={job.lines}
+        done={job.done}
+        ok={job.ok}
+        error={job.error}
+        okText="listo"
+      />
+    </Modal>
   );
 }
 
@@ -315,7 +294,7 @@ export default function ModelsRoute() {
               <motion.div
                 layout
                 key={m.tag}
-                className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2"
+                className="row-vc flex items-center justify-between px-3 py-2"
               >
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-sm">{m.tag}</span>

@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Switch } from "~/components/ui/switch";
 import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
+import { JobLogPane } from "~/components/modal";
 
 export default function LogsRoute() {
   const { data: services } = useQuery<ServiceView[]>({
@@ -19,7 +20,7 @@ export default function LogsRoute() {
   const [follow, setFollow] = useState(true);
   const [tail, setTail] = useState(200);
   const [lines, setLines] = useState<JobLine[]>([]);
-  const preRef = useRef<HTMLPreElement>(null);
+  const preRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setLines([]);
   }, [service]);
@@ -106,23 +107,14 @@ export default function LogsRoute() {
               </Button>
             </div>
           </div>
-          <pre
+          <JobLogPane
             ref={preRef}
-            className="max-h-[60vh] overflow-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs whitespace-pre-wrap"
-          >
-            {lines.length === 0
-              ? service
-                ? "Esperando salida…"
-                : "Selecciona un servicio para empezar."
-              : lines.map((l, i) => (
-                  <div
-                    key={i}
-                    className={l.stream === "stderr" ? "text-warning" : "text-foreground/90"}
-                  >
-                    {l.text}
-                  </div>
-                ))}
-          </pre>
+            lines={lines}
+            waiting={
+              service ? "Esperando salida…" : "Selecciona un servicio para empezar."
+            }
+            className="max-h-[60vh] overflow-auto whitespace-pre-wrap"
+          />
         </CardContent>
       </Card>
     </div>

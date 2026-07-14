@@ -54348,7 +54348,7 @@ const DialogOverlay = reactExports.forwardRef(({ className, ...props }, ref) => 
   {
     ref,
     className: cn(
-      "fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     ),
     ...props
@@ -54362,7 +54362,7 @@ const DialogContent = reactExports.forwardRef(({ className, children, ...props }
     {
       ref,
       className: cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-background p-6 shadow-lg duration-200 sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-card p-6 shadow-lg duration-200 sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       ),
       ...props,
@@ -54423,6 +54423,63 @@ const DialogDescription = reactExports.forwardRef(({ className, ...props }, ref)
   }
 ));
 DialogDescription.displayName = DialogDescription$1.displayName;
+const SIZES = {
+  sm: "sm:max-w-sm",
+  md: "sm:max-w-lg",
+  lg: "sm:max-w-2xl",
+  xl: "sm:max-w-3xl"
+};
+function Modal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  size: size2 = "md",
+  footer,
+  children
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: SIZES[size2], children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(DialogTitle, { children: title }),
+      description !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { children: description })
+    ] }),
+    children,
+    /* @__PURE__ */ jsxRuntimeExports.jsx(DialogFooter, { children: footer ?? /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", onClick: () => onOpenChange(false), children: "Cerrar" }) })
+  ] }) });
+}
+function JobLogPane({
+  lines,
+  waiting = "Iniciando…",
+  done = false,
+  ok = false,
+  error,
+  okText = "completado",
+  className,
+  ref
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      ref,
+      className: cn(
+        "max-h-80 overflow-y-auto rounded-md border border-border bg-background p-3 font-mono text-xs",
+        className
+      ),
+      children: [
+        lines.length === 0 && !done && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground", children: waiting }),
+        lines.map((l, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: l.stream === "stderr" ? "text-warning" : "text-foreground/90",
+            children: l.text
+          },
+          i
+        )),
+        done && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: ok ? "mt-2 text-success" : "mt-2 text-destructive", children: ok ? `✓ ${okText}` : `✗ ${error ?? "falló"}` })
+      ]
+    }
+  );
+}
 const alertVariants = cva(
   "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
   {
@@ -54488,39 +54545,25 @@ function RunDialog$1({
   onOpenChange
 }) {
   const job = useJobStream(jobId);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-2xl", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { children: [
-        action,
-        " · ",
-        toolKey
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogDescription, { children: [
-        toolLabel,
-        " · job ",
-        jobId ?? "—"
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-h-80 overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs", children: [
-      job.lines.length === 0 && job.open && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground", children: "Iniciando…" }),
-      job.lines.map((l, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    Modal,
+    {
+      open,
+      onOpenChange,
+      size: "lg",
+      title: `${action} · ${toolKey}`,
+      description: `${toolLabel} · job ${jobId ?? "—"}`,
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        JobLogPane,
         {
-          className: l.stream === "stderr" ? "text-warning" : "text-foreground/90",
-          children: l.text
-        },
-        i
-      )),
-      job.done && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: job.ok ? "mt-2 text-success" : "mt-2 text-destructive",
-          children: job.ok ? "✓ completado" : `✗ ${job.error ?? "falló"}`
+          lines: job.lines,
+          done: job.done,
+          ok: job.ok,
+          error: job.error
         }
       )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(DialogFooter, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", onClick: () => onOpenChange(false), children: "Cerrar" }) })
-  ] }) });
+    }
+  );
 }
 function ToolRow({ view }) {
   const qc = useQueryClient();
@@ -54557,7 +54600,7 @@ function ToolRow({ view }) {
     mutate.mutate({ action, body });
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(motion.div, { layout: true, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(Card, { className: "border-border/60", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { className: "grid gap-4 py-5 md:grid-cols-[1fr_auto] md:items-center", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "row-vc grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 space-y-2", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-sm font-semibold", children: view.key }),
@@ -54618,7 +54661,7 @@ function ToolRow({ view }) {
           "logs"
         ] }) })
       ] })
-    ] }) }),
+    ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(AnimatePresence, { children: dialogOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
       RunDialog$1,
       {
@@ -54996,7 +55039,7 @@ function ConfigureRoute() {
         motion.div,
         {
           layout: true,
-          className: "flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2",
+          className: "row-vc flex items-center justify-between px-3 py-2",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -55077,36 +55120,26 @@ function PullDialog({
   onOpenChange
 }) {
   const job = useJobStream(jobId);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-2xl", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { children: [
-        "pull ",
-        tag ?? ""
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogDescription, { children: [
-        "job ",
-        jobId ?? "—"
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-h-80 overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs", children: [
-      job.lines.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-muted-foreground", children: "Iniciando…" }),
-      job.lines.map((l, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    Modal,
+    {
+      open,
+      onOpenChange,
+      size: "lg",
+      title: `pull ${tag ?? ""}`,
+      description: `job ${jobId ?? "—"}`,
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        JobLogPane,
         {
-          className: l.stream === "stderr" ? "text-warning" : "text-foreground/90",
-          children: l.text
-        },
-        i
-      )),
-      job.done && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: job.ok ? "mt-2 text-success" : "mt-2 text-destructive",
-          children: job.ok ? "✓ listo" : `✗ ${job.error ?? "falló"}`
+          lines: job.lines,
+          done: job.done,
+          ok: job.ok,
+          error: job.error,
+          okText: "listo"
         }
       )
-    ] })
-  ] }) });
+    }
+  );
 }
 function ModelsRoute() {
   const qc = useQueryClient();
@@ -55321,7 +55354,7 @@ function ModelsRoute() {
         motion.div,
         {
           layout: true,
-          className: "flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2",
+          className: "row-vc flex items-center justify-between px-3 py-2",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-sm", children: m.tag }),
@@ -55374,23 +55407,24 @@ function LogsDialog({
       });
     }
   );
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-3xl", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { children: [
-        "logs · ",
-        service
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(DialogDescription, { children: "Stream en vivo de docker logs" })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "max-h-[60vh] overflow-x-auto overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs whitespace-pre-wrap", children: lines.length === 0 ? "Esperando salida…" : lines.map((l, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: l.stream === "stderr" ? "text-warning" : "text-foreground/90",
-        children: l.text
-      },
-      i
-    )) })
-  ] }) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    Modal,
+    {
+      open,
+      onOpenChange,
+      size: "xl",
+      title: `logs · ${service}`,
+      description: "Stream en vivo de docker logs",
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        JobLogPane,
+        {
+          lines,
+          waiting: "Esperando salida…",
+          className: "max-h-[60vh] overflow-x-auto whitespace-pre-wrap"
+        }
+      )
+    }
+  );
 }
 function ServicesRoute() {
   const qc = useQueryClient();
@@ -55442,7 +55476,7 @@ function ServicesRoute() {
           motion.div,
           {
             layout: true,
-            className: "flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2",
+            className: "row-vc flex flex-wrap items-center justify-between gap-2 px-3 py-2",
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-1 items-center gap-3", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate font-mono text-sm", children: svc.name }),
@@ -55565,40 +55599,31 @@ function RunDialog({
       });
     }
   }, [job.done]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(Dialog, { open, onOpenChange, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogContent, { className: "max-w-2xl", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogHeader, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogTitle, { children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    Modal,
+    {
+      open,
+      onOpenChange,
+      size: "lg",
+      title: /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
         "Ejecutando ",
         /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: VERB_LABEL[action] }),
         " en",
         " ",
         /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: pluginName })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(DialogDescription, { children: [
-        "job ",
-        jobId ?? "—"
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-h-80 overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs", children: [
-      job.lines.length === 0 && job.open && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground", children: "Iniciando…" }),
-      job.lines.map((l, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
+      description: `job ${jobId ?? "—"}`,
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        JobLogPane,
         {
-          className: l.stream === "stderr" ? "text-warning" : "text-foreground/90",
-          children: l.text
-        },
-        i
-      )),
-      job.done && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: job.ok ? "mt-2 text-success" : "mt-2 text-destructive",
-          children: job.ok ? "✓ completado" : `✗ ${job.error ?? "falló"}`
+          lines: job.lines,
+          done: job.done,
+          ok: job.ok,
+          error: job.error
         }
       )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(DialogFooter, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { variant: "outline", onClick: () => onOpenChange(false), children: "Cerrar" }) })
-  ] }) });
+    }
+  );
 }
 function PluginRow({ view }) {
   const [jobId, setJobId] = reactExports.useState(null);
@@ -55643,20 +55668,20 @@ function PluginRow({ view }) {
     );
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(motion.div, { layout: true, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(Card, { className: "border-border/60", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(CardHeader, { className: "flex flex-row items-center justify-between space-y-0 pb-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(CardTitle, { className: "font-mono text-sm", children: view.name }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "row-vc space-y-2 px-4 py-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-row items-center justify-between", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-mono text-sm font-semibold", children: view.name }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(Badge, { variant: "outline", children: [
           "v",
           view.version || "0.0.0"
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(CardContent, { className: "space-y-2 pt-0", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
           view.linked ? /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { variant: "success", children: "Linked" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { variant: "secondary", children: "Available" }),
           view.linked && (view.enabled ? /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { variant: "success", children: "Enabled" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Badge, { variant: "warning", children: "Disabled" }))
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(CardDescription, { children: view.description }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: view.description }),
         view.extensions.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-muted-foreground", children: "sin extensiones declaradas" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "space-y-0.5", children: view.extensions.map((ext) => /* @__PURE__ */ jsxRuntimeExports.jsx(
           "li",
           {
@@ -55672,7 +55697,7 @@ function PluginRow({ view }) {
           /* @__PURE__ */ jsxRuntimeExports.jsx(AlertDescription, { className: "text-xs", children: error })
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs(CardFooter, { className: "justify-end gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-end gap-2 pt-1", children: [
         !view.linked && actionButton("link", /* @__PURE__ */ jsxRuntimeExports.jsx(Link, { className: "h-3 w-3" })),
         view.linked && view.enabled && actionButton("disable", /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "h-3 w-3" })),
         view.linked && !view.enabled && actionButton("enable", /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "h-3 w-3" })),
@@ -55885,24 +55910,17 @@ function JobsRoute() {
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(CardContent, { children: !selectedId ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted-foreground", children: "Selecciona un job para ver su log." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-h-[70vh] overflow-y-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs", children: [
-          job.lines.length === 0 && job.open && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-muted-foreground", children: "Esperando salida…" }),
-          job.lines.map((l, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: l.stream === "stderr" ? "text-warning" : "text-foreground/90",
-              children: l.text
-            },
-            i
-          )),
-          job.done && /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: job.ok ? "mt-2 text-success" : "mt-2 text-destructive",
-              children: job.ok ? "✓ completado" : `✗ ${job.error ?? "falló"}`
-            }
-          )
-        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          JobLogPane,
+          {
+            lines: job.lines,
+            waiting: "Esperando salida…",
+            done: job.done,
+            ok: job.ok,
+            error: job.error,
+            className: "max-h-[70vh]"
+          }
+        ),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           Button,
           {
@@ -56015,18 +56033,12 @@ function LogsRoute() {
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "pre",
+        JobLogPane,
         {
           ref: preRef,
-          className: "max-h-[60vh] overflow-auto rounded-md border border-border bg-background/60 p-3 font-mono text-xs whitespace-pre-wrap",
-          children: lines.length === 0 ? service ? "Esperando salida…" : "Selecciona un servicio para empezar." : lines.map((l, i) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: l.stream === "stderr" ? "text-warning" : "text-foreground/90",
-              children: l.text
-            },
-            i
-          ))
+          lines,
+          waiting: service ? "Esperando salida…" : "Selecciona un servicio para empezar.",
+          className: "max-h-[60vh] overflow-auto whitespace-pre-wrap"
         }
       )
     ] })
