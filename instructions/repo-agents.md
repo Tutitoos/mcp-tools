@@ -1,4 +1,3 @@
-<!-- GENERATED FILE - do not edit. Source: instructions/. Regenerate: mcp-tools instructions sync -->
 # mcp-tools agent instructions
 
 This repository contains an installer + registry for MCP servers and operational skills.

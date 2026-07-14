@@ -1,21 +1,15 @@
 ---
 name: tokensave
 description: >
-  Ultra-fast tree-sitter code-graph MCP via the `tokensave` server. Use as
-  the DEFAULT first tool for natural-language code exploration in a project
-  where `tokensave init` has been run: `tokensave_context` returns the
-  relevant symbols' verbatim source PLUS the call paths between them, in one
-  call — replaces the grep+read loop. Triggers EN: "how does X work",
+  Tree-sitter code-graph MCP (`tokensave` server) for natural-language code
+  exploration in a `tokensave init`'d project: `tokensave_context` returns
+  the relevant symbols' verbatim source plus the call paths between them in
+  one call — replaces the grep+read loop. Triggers EN: "how does X work",
   "explore the code", "find the code that", "what does this project do",
-  "explain this flow", "one-shot context", "code intelligence". Triggers ES:
-  "cómo funciona", "explora el código", "encuentra el código que", "qué hace
-  este proyecto", "explica este flujo", "contexto one-shot". Prefer tokensave
-  over grep/find/Read for repo-scoped exploration in `tokensave init`'d
-  projects. Prefer `serena` when the target is a NAMED symbol you want the
-  compiler-accurate answer for. Prefer `codebase-memory` for cross-repo /
-  architecture / repos NOT initialized in tokensave. NEVER call tokensave on
-  a project without a `.tokensave/` index or global-DB registration — the
-  server will refuse to start.
+  "explain this flow", "one-shot context". Triggers ES: "cómo funciona",
+  "explora el código", "encuentra el código que", "qué hace este proyecto",
+  "explica este flujo". NEVER call tokensave on a project without a
+  `.tokensave/` index or global-DB registration — the server refuses to start.
 ---
 
 # tokensave
@@ -45,22 +39,14 @@ Fast workflows:
 
 Do not enter plan mode for a single `tokensave_context` call.
 
-## When to use vs when NOT to use
+## Routing
 
-Use `tokensave` when:
+Tool selection between serena/tokensave/codebase-memory/mem0/native is defined ONCE in the shared core (`RULES.md`, generated from `instructions/core.md`). Use this skill once the task routes here: a natural-language question about an indexed project's code.
 
-- The user asks a natural-language question about the current project's code and `tokensave init` has been run there.
-- You need one-shot context for a bug, flow, or feature area.
-- You are about to grep+read a project — tokensave replaces that loop.
-- The user says "explora", "encuentra el código", "cómo funciona X", "explain X flow".
+Tokensave-specific limits (not routing):
 
-Do NOT use `tokensave` when:
-
-- The project has no `.tokensave/` directory and is not registered in the tokensave global DB. Server will refuse to start with `no TokenSave index found`.
-- The question spans multiple repositories → prefer `mcp_tools_codebase_memory`.
-- The target is a NAMED symbol you need compiler-accurate references or a rename for → prefer `mcp_tools_serena`.
-- The task is opening a specific file the user already named → native `Read`.
-- The user asks about architecture/community structure across the repo → prefer `mcp_tools_codebase_memory`'s `get_architecture`.
+- No `.tokensave/` directory and not in the global DB → server refuses to start (`no TokenSave index found`); offer `tokensave init` (see §Blast radius).
+- Architecture/community questions have a better tool even when the index exists → `get_architecture` in codebase-memory.
 
 ## `tokensave init` — the one prerequisite
 

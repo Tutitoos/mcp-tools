@@ -1,17 +1,14 @@
 ---
 name: mem0
 description: >
-  Persistent cross-session memory via the `mcp_tools_mem0` MCP server. Use whenever
-  the user asks to remember, recall, note, save, store, retrieve, or look up past
-  facts, decisions, preferences, or context from prior sessions. Triggers EN:
-  "remember", "recall", "note this", "save this", "we decided", "the user prefers",
-  "prior session", "what did we discuss", "context from before". Triggers ES:
+  Persistent cross-session memory via `mcp_tools_mem0`: remember, recall,
+  save, or look up facts, decisions, preferences, and prior-session context.
+  Triggers EN: "remember", "recall", "note this", "save this", "we decided",
+  "the user prefers", "prior session", "what did we discuss". Triggers ES:
   "recuerda", "acuérdate", "guarda esto", "apunta esto", "hemos decidido",
-  "el usuario prefiere", "sesión anterior", "qué habíamos hablado", "contexto de antes".
-  ALWAYS call `search_memories` before `add_memory` to avoid duplicates. NEVER fall
-  back to local notes files, bash `echo >> notes.md`, or agent scratchpad for these
-  intents — persistent memory MUST go through this MCP. Native tools are only OK
-  when the user's ask is scoped to the current session (single-turn scratch).
+  "el usuario prefiere", "sesión anterior", "qué habíamos hablado".
+  Persistent memory MUST go through this MCP — never local notes files or
+  agent scratchpads. Check §Known state first: search/get are broken upstream.
 ---
 
 # mem0
@@ -24,12 +21,13 @@ This MCP provides persistent cross-session memory: facts about the user, decisio
 
 ## Known state (verifica antes de usar)
 
-Ver `~/mcp-tools/RULES.md` §"Known bugs — read first" para el detalle exhaustivo. Resumen:
+Esta sección es la fuente del detalle; `RULES.md` solo lleva la firma corta.
 
-- `search_memories(query)` y `get_memories(user_id)`: **roto** upstream — la lib nueva de mem0 exige `filters={user_id: ...}` y el MCP pasa `user_id` al top level. Devuelven `Memory not initialized` o error de validación.
-- Estado degradado ocasional: `Memory not initialized` en TODAS las ops → reinicia `mem0-mcp-selfhosted` (`pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill`, luego `/mcp reconnect mcp_tools_mem0`).
-- Confiables: `add_memory`, `get_memory(uuid)`, `list_entities`.
-- Destructivas: `delete_memory`, `delete_entities`, `delete_all_memories` — NUNCA sin confirmación explícita del user.
+- **Bug upstream (verificado 2026-07-06, re-verificado 2026-07-13)**: `search_memories(query)` y `get_memories(user_id)` fallan con `ValueError: Top-level entity parameters frozenset({'user_id'}) are not supported in search(). Use filters={'user_id': '...'}` — la lib mem0 nueva exige `filters` y el MCP siempre inyecta `user_id` al top level. Pasar `filters={"user_id": ...}` como parámetro del tool NO lo evita: el MCP añade el top-level igualmente. Solo se arregla upstream (issues #10-#13 de `elvismdev/mem0-mcp-selfhosted`).
+- **Estado degradado ocasional**: TODAS las ops (incluidas las fiables) devuelven `RuntimeError: Memory not initialized. Infrastructure may be unavailable.` Suele aparecer tras reiniciar qdrant/ollama (p.ej. `docker compose ... restart` o desde el panel `/services`) sin dar tiempo al init de mem0. Fix: reinicia el proceso — `pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill`, luego `/mcp reconnect mcp_tools_mem0`.
+- **Fiables en estado sano**: `add_memory`, `get_memory(uuid)`, `list_entities`, `update_memory`, `mcp_search_graph`.
+- **Rotas en cualquier estado**: `search_memories`, `get_memories` (el bug del filtro).
+- **Destructivas**: `delete_memory`, `delete_entities`, `delete_all_memories` — NUNCA sin confirmación explícita del user.
 
 ## Fast path
 
@@ -55,22 +53,14 @@ Do not ask follow-up questions after completing a simple `search_memories` / `ad
 
 If the user's query cleanly matches an existing memory, prefer `search_memories` (single call) over `list_entities` + `get_memories` scans.
 
-## When to use vs when NOT to use
+## Routing
 
-Use `mcp_tools_mem0` when:
+Tool selection between serena/tokensave/codebase-memory/mem0/native is defined ONCE in the shared core (`RULES.md`, generated from `instructions/core.md`). Use this skill once the task routes here: a fact, decision, preference, or context that must survive the current session.
 
-- The user says "recuerda", "acuérdate", "guarda esto", "apunta esto", "remember", "recall", "note this", "save this".
-- The user asks "qué habíamos decidido", "what did we decide", "prefiero X" ("the user prefers X"), "en la sesión anterior".
-- The user asks for context that clearly comes from a prior session.
-- The user establishes a durable preference the agent should honour later (formatting, tone, tooling defaults, project conventions).
+mem0-specific limits (not routing):
 
-Do NOT use `mcp_tools_mem0` when:
-
-- The user asks to read one specific file they already named → native `Read` is correct.
-- The user asks to run a build / test / shell command → native `bash` is correct.
-- The user asks to edit code → native `edit` / `write` is correct.
-- The scratchpad is single-turn (the note is only meaningful inside this reply) → agent context is enough.
-- The user asks about the codebase, architecture, symbols, or code search → that's `mcp_tools_codebase_memory`, not this MCP.
+- Single-turn scratch (the note only matters inside this reply) → agent context is enough; do not persist.
+- A durable preference established implicitly ("prefiero X") counts as memory even without the word "recuerda" — save it.
 
 ## Runtime
 

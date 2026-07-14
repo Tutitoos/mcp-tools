@@ -1,29 +1,23 @@
 ---
 name: codebase-memory
 description: >
-  Persistent code knowledge graph and code search over indexed local repositories
-  via the `mcp_tools_codebase_memory` MCP server. Use for ANY repo-wide task:
-  search, grep, navigation, architecture, symbol trace, dependency graph, refactor
-  risk, "where is X implemented", "who calls Y", "trace flow from A to B", "explain
-  this repo". Triggers EN: "search", "grep", "find in repo", "where is", "who
-  calls", "trace", "navigate", "explain this codebase", "what depends on", "refactor
-  risk". Triggers ES: "busca", "encuentra", "grep en el repo", "dónde está",
-  "quién llama a", "traza", "explica el repo", "navega", "de qué depende".
-  ALWAYS prefer this MCP over native `Grep`/`Read`/`find`/`bash` for repo-scoped
-  operations. Native `Read` is OK only when opening ONE specific file the user
-  already named; native `Grep` is OK only inside a single known file with a fixed
-  path. Any multi-file / repo-wide search MUST go through this MCP. Pass absolute
-  paths (never `~`). Default indexing mode is `moderate`; use `full` only for
-  architecture analysis or persistent team bootstrap.
+  Persistent code knowledge graph and search over indexed local repositories
+  via `mcp_tools_codebase_memory`: architecture, dependency graphs, symbol
+  trace, refactor risk, cross-repo questions, ADRs. Triggers EN: "search",
+  "find in repo", "where is", "who calls", "trace", "explain this codebase",
+  "what depends on", "refactor risk". Triggers ES: "busca", "encuentra",
+  "dónde está", "quién llama a", "traza", "explica el repo", "de qué
+  depende". Pass absolute paths (never `~`). Default indexing mode is
+  `moderate`; use `full` only for architecture analysis or team bootstrap.
 ---
 
 # codebase-memory-mcp
 
 ## Purpose
 
-Use `mcp_tools_codebase_memory` whenever the user asks about a local codebase, architecture, code navigation, dependencies, flows, symbols, refactors, implementation details, repository structure, or code search.
+Use `mcp_tools_codebase_memory` for architecture, cross-repo questions, dependency graphs, flows, refactor risk, and code search over its persistent knowledge graph of indexed repositories.
 
-This MCP provides a persistent code knowledge graph and code search over indexed repositories.
+Tool selection between serena/tokensave/codebase-memory/mem0/native is defined ONCE in the shared core (`RULES.md`, generated from `instructions/core.md`). Use this skill once the task routes here.
 
 ## Fast path
 
