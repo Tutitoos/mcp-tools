@@ -50,6 +50,9 @@ func installMem0(dry bool, log func(string)) error {
 	if err := runCombined(cmd, "uv tool install mem0-mcp-selfhosted"); err != nil {
 		return err
 	}
+	if err := patchMem0EntityFilters(home, log); err != nil {
+		return err
+	}
 	return installMem0Launcher(home)
 }
 
@@ -71,6 +74,9 @@ func upgradeMem0(dry bool, log func(string)) error {
 	cmd.Env = withLocalBinPath(os.Environ(), home)
 	cmd.Env = append(cmd.Env, "HOME="+home)
 	if err := runCombined(cmd, "uv tool install --force mem0-mcp-selfhosted"); err != nil {
+		return err
+	}
+	if err := patchMem0EntityFilters(home, log); err != nil {
 		return err
 	}
 	return installMem0Launcher(home)

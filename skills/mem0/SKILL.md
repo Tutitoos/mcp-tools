@@ -23,10 +23,10 @@ This MCP provides persistent cross-session memory: facts about the user, decisio
 
 Esta sección es la fuente del detalle; `RULES.md` solo lleva la firma corta.
 
-- **Bug upstream (verificado 2026-07-06, re-verificado 2026-07-13)**: `search_memories(query)` y `get_memories(user_id)` fallan con `ValueError: Top-level entity parameters frozenset({'user_id'}) are not supported in search(). Use filters={'user_id': '...'}` — la lib mem0 nueva exige `filters` y el MCP siempre inyecta `user_id` al top level. Pasar `filters={"user_id": ...}` como parámetro del tool NO lo evita: el MCP añade el top-level igualmente. Solo se arregla upstream (issues #10-#13 de `elvismdev/mem0-mcp-selfhosted`).
+- **Bug upstream PARCHEADO por mcp-tools (2026-07-14)**: upstream v0.3.2 pasa `user_id` top-level a `search()`/`get_all()` y mem0ai ≥ 2.0 lo rechaza (`ValueError: Top-level entity parameters ... Use filters=`). Desde el parche post-install de mcp-tools (`internal/tools/mem0_patch.go`, aplicado en cada install/upgrade), `search_memories` y `get_memories` **funcionan** en instalaciones gestionadas. Si ves ese `ValueError`, la instalación es anterior al parche: corre upgrade de mem0 desde el panel (`/tools` → mem0 → upgrade) y reinicia el proceso MCP.
 - **Estado degradado ocasional**: TODAS las ops (incluidas las fiables) devuelven `RuntimeError: Memory not initialized. Infrastructure may be unavailable.` Suele aparecer tras reiniciar qdrant/ollama (p.ej. `docker compose ... restart` o desde el panel `/services`) sin dar tiempo al init de mem0. Fix: reinicia el proceso — `pgrep -af mem0-mcp-selfhosted | awk '{print $1}' | xargs -r kill`, luego `/mcp reconnect mcp_tools_mem0`.
 - **Fiables en estado sano**: `add_memory`, `get_memory(uuid)`, `list_entities`, `update_memory`, `mcp_search_graph`.
-- **Rotas en cualquier estado**: `search_memories`, `get_memories` (el bug del filtro).
+- **Rotas solo en instalaciones sin el parche**: `search_memories`, `get_memories` — fix: upgrade desde el panel.
 - **Destructivas**: `delete_memory`, `delete_entities`, `delete_all_memories` — NUNCA sin confirmación explícita del user.
 
 ## Fast path
@@ -37,8 +37,8 @@ Use `mcp_tools_mem0` directly.
 
 Fast workflows:
 
-- Recall / lookup past context: call `search_memories` with a semantic query. If it fails with the known `ValueError` (filters bug, see Known state) → fall back to `list_entities` + `get_memory(uuid)`; do NOT retry the same call.
-- Save a new fact / preference / decision: call `search_memories` first to dedupe, then `add_memory`. If the dedupe call hits the known bug → proceed with `add_memory` directly (accept the duplicate risk; one failed attempt is enough).
+- Recall / lookup past context: call `search_memories` with a semantic query. If it fails with the legacy `ValueError` (unpatched install, see Known state) → upgrade mem0 from the panel; as a stopgap, fall back to `list_entities` + `get_memory(uuid)`; do NOT retry the same call.
+- Save a new fact / preference / decision: call `search_memories` first to dedupe, then `add_memory`. If the dedupe call hits the legacy bug → proceed with `add_memory` directly (accept the duplicate risk; one failed attempt is enough).
 - List memories with filters: call `get_memories`.
 - Get a specific memory by ID: call `get_memory`.
 - Find relationships between entities: call `mcp_search_graph`.
@@ -102,9 +102,9 @@ Tools exposed by `mcp_tools_mem0` (11 total):
 
 | Intención | Tool | Nota |
 | --- | --- | --- |
-| Buscar por texto natural | `search_memories(query)` | ❌ roto upstream — ver Known state |
-| Listar todo para un usuario | `get_memories(user_id)` | ❌ roto upstream — usa `list_entities` + `get_memory` |
-| Guardar un hecho nuevo | `add_memory(text, user_id)` | ✅ tras `search_memories` degradado, asume riesgo de duplicado |
+| Buscar por texto natural | `search_memories(query)` | ✅ funciona (parche mcp-tools; en instalación sin parche → upgrade) |
+| Listar todo para un usuario | `get_memories(user_id)` | ✅ funciona (parche mcp-tools; en instalación sin parche → upgrade) |
+| Guardar un hecho nuevo | `add_memory(text, user_id)` | ✅ funciona — dedupe con `search_memories` antes |
 | Recuperar por UUID | `get_memory(memory_id)` | ✅ funciona |
 | Modificar un hecho existente | `update_memory(memory_id, text)` | ✅ funciona |
 | Listar usuarios/agentes con memorias | `list_entities()` | ✅ funciona |

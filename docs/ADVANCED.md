@@ -36,6 +36,7 @@ Correr `mcp-tools install --reconfigure` para verlo aparecer en el TUI.
 - Binario en `~/.local/bin/mem0-mcp-selfhosted` (uv tool install). Wrapper en `~/.local/bin/mem0-launcher` (script bash que sourcea `.env.mem0` y execs).
 - Requiere `qdrant` y `ollama` seleccionados (declarado en `Deps`; el TUI auto-marca ambos si marcas mem0).
 - Registrado en clientes como MCP `mcp_tools_mem0`, `command=/home/<USUARIO>/.local/bin/mem0-launcher`.
+- **Parche post-install** (`internal/tools/mem0_patch.go`): upstream v0.3.2 pasa `user_id` top-level a `search()`/`get_all()` y mem0ai ≥ 2.0 lo rechaza — el install/upgrade reescribe los dos call sites a `filters={...}` (idempotente; falla en seco si el pin cambia sin re-revisar el parche). Sin él, `search_memories` y `get_memories` fallan con `ValueError: Top-level entity parameters`.
 - Variables en `.env.mem0`:
 
 | Variable | Descripción |

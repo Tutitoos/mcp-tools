@@ -45,7 +45,7 @@ Desempate: el target es un **NOMBRE** → serena · una **PREGUNTA** → tokensa
 
 ## Known bugs — mem0 (firma corta)
 
-`search_memories(query)` y `get_memories(user_id)` fallan upstream con `ValueError: Top-level entity parameters frozenset({'user_id'}) are not supported in search()` — pasar `filters={"user_id": ...}` NO lo evita (el MCP inyecta el top-level igual; re-verificado 2026-07-13). Workaround: `list_entities` + `get_memory(uuid)`; guardar → `add_memory` directo asumiendo riesgo de duplicado. Estado degradado `Memory not initialized` en TODAS las ops → reinicio del proceso. Detalle completo y comandos: `skill://mem0` §Known state.
+El bug upstream de `search_memories`/`get_memories` (`ValueError: Top-level entity parameters ...`) está **parcheado por mcp-tools** post-install (2026-07-14): ambas funcionan en instalaciones gestionadas. Si aparece ese `ValueError`, la instalación es pre-parche → upgrade de mem0 desde el panel. Estado degradado `Memory not initialized` en TODAS las ops → reinicio del proceso. Detalle y comandos: `skill://mem0` §Known state.
 
 ## Nombres de tools por cliente
 

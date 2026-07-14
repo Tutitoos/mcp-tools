@@ -18,7 +18,7 @@ Native `Read` is only for raw config, docs, `.env`, logs, JSON dumps, and non-LS
 
 ## Per-MCP skills
 
-Read as needed before repo work: `skills/serena/SKILL.md`, `skills/tokensave/SKILL.md`, `skills/codebase-memory/SKILL.md`, `skills/mem0/SKILL.md`. Note: mem0 `search_memories`/`get_memories` are broken upstream — workarounds in `skill://mem0` §Known state.
+Read as needed before repo work: `skills/serena/SKILL.md`, `skills/tokensave/SKILL.md`, `skills/codebase-memory/SKILL.md`, `skills/mem0/SKILL.md`. Note: the upstream mem0 `search_memories`/`get_memories` bug is patched by mcp-tools post-install (`internal/tools/mem0_patch.go`); details in `skill://mem0` §Known state.
 
 ## Repo facts
 
